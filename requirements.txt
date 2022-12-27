@@ -1,0 +1,9 @@
+numpy
+fastapi
+uvicorn[standart]
+loguru
+nltk
+PyMuPDF
+requests
+
+
