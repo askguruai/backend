@@ -45,7 +45,15 @@ Response:
   pip install -r requirements.txt
   ```
 
-3. Run service
+3. Install nltk tokenization resources.
+
+Run python in terminal
+  ```python
+  >>> import nltk
+  >>> nltk.download('punkt')
+  ```
+
+4. Run service
   ```bash
   python main.py
 ```
