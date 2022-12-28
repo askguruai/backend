@@ -20,9 +20,7 @@ def read_root():
 @app.post("/text_query")
 async def text_encode(request: TextRequest):
     answer = text_request_handler(request)
-    return {
-        "data": answer
-    }
+    return {"data": answer}
 
 
 @app.get("/upload_pdf")

@@ -43,24 +43,17 @@ Response:
   conda create --name backend python=3.10
   conda activate backend
   pip install -r requirements.txt
+  python <<HEREDOC
+  import nltk
+  nltk.download('punkt')
+  HEREDOC
   ```
 
-3. Install nltk tokenization resources.
-
-Run python in terminal
-  ```python
-  >>> import nltk
-  >>> nltk.download('punkt')
-  ```
-
-4. Run service
+3. Run service
   ```bash
   python main.py
-```
+  ```
 
 ## TODO
 * Resolve ToDos :)
 * Add an error-handling wrapper so to prevent 500-codes
-
-
-  
