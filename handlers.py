@@ -28,7 +28,7 @@ def text_request_handler(request: TextRequest) -> str:
                                  json=req_data).json()
         query_embedding = np.array(response["data"][0]["embedding"])
     else:
-        input_chunks = parse_text(request.text_input)
+        input_chunks = parse_text(request.text_input, int(CONFIG["text_handler"]["chunk_size"]))
         req_data = {
             "input": input_chunks + [request.query]
         }
@@ -48,9 +48,11 @@ def text_request_handler(request: TextRequest) -> str:
         input_embeddings = np.array(input_embeddings)
         query_embedding = np.array(response["data"][-1]["embedding"])
 
+    logging.info(f"Number of chunks of size {CONFIG['text_handler']['chunk_size']}: {len(input_data)}")
     cosines = [np.dot(emb, query_embedding) for emb in input_embeddings]
-    indices = np.argsort(cosines)[-3:]  # picking top 3 relevant results. TODO: make a config parameter
-    context = " ".join([input_data[i]["text"] for i in indices])
+    indices = np.argsort(cosines)[-int(CONFIG["text_handler"]["top_k_chunks"]):][::-1]
+    context = "\n\n".join([input_data[i]["text"] for i in indices])
+    logging.info(f"Top {CONFIG['text_handler']['top_k_chunks']} chunks:\n{context}")
     req_data = {
         "info": context,
         "query": request.query
