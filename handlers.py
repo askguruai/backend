@@ -2,6 +2,8 @@ import hashlib
 import json
 import os.path as osp
 from pathlib import Path
+import logging
+from pprint import pformat
 
 import numpy as np
 import requests
