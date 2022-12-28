@@ -5,5 +5,5 @@ loguru
 nltk
 PyMuPDF
 requests
-
+python-multipart
 
