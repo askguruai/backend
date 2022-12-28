@@ -1,6 +1,7 @@
 import logging
-from nltk import tokenize
 from typing import List
+
+from nltk import tokenize
 
 
 def text_to_sentences(text: str) -> List[str]:

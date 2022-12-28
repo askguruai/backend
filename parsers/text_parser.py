@@ -1,4 +1,4 @@
-from parsers.common import text_to_sentences, chunkise_sentences
+from parsers.common import chunkise_sentences, text_to_sentences
 
 
 def parse_text(raw_text: str, chunk_size: int):

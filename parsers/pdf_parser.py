@@ -1,9 +1,11 @@
 from argparse import ArgumentParser
-import fitz
 from pathlib import Path
-from nltk import tokenize
 from typing import List, Union
-from parsers.common import text_to_sentences, chunkise_sentences
+
+import fitz
+from nltk import tokenize
+
+from parsers.common import chunkise_sentences, text_to_sentences
 
 
 def parse_document(path: Union[str, Path], chunk_size: int = 1024) -> List[str]:
