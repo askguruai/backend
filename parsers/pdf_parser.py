@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Union
+from utils import CONFIG
 
 import fitz
 from nltk import tokenize
@@ -8,7 +9,7 @@ from nltk import tokenize
 from parsers.common import chunkise_sentences, text_to_sentences
 
 
-def parse_document(path: Union[str, Path], chunk_size: int = 1024) -> List[str]:
+def parse_document(path: Union[str, Path], chunk_size: int = int(CONFIG["text_handler"]["chunk_size"])) -> List[str]:
     # TODO: split big pieces of text into smaller ones?
 
     with fitz.open(path) as doc:
@@ -18,7 +19,7 @@ def parse_document(path: Union[str, Path], chunk_size: int = 1024) -> List[str]:
 
     sentences = text_to_sentences(text)
     sentences = [sent.replace("\n", " ") for sent in sentences]
-    return chunkise_sentences(sentences)
+    return chunkise_sentences(sentences, chunk_size=256)
 
 
 if __name__ == '__main__':
