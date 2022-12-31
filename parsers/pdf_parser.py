@@ -1,7 +1,6 @@
 from argparse import ArgumentParser
 from pathlib import Path
 from typing import List, Union
-from utils import CONFIG
 
 import fitz
 from nltk import tokenize
@@ -19,14 +18,15 @@ def parse_document(path: Union[str, Path], chunk_size: int) -> List[str]:
 
     sentences = text_to_sentences(text)
     sentences = [sent.replace("\n", " ") for sent in sentences]
-    return chunkise_sentences(sentences, chunk_size=256)
+    return chunkise_sentences(sentences, chunk_size)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument("-f", "--file", help=f"Path to a .pdf file")
+    parser.add_argument("-f", "--file", type=str, help=f"Path to a .pdf file")
+    parser.add_argument("--chunk_size", type=int, default=512)
     args = parser.parse_args()
-    chunks = parse_document(args.file)
+    chunks = parse_document(args.file, args.chunk_size)
     for chunk in chunks:
         print(f"{chunk} --- {len(chunk)}")
         print()

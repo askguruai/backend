@@ -18,10 +18,6 @@ def chunkise_sentences(sentences: List[str], chunk_size: int) -> List[str]:
             shards = split_long_sentence(sent, chunk_size)
             for shard in shards[::-1]:
                 sent_stack.append(shard)
-            #  resetting current chunk
-            chunks.append(current_chunk)
-            current_chunk = ""
-            continue
         if len(current_chunk) + len(sent) <= chunk_size:
             current_chunk += sent
         else:
