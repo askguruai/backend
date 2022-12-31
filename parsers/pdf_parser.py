@@ -9,7 +9,7 @@ from nltk import tokenize
 from parsers.common import chunkise_sentences, text_to_sentences
 
 
-def parse_document(path: Union[str, Path], chunk_size: int = int(CONFIG["text_handler"]["chunk_size"])) -> List[str]:
+def parse_document(path: Union[str, Path], chunk_size: int) -> List[str]:
     # TODO: split big pieces of text into smaller ones?
 
     with fitz.open(path) as doc:
