@@ -2,11 +2,13 @@ import datetime
 import logging
 import shutil
 
+import bson
 import uvicorn
 from bson.objectid import ObjectId
 from fastapi import FastAPI, File, Request, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
+from pymongo.collection import ReturnDocument
 
 from db import DB
 from handlers import text_request_handler
@@ -56,9 +58,22 @@ async def text_query(text_request: TextRequest, request: Request):
 async def set_reaction(set_reaction_request: SetReactionRequest):
     row_update = {"like": set_reaction_request.like, "comment": set_reaction_request.comment}
 
-    DB[CONFIG["mongo"]["collection"]].find_one_and_update(
-        {"_id": ObjectId(set_reaction_request.request_id)}, {"$set": row_update}
-    )
+    try:
+        status = DB[CONFIG["mongo"]["collection"]].find_one_and_update(
+            {"_id": ObjectId(set_reaction_request.request_id)},
+            {"$set": row_update},
+            return_document=ReturnDocument.AFTER,
+        )
+        result = (
+            f"Row {set_reaction_request.request_id} was successfully updated"
+            if status
+            else f"Can't find row with id {set_reaction_request.request_id}"
+        )
+    except bson.errors.InvalidId as e:
+        result = f"Provided id {set_reaction_request.request_id} has wrong format"
+
+    logging.info(result)
+    return {"result": result}
 
 
 @app.get("/upload_pdf")
