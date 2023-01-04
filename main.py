@@ -56,7 +56,10 @@ async def text_query(text_request: TextRequest, request: Request):
 
 @app.post("/set_reaction")
 async def set_reaction(set_reaction_request: SetReactionRequest):
-    row_update = {"like": set_reaction_request.like, "comment": set_reaction_request.comment}
+    row_update = {
+        "like_status": set_reaction_request.like_status,
+        "comment": set_reaction_request.comment,
+    }
 
     try:
         status = DB[CONFIG["mongo"]["collection"]].find_one_and_update(
