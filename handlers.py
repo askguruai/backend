@@ -58,4 +58,4 @@ def text_request_handler(request: TextRequest) -> str:
     response = requests.post(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}/completions", json=req_data
     ).json()
-    return response["data"]
+    return response["data"], context

@@ -1,24 +1,25 @@
+import datetime
+import logging
 import shutil
 
+import bson
 import uvicorn
-from fastapi import FastAPI, File, UploadFile, status
+from bson.objectid import ObjectId
+from fastapi import FastAPI, File, Request, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
+from pymongo.collection import ReturnDocument
 
+from db import DB
 from handlers import text_request_handler
 from utils import CONFIG
-from utils.data import TextRequest
+from utils.data import SetReactionRequest, TextRequest
 from utils.logging import run_uvicorn_loguru
-from fastapi.middleware.cors import CORSMiddleware
-import logging
 
 app = FastAPI()
 
 
-origins = [
-    "http://localhost:5858",
-    "http://78.141.213.164/:5858",
-    "*"
-]
+origins = ["http://localhost:5858", "http://78.141.213.164/:5858", "*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -35,10 +36,47 @@ def read_root():
 
 
 @app.post("/text_query")
-async def text_encode(request: TextRequest):
-    answer = text_request_handler(request)
+async def text_query(text_request: TextRequest, request: Request):
+
+    answer, context = text_request_handler(text_request)
+
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "text": text_request.text_input,
+        "query": text_request.query,
+        "model_context": context,
+        "answer": answer,
+    }
+    request_id = DB[CONFIG["mongo"]["collection"]].insert_one(row).inserted_id
+
     logging.info(f"Answer to the query: {answer}")
-    return {"data": answer}
+    return {"data": answer, "request_id": str(request_id)}
+
+
+@app.post("/set_reaction")
+async def set_reaction(set_reaction_request: SetReactionRequest):
+    row_update = {
+        "like_status": set_reaction_request.like_status,
+        "comment": set_reaction_request.comment,
+    }
+
+    try:
+        status = DB[CONFIG["mongo"]["collection"]].find_one_and_update(
+            {"_id": ObjectId(set_reaction_request.request_id)},
+            {"$set": row_update},
+            return_document=ReturnDocument.AFTER,
+        )
+        result = (
+            f"Row {set_reaction_request.request_id} was successfully updated"
+            if status
+            else f"Can't find row with id {set_reaction_request.request_id}"
+        )
+    except bson.errors.InvalidId as e:
+        result = f"Provided id {set_reaction_request.request_id} has wrong format"
+
+    logging.info(result)
+    return {"result": result}
 
 
 @app.get("/upload_pdf")

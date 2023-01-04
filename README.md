@@ -32,13 +32,24 @@ Response:
 </details>
 
 ## Development
-1. Clone repo
+
+### MongoDB
+
+To launch MongoDB container w/ mongo-express UI, do:
   ```bash
-  git clone git@github.com:askaye/backend.git
-  cd ./backend
+  cd ./db
+  sudo docker-compose up -d
   ```
 
-2. Install dependencies
+To connect to mongo-express forward ports and visit [localhost:8081](http://localhost:8081/):
+  ```bash
+  ssh -NL 8081:localhost:8081 denpasar
+  ```
+
+
+### Repo
+
+1. Install dependencies
   ```bash
   conda create --name backend python=3.10
   conda activate backend
@@ -49,7 +60,7 @@ Response:
   HEREDOC
   ```
 
-3. Run service
+2. Run service
   ```bash
   python main.py
   ```

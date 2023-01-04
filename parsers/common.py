@@ -34,5 +34,6 @@ def split_long_sentence(sentence: str, chunk_size: int) -> List[str]:
     if len(words) < 2:
         return []  # omitting the sentence
     mid_space = len(words) // 2
-    return split_long_sentence(" ".join(words[:mid_space]), chunk_size) + \
-           split_long_sentence(" ".join(words[mid_space:]), chunk_size)
+    return split_long_sentence(" ".join(words[:mid_space]), chunk_size) + split_long_sentence(
+        " ".join(words[mid_space:]), chunk_size
+    )

@@ -6,4 +6,4 @@ nltk
 PyMuPDF
 requests
 python-multipart
-
+pymongo
