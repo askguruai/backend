@@ -13,7 +13,7 @@ class LikeStatus(str, Enum):
     wrong_answer = "wrong_answer"
     incomplete_answer = "incomplete_answer"
     offensive_answer = "offensive_answer"
-    good_answer = "good_aswer"
+    good_answer = "good_answer"
 
 
 class SetReactionRequest(BaseModel):
