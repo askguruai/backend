@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class QueryRequest(BaseModel):
-    text_input: Optional[str] = None
+    text: Optional[str] = None
     link: Optional[str] = None
     doc: Optional[str] = None
     query: str

@@ -38,7 +38,7 @@ def read_root():
 @app.post("/get_answer")
 async def get_answer(query_request: QueryRequest, request: Request):
 
-    info = query_request.text_input if query_request.text_input else ""
+    info = query_request.text if query_request.text else ""
     # info += extract_text_from_link(query_request.link)
     # info += extract_text_from_doc(query_request.link)
 
@@ -47,7 +47,7 @@ async def get_answer(query_request: QueryRequest, request: Request):
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "text": query_request.text_input,
+        "text": query_request.text,
         "query": query_request.query,
         "model_context": context,
         "answer": answer,
