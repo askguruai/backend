@@ -38,7 +38,6 @@ def read_root():
 @app.post("/text_query")
 async def get_answer(query_request: QueryRequest, request: Request):
 
-    print(query_request)
     info = query_request.text_input if query_request.text_input else ""
     # info += extract_text_from_link(query_request.link)
     # info += extract_text_from_doc(query_request.link)
