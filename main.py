@@ -11,9 +11,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
 from db import DB
-from handlers import text_request_handler
+from handlers import get_answer_from_info
 from utils import CONFIG
-from utils.data import SetReactionRequest, TextRequest
+from utils.data import QueryRequest, SetReactionRequest
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -35,16 +35,20 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.post("/text_query")
-async def text_query(text_request: TextRequest, request: Request):
+@app.post("/get_answer")
+async def get_answer(query_request: QueryRequest, request: Request):
 
-    answer, context = text_request_handler(text_request)
+    info = query_request.text if query_request.text else ""
+    # info += extract_text_from_link(query_request.link)
+    # info += extract_text_from_doc(query_request.link)
+
+    answer, context = get_answer_from_info(info, query_request.query)
 
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "text": text_request.text_input,
-        "query": text_request.query,
+        "text": query_request.text,
+        "query": query_request.query,
         "model_context": context,
         "answer": answer,
     }
