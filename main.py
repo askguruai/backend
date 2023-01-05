@@ -35,7 +35,7 @@ def read_root():
     return {"Hello": "World"}
 
 
-@app.post("/text_query")
+@app.post("/get_answer")
 async def get_answer(query_request: QueryRequest, request: Request):
 
     info = query_request.text_input if query_request.text_input else ""
