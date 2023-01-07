@@ -1,5 +1,10 @@
+import html2text
+import requests
 import wikipedia
 from wikipedia.exceptions import PageError
+
+CONVERTER = html2text.HTML2Text()
+CONVERTER.ignore_links = True
 
 WIKI_LANGUAGES = ["en", "ru"]
 
@@ -24,4 +29,6 @@ def parse_wiki(link: str) -> str:
 
 
 def parse_website(link: str) -> str:
-    return ""
+    r = requests.get(link)
+    text = CONVERTER.handle(r.text)
+    return text
