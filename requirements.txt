@@ -7,3 +7,4 @@ PyMuPDF
 requests
 python-multipart
 pymongo
+wikipedia
