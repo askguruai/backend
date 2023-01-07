@@ -12,6 +12,7 @@ from pymongo.collection import ReturnDocument
 
 from db import DB
 from handlers import get_answer_from_info
+from parsers.link_parser import extract_text_from_link
 from utils import CONFIG
 from utils.data import QueryRequest, SetReactionRequest
 from utils.logging import run_uvicorn_loguru
@@ -39,7 +40,7 @@ def read_root():
 async def get_answer(query_request: QueryRequest, request: Request):
 
     info = query_request.text if query_request.text else ""
-    # info += extract_text_from_link(query_request.link)
+    info += extract_text_from_link(query_request.link) if query_request.link else ""
     # info += extract_text_from_doc(query_request.link)
 
     answer, context = get_answer_from_info(info, query_request.query)
