@@ -8,3 +8,4 @@ requests
 python-multipart
 pymongo
 wikipedia
+html2text
