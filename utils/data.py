@@ -4,6 +4,11 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class PdfQueryRequest(BaseModel):
+    document_id: str
+    query: str
+
+
 class TextQueryRequest(BaseModel):
     text: Optional[str] = None
     query: str

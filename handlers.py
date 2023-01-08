@@ -9,13 +9,14 @@ from pprint import pformat
 
 import numpy as np
 import requests
-from utils.data import TextQueryRequest
+from utils.data import TextQueryRequest, PdfQueryRequest
 
 from parsers import parse_text
 from parsers.pdf_parser import extract_content, parse_pdf_content
 from utils import CONFIG, STORAGE
-from utils.ml import get_embeddings, get_answer
-from typing import Tuple, Any
+from utils.ml import get_embeddings, get_answer, get_context_indices
+from utils.errors import InvalidDocumentIdError
+from typing import Tuple, Any, Union, Dict
 from db import DB, GRIDFS
 from fastapi import File, UploadFile
 
@@ -72,8 +73,7 @@ def text_query_handler(data: TextQueryRequest) -> Tuple[str, str, Any]:
         logging.info(
             f"Number of chunks of size {CONFIG['text_handler']['chunk_size']}: {len(processed_data)}"
         )
-        cosines = [np.dot(emb, query_embedding) for emb in embeddings]
-        indices = np.argsort(cosines)[-int(CONFIG["text_handler"]["top_k_chunks"]):][::-1]
+        indices = get_context_indices(embeddings, query_embedding)
         context = "\n\n".join([processed_data[i]["text"] for i in indices])
         logging.info(f"Top {CONFIG['text_handler']['top_k_chunks']} chunks:\n{context}")
     answer = get_answer(context, data.query)
@@ -109,3 +109,18 @@ def pdf_upload_handler(file: UploadFile = File(...)) -> str:
             }
             DB[CONFIG["mongo"]["data_index_collection"]].insert_one(row)
         return doc_id
+
+
+def pdf_request_handler(data: PdfQueryRequest) -> Tuple[str, str]:
+    doc_id = data.document_id
+    if doc_id not in STORAGE:
+        raise InvalidDocumentIdError()
+    processed_data = STORAGE[doc_id]
+    embeddings = []
+    for chunk in processed_data:
+        embeddings.append(chunk["embedding"])
+    query_embedding = get_embeddings([data.query])[0]
+    indices = get_context_indices(embeddings, query_embedding)
+    context = "\n\n".join([processed_data[i]["text"] for i in indices])
+    answer = get_answer(context, data.query)
+    return answer, context

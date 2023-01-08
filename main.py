@@ -1,19 +1,19 @@
 import datetime
 import logging
-import shutil
 
 import bson
 import uvicorn
 from bson.objectid import ObjectId
-from fastapi import FastAPI, File, Request, UploadFile, status
+from fastapi import FastAPI, File, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse
 from pymongo.collection import ReturnDocument
 
 from db import DB
-from handlers import text_query_handler, pdf_upload_handler as _pdf_upload_handler
+from handlers import text_query_handler, pdf_upload_handler as _pdf_upload_handler, pdf_request_handler
 from utils import CONFIG
-from utils.data import QueryRequest, SetReactionRequest, TextQueryRequest
+from utils.data import SetReactionRequest, TextQueryRequest, PdfQueryRequest
+from utils.errors import *
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -105,6 +105,28 @@ async def pdf_upload_handler(file: UploadFile = File(...)):
     document_id = _pdf_upload_handler(file)
     return {
         "document_id": document_id
+    }
+
+
+@app.post("/pdf_answer")
+async def pdf_answer(data: PdfQueryRequest, request: Request):
+    try:
+        answer, context = pdf_request_handler(data)
+    except InvalidDocumentIdError as e:
+        return e.response()
+
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "document_id": data.document_id,
+        "query": data.query,
+        "model_context": context,
+        "answer": answer,
+    }
+    request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
+
+    return {
+        "data": answer, "request_id": request_id, "document_id": data.document_id
     }
 
 
