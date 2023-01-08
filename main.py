@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
 from db import DB
-from handlers import text_query_handler
+from handlers import text_query_handler, pdf_upload_handler as _pdf_upload_handler
 from utils import CONFIG
 from utils.data import QueryRequest, SetReactionRequest, TextQueryRequest
 from utils.logging import run_uvicorn_loguru
@@ -89,7 +89,7 @@ async def upload_form():
         <title>File Upload</title>
     </head>
     <body>
-    <form action="/file_upload" method="post" enctype="multipart/form-data">
+    <form action="/pdf_upload" method="post" enctype="multipart/form-data">
     
         <input type="file" name="file" id="file" accept="application/pdf">
         <input type="submit" value="Upload It" />
@@ -100,11 +100,12 @@ async def upload_form():
     return HTMLResponse(response)
 
 
-@app.post("/file_upload")
-async def file_upload_handler(file: UploadFile = File(...)):
-    with open("storage/file.pdf", "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
+@app.post("/pdf_upload")
+async def pdf_upload_handler(file: UploadFile = File(...)):
+    document_id = _pdf_upload_handler(file)
+    return {
+        "document_id": document_id
+    }
 
 
 if __name__ == "__main__":

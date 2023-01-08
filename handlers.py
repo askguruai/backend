@@ -2,6 +2,8 @@ import hashlib
 import json
 import logging
 import os.path as osp
+import shutil
+import tempfile
 from pathlib import Path
 from pprint import pformat
 
@@ -10,10 +12,12 @@ import requests
 from utils.data import TextQueryRequest
 
 from parsers import parse_text
+from parsers.pdf_parser import extract_content, parse_pdf_content
 from utils import CONFIG, STORAGE
 from utils.ml import get_embeddings, get_answer
 from typing import Tuple, Any
-from db import DB
+from db import DB, GRIDFS
+from fastapi import File, UploadFile
 
 
 def text_query_handler(data: TextQueryRequest) -> Tuple[str, str, Any]:
@@ -74,3 +78,34 @@ def text_query_handler(data: TextQueryRequest) -> Tuple[str, str, Any]:
         logging.info(f"Top {CONFIG['text_handler']['top_k_chunks']} chunks:\n{context}")
     answer = get_answer(context, data.query)
     return answer, context, doc_id
+
+
+def pdf_upload_handler(file: UploadFile = File(...)) -> str:
+    random_hash = STORAGE.get_hash()
+    tempfile.TemporaryFile()
+    with tempfile.TemporaryDirectory() as tmpdir:
+        fpath = osp.join(tmpdir, f"{random_hash}.pdf")
+        with open(fpath, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        pdf_contents = extract_content(fpath)
+        doc_id = STORAGE.get_hash(pdf_contents)
+        if doc_id in STORAGE:
+            # file with this exact content already exists and processed in storage
+            logging.info(f"pdf_upload_handler: file found")
+            pass
+        else:
+            text_chunks = parse_pdf_content(pdf_contents, int(CONFIG["text_handler"]["chunk_size"]))
+            embeddings = get_embeddings(text_chunks)
+            processed_data = []
+            for chunk, emb in zip(text_chunks, embeddings):
+                processed_data.append({"text": chunk, "embedding": emb})
+            STORAGE[doc_id] = processed_data
+            with open(fpath, "rb") as buf:
+                obj_id = GRIDFS.put(buf)
+            row = {
+                "document_id": doc_id,
+                "data_id": obj_id,
+                "type": "pdf",
+            }
+            DB[CONFIG["mongo"]["data_index_collection"]].insert_one(row)
+        return doc_id

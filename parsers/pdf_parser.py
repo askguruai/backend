@@ -3,22 +3,26 @@ from pathlib import Path
 from typing import List, Union
 
 import fitz
-from nltk import tokenize
 
 from parsers.common import chunkise_sentences, text_to_sentences
 
 
-def parse_document(path: Union[str, Path], chunk_size: int) -> List[str]:
-    # TODO: split big pieces of text into smaller ones?
-
+def extract_content(path: Union[str, Path]):
     with fitz.open(path) as doc:
         text = ""
         for page in doc:
             text += page.get_text()
+    return text
 
-    sentences = text_to_sentences(text)
+
+def parse_pdf_content(content: str, chunk_size: int) -> List[str]:
+    sentences = text_to_sentences(content)
     sentences = [sent.replace("\n", " ") for sent in sentences]
     return chunkise_sentences(sentences, chunk_size)
+
+
+def parse_document(path: Union[str, Path], chunk_size: int) -> List[str]:
+    return parse_pdf_content(extract_content(path), chunk_size)
 
 
 if __name__ == '__main__':

@@ -2,6 +2,7 @@ import os
 import urllib
 
 import pymongo
+import gridfs
 
 from utils import CONFIG
 
@@ -19,3 +20,4 @@ mongo_client = pymongo.MongoClient(
 )
 
 DB = mongo_client[DATABASE]
+GRIDFS = gridfs.GridFS(DB)
