@@ -4,6 +4,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 
+class TextQueryRequest(BaseModel):
+    text: Optional[str] = None
+    query: str
+    document_id: Optional[str] = None
+
+
 class QueryRequest(BaseModel):
     text: Optional[str] = None
     link: Optional[str] = None

@@ -11,9 +11,9 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
 from db import DB
-from handlers import get_answer_from_info
+from handlers import text_query_handler
 from utils import CONFIG
-from utils.data import QueryRequest, SetReactionRequest
+from utils.data import QueryRequest, SetReactionRequest, TextQueryRequest
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -36,26 +36,22 @@ def read_root():
 
 
 @app.post("/get_answer")
-async def get_answer(query_request: QueryRequest, request: Request):
+async def get_answer(data: TextQueryRequest, request: Request):
 
-    info = query_request.text if query_request.text else ""
-    # info += extract_text_from_link(query_request.link)
-    # info += extract_text_from_doc(query_request.link)
-
-    answer, context = get_answer_from_info(info, query_request.query)
+    answer, context, doc_id = text_query_handler(data)
 
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "text": query_request.text,
-        "query": query_request.query,
+        "document_id": doc_id,
+        "query": data.query,
         "model_context": context,
         "answer": answer,
     }
-    request_id = DB[CONFIG["mongo"]["collection"]].insert_one(row).inserted_id
+    request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
 
     logging.info(f"Answer to the query: {answer}")
-    return {"data": answer, "request_id": str(request_id)}
+    return {"data": answer, "request_id": str(request_id), "document_id": str(doc_id)}
 
 
 @app.post("/set_reaction")
