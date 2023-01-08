@@ -113,6 +113,7 @@ async def pdf_answer(data: PdfQueryRequest, request: Request):
     try:
         answer, context = pdf_request_handler(data)
     except InvalidDocumentIdError as e:
+        logging.error(f"Error happened: invalid document id {data.document_id}")
         return e.response()
 
     row = {
@@ -124,9 +125,8 @@ async def pdf_answer(data: PdfQueryRequest, request: Request):
         "answer": answer,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
-
     return {
-        "data": answer, "request_id": request_id, "document_id": data.document_id
+        "data": answer, "request_id": str(request_id), "document_id": data.document_id
     }
 
 

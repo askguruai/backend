@@ -57,7 +57,12 @@ def text_query_handler(data: TextQueryRequest) -> Tuple[str, str, Any]:
                 "text": data.text,
             }
             obj_id = DB[CONFIG["mongo"]["texts_collection"]].insert_one(row).inserted_id
-            # todo: save doc_id -> obj_id mapping to a separate collection?
+            row = {
+                "document_id": doc_id,
+                "data_id": str(obj_id),
+                "type": "txt",
+            }
+            DB[CONFIG["mongo"]["data_index_collection"]].insert_one(row)
 
             text_chunks = parse_text(info, int(CONFIG["text_handler"]["chunk_size"]))
             text_chunks.append(data.query)
