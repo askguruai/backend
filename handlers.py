@@ -20,20 +20,25 @@ def text_query_handler(data: TextQueryRequest) -> Tuple[str, str, Any]:
     info = data.text if data.text else ""
     if info == "":
         context = ""
+        doc_id = ""
+        logging.info(f"Answering no-context question")
     else:
         processed_data = None
         if data.document_id is not None and data.document_id in STORAGE:
             # checking if doc_id presented and exists in storage
             processed_data = STORAGE[data.document_id]
             doc_id = data.document_id
+            logging.info(f"Document ID presnted and document found: {data.document_id}")
         else:
             # otherwise, calculating hash and checking storage again
             info_hash = STORAGE.get_hash(info)
+            logging.info(f"Hash of the input data: {info_hash}")
             if info_hash in STORAGE:
                 processed_data = STORAGE[info_hash]
             doc_id = info_hash
 
         if processed_data is not None:
+            logging.info(f"Cachefile found in storage by id {doc_id}")
             # if data loaded successfully from storage, just picking embeddings
             embeddings = []
             for chunk in processed_data:
