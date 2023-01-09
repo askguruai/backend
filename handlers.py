@@ -4,60 +4,68 @@ import logging
 import os.path as osp
 from pathlib import Path
 from pprint import pformat
+from typing import Any, Tuple
 
 import numpy as np
 import requests
 
+from db import DB
 from parsers import parse_text
-from utils import CONFIG
+from utils import CONFIG, STORAGE
+from utils.data import TextQueryRequest
+from utils.ml import get_answer, get_embeddings
 
 
-def get_answer_from_info(info: str, query: str) -> str:
-    if info:
-        input_hash = hashlib.sha256(info.encode()).hexdigest()
-        cachefile_path = Path(osp.join(CONFIG["app"]["storage_path"], f"{input_hash}.json"))
-        if cachefile_path.exists():
-            with open(cachefile_path, "rt") as f:
-                input_data = json.load(f)
-            input_embeddings = []
-            for chunk in input_data:
-                input_embeddings.append(chunk["embedding"])
-            input_embeddings = np.array(input_embeddings)
-            req_data = {"input": query}
-            response = requests.post(
-                f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}/embeddings",
-                json=req_data,
-            ).json()
-            query_embedding = np.array(response["data"][0]["embedding"])
+def text_query_handler(data: TextQueryRequest) -> Tuple[str, str, Any]:
+    info = data.text if data.text else ""
+    if info == "":
+        context = ""
+    else:
+        processed_data = None
+        if data.document_id is not None and data.document_id in STORAGE:
+            # checking if doc_id presented and exists in storage
+            processed_data = STORAGE[data.document_id]
+            doc_id = data.document_id
         else:
-            input_chunks = parse_text(info, int(CONFIG["text_handler"]["chunk_size"]))
-            req_data = {"input": input_chunks + [query]}
-            response = requests.post(
-                f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}/embeddings",
-                json=req_data,
-            ).json()
-            input_data = []
-            input_embeddings = []
-            for i, emb in enumerate(response["data"][:-1]):
-                input_embeddings.append(emb["embedding"])
-                input_data.append({"text": input_chunks[i], "embedding": emb["embedding"]})
-            assert len(input_data) == len(input_chunks)  # todo: make global error handling
-            with open(cachefile_path, "wt") as f:
-                json.dump(input_data, f)
-            input_embeddings = np.array(input_embeddings)
-            query_embedding = np.array(response["data"][-1]["embedding"])
+            # otherwise, calculating hash and checking storage again
+            info_hash = STORAGE.get_hash(info)
+            if info_hash in STORAGE:
+                processed_data = STORAGE[info_hash]
+            doc_id = info_hash
+
+        if processed_data is not None:
+            # if data loaded successfully from storage, just picking embeddings
+            embeddings = []
+            for chunk in processed_data:
+                embeddings.append(chunk["embedding"])
+            query_embedding = get_embeddings([data.query])[0]
+        else:
+            # data is new, need to parse and calculate embeddings
+            # also need to save raw text to a designated collection in db
+            row = {
+                "document_id": doc_id,
+                "text": data.text,
+            }
+            obj_id = DB[CONFIG["mongo"]["texts_collection"]].insert_one(row).inserted_id
+            # todo: save doc_id -> obj_id mapping to a separate collection?
+
+            text_chunks = parse_text(info, int(CONFIG["text_handler"]["chunk_size"]))
+            text_chunks.append(data.query)
+            embeddings = get_embeddings(text_chunks)
+            assert len(embeddings) == len(text_chunks)
+            query = text_chunks.pop()
+            query_embedding = embeddings.pop()
+            processed_data = []
+            for chunk, emb in zip(text_chunks, embeddings):
+                processed_data.append({"text": chunk, "embedding": emb})
+            STORAGE[doc_id] = processed_data
 
         logging.info(
-            f"Number of chunks of size {CONFIG['text_handler']['chunk_size']}: {len(input_data)}"
+            f"Number of chunks of size {CONFIG['text_handler']['chunk_size']}: {len(processed_data)}"
         )
-        cosines = [np.dot(emb, query_embedding) for emb in input_embeddings]
+        cosines = [np.dot(emb, query_embedding) for emb in embeddings]
         indices = np.argsort(cosines)[-int(CONFIG["text_handler"]["top_k_chunks"]) :][::-1]
-        context = "\n\n".join([input_data[i]["text"] for i in indices])
+        context = "\n\n".join([processed_data[i]["text"] for i in indices])
         logging.info(f"Top {CONFIG['text_handler']['top_k_chunks']} chunks:\n{context}")
-    else:
-        context = ""
-    req_data = {"info": context, "query": query}
-    response = requests.post(
-        f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}/completions", json=req_data
-    ).json()
-    return response["data"], context
+    answer = get_answer(context, data.query)
+    return answer, context, doc_id
