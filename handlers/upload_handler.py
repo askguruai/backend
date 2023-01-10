@@ -28,7 +28,7 @@ class PDFUploadHandler:
             fpath = osp.join(tmpdir, f"{random_hash}.pdf")
             with open(fpath, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
-        text = self.parser.get_text(fpath)
+            text = self.parser.get_text(fpath)
         text_hash = hashlib.sha256(text.encode()).hexdigest()[:24]
         # todo: switch to "exists" method or whatever
         document = DB[CONFIG["mongo"]["requests_inputs_collection"]].find_one(
@@ -40,7 +40,7 @@ class PDFUploadHandler:
         else:
             sentences = self.parser.text_to_sentences(text)
             sentences = [sent.replace("\n", " ") for sent in sentences]
-            chunks = self.parser.chunkise_sentences(sentences, CONFIG["handlers"]["chunk_size"])
+            chunks = self.parser.chunkise_sentences(sentences, int(CONFIG["handlers"]["chunk_size"]))
             embeddings = self.get_embeddings_from_chunks(chunks)
             document = {
                            "_id": ObjectId(text_hash),

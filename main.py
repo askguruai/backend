@@ -16,11 +16,12 @@ from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
 from utils.logging import run_uvicorn_loguru
+from utils.errors import InvalidDocumentIdError
 
 app = FastAPI()
 
 
-origins = ["http://localhost:5858", "http://78.141.213.164/:5858", "*"]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,7 +85,11 @@ async def get_answer_link(link_request: LinkRequest, request: Request):
 
 @app.post("/get_answer/document")
 async def get_answer_document(document_request: DocumentRequest, request: Request):
-    answer, context, document_id = DOCUMENT_HANDLER.get_answer(document_request)
+    try:
+        answer, context, document_id = DOCUMENT_HANDLER.get_answer(document_request)
+    except InvalidDocumentIdError as e:
+        logging.error("Error happened: Invalid document id")
+        return e.response()
     request_id = log_get_answer(answer, context, document_id, document_request.query, request)
     return {"data": answer, "request_id": request_id}
 
@@ -118,34 +123,6 @@ async def set_reaction(set_reaction_request: SetReactionRequest):
 
     logging.info(result)
     return {"result": result}
-
-
-@app.get("/upload_pdf")
-async def upload_form():
-    response = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <title>File Upload</title>
-    </head>
-    <body>
-    <form action="/file_upload" method="post" enctype="multipart/form-data">
-    
-        <input type="file" name="file" id="file" accept="application/pdf">
-        <input type="submit" value="Upload It" />
-    </form>
-    </body>
-    </html>
-    """
-    return HTMLResponse(response)
-
-
-@app.post("/file_upload")
-async def file_upload_handler(file: UploadFile = File(...)):
-    with open("storage/file.pdf", "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    return RedirectResponse("/", status_code=status.HTTP_303_SEE_OTHER)
 
 
 if __name__ == "__main__":
