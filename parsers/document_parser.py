@@ -1,16 +1,15 @@
-from argparse import ArgumentParser
-from pathlib import Path
-from typing import List, Union
-
 import fitz
-from nltk import tokenize
 
 from parsers.general_parser import GeneralParser
 
 
 class DocumentParser(GeneralParser):
-    def get_text(self, document_id: str) -> str:
-        pass
+    def get_text(self, filepath: str) -> str:
+        with fitz.open(filepath) as doc:
+            text = ""
+            for page in doc:
+                text += page.get_text()
+        return text
 
 
 # def parse_document(path: Union[str, Path], chunk_size: int) -> List[str]:

@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import DocumentHandler, LinkHandler, TextHandler
+from handlers import DocumentHandler, LinkHandler, TextHandler, PDFUploadHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
@@ -41,6 +41,9 @@ LINK_HANDLER = LinkHandler(
 DOCUMENT_HANDLER = DocumentHandler(
     parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
     top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+)
+PDF_UPLOAD_HANDLER = PDFUploadHandler(
+    parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
 )
 
 
@@ -84,6 +87,12 @@ async def get_answer_document(document_request: DocumentRequest, request: Reques
     answer, context, document_id = DOCUMENT_HANDLER.get_answer(document_request)
     request_id = log_get_answer(answer, context, document_id, document_request.query, request)
     return {"data": answer, "request_id": request_id}
+
+
+@app.post("/upload/pdf")
+async def upload_pdf(file: UploadFile = File(...)):
+    document_id = PDF_UPLOAD_HANDLER.process_file(file)
+    return {"status": "success", "document_id": document_id}
 
 
 @app.post("/set_reaction")
