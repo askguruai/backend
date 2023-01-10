@@ -1,6 +1,7 @@
 import datetime
 import logging
 import shutil
+from typing import Union
 
 import bson
 import uvicorn
@@ -10,11 +11,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from db import DB
-from handlers import get_answer_from_info
-from parsers.link_parser import extract_text_from_link
-from utils import CONFIG
-from utils.data import QueryRequest, SetReactionRequest
+from handlers import DocumentHandler, LinkHandler, TextHandler
+from parsers import DocumentParser, LinkParser, TextParser
+from utils import CONFIG, DB
+from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -30,33 +30,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+TEXT_HANDLER = TextHandler(
+    parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+    top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+)
+LINK_HANDLER = LinkHandler(
+    parser=LinkParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+    top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+)
+DOCUMENT_HANDLER = DocumentHandler(
+    parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+    top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+)
+
 
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
 
-@app.post("/get_answer")
-async def get_answer(query_request: QueryRequest, request: Request):
-
-    info = query_request.text if query_request.text else ""
-    info += extract_text_from_link(query_request.link) if query_request.link else ""
-    # info += extract_text_from_doc(query_request.link)
-
-    answer, context = get_answer_from_info(info, query_request.query)
-
+def log_get_answer(
+    answer: str, context: str, document_id: str, query: str, request: Request
+) -> str:
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "text": query_request.text,
-        "query": query_request.query,
+        "document_id": document_id,
+        "query": query,
         "model_context": context,
         "answer": answer,
     }
-    request_id = DB[CONFIG["mongo"]["collection"]].insert_one(row).inserted_id
+    request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
+    logging.info(row)
+    return str(request_id)
 
-    logging.info(f"Answer to the query: {answer}")
-    return {"data": answer, "request_id": str(request_id)}
+
+@app.post("/get_answer/text")
+async def get_answer_text(text_request: TextRequest, request: Request):
+    answer, context, document_id = TEXT_HANDLER.get_answer(text_request)
+    request_id = log_get_answer(answer, context, document_id, text_request.query, request)
+    return {"data": answer, "request_id": request_id}
+
+
+@app.post("/get_answer/link")
+async def get_answer_link(link_request: LinkRequest, request: Request):
+    answer, context, document_id = LINK_HANDLER.get_answer(link_request)
+    request_id = log_get_answer(answer, context, document_id, link_request.query, request)
+    return {"data": answer, "request_id": request_id}
+
+
+@app.post("/get_answer/document")
+async def get_answer_document(document_request: DocumentRequest, request: Request):
+    answer, context, document_id = DOCUMENT_HANDLER.get_answer(document_request)
+    request_id = log_get_answer(answer, context, document_id, document_request.query, request)
+    return {"data": answer, "request_id": request_id}
 
 
 @app.post("/set_reaction")

@@ -4,10 +4,18 @@ from typing import Optional
 from pydantic import BaseModel
 
 
-class QueryRequest(BaseModel):
+class TextRequest(BaseModel):
     text: Optional[str] = None
+    query: str
+
+
+class LinkRequest(BaseModel):
     link: Optional[str] = None
-    doc: Optional[str] = None
+    query: str
+
+
+class DocumentRequest(BaseModel):
+    document_id: Optional[str] = None
     query: str
 
 
