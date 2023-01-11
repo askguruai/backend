@@ -28,7 +28,7 @@ class GeneralParser:
                 shards = GeneralParser.split_long_sentence(sent, chunk_size)
                 for shard in shards[::-1]:
                     sent_stack.append(shard)
-            if len(current_chunk) + len(sent) <= chunk_size:
+            elif len(current_chunk) + len(sent) <= chunk_size:
                 current_chunk += sent
             else:
                 chunks.append(current_chunk)
