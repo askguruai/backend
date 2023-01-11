@@ -3,7 +3,7 @@ Backend service is responsible for handling user requests, orchestrating ML
 components, and providing caching and other layers.
 
 ## API
-API reference available at [swagger](http://78.141.213.164:5050/docs)
+API reference available at [swagger](http://78.141.213.164:4000/docs)
 
 ### POST /text_query
 Given a raw text and a query (question), returns an answer to this question
