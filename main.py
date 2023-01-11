@@ -108,7 +108,7 @@ async def set_reaction(set_reaction_request: SetReactionRequest):
     }
 
     try:
-        status = DB[CONFIG["mongo"]["collection"]].find_one_and_update(
+        status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
             {"_id": ObjectId(set_reaction_request.request_id)},
             {"$set": row_update},
             return_document=ReturnDocument.AFTER,
