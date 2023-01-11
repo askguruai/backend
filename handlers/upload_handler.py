@@ -1,16 +1,18 @@
-from fastapi import File, UploadFile
-from parsers import DocumentParser
-import tempfile
-import logging
-import random
-import os.path as osp
-import shutil
 import hashlib
-from utils import DB, CONFIG, ml_requests
-from bson.objectid import ObjectId
-from bson.binary import Binary
+import logging
+import os.path as osp
 import pickle
+import random
+import shutil
+import tempfile
 from typing import List
+
+from bson.binary import Binary
+from bson.objectid import ObjectId
+from fastapi import File, UploadFile
+
+from parsers import DocumentParser
+from utils import CONFIG, DB, ml_requests
 
 
 class PDFUploadHandler:
@@ -40,14 +42,16 @@ class PDFUploadHandler:
         else:
             sentences = self.parser.text_to_sentences(text)
             sentences = [sent.replace("\n", " ") for sent in sentences]
-            chunks = self.parser.chunkise_sentences(sentences, int(CONFIG["handlers"]["chunk_size"]))
+            chunks = self.parser.chunkise_sentences(
+                sentences, int(CONFIG["handlers"]["chunk_size"])
+            )
             embeddings = self.get_embeddings_from_chunks(chunks)
             document = {
-                           "_id": ObjectId(text_hash),
-                           "text": text,
-                           "chunks": chunks,
-                           "embeddings": Binary(pickle.dumps(embeddings)),
-                       }
+                "_id": ObjectId(text_hash),
+                "text": text,
+                "chunks": chunks,
+                "embeddings": Binary(pickle.dumps(embeddings)),
+            }
             DB[CONFIG["mongo"]["requests_inputs_collection"]].insert_one(document)
             logging.info(f"Document with hash {text_hash} processed and inserted in the database")
             return text_hash  # aka document_id

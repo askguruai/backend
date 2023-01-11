@@ -11,12 +11,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import DocumentHandler, LinkHandler, TextHandler, PDFUploadHandler
+from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
-from utils.logging import run_uvicorn_loguru
 from utils.errors import InvalidDocumentIdError
+from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
 

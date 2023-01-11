@@ -1,17 +1,16 @@
+import pickle
 from typing import Any, Dict, Tuple
 
-from handlers.general_handler import GeneralHandler
-from utils.api import DocumentRequest
-from utils import DB, CONFIG, ml_requests
 from bson.objectid import ObjectId
+
+from handlers.general_handler import GeneralHandler
+from utils import CONFIG, DB, ml_requests
+from utils.api import DocumentRequest
 from utils.errors import InvalidDocumentIdError
-import pickle
 
 
 class DocumentHandler(GeneralHandler):
-    def get_answer(
-        self, request: DocumentRequest
-    ) -> Tuple[str, str, str]:
+    def get_answer(self, request: DocumentRequest) -> Tuple[str, str, str]:
         document_id = request.document_id
         document = DB[CONFIG["mongo"]["requests_inputs_collection"]].find_one(
             {"_id": ObjectId(document_id)}
