@@ -133,5 +133,7 @@ if __name__ == "__main__":
             host=CONFIG["app"]["host"],
             port=int(CONFIG["app"]["port"]),
             log_level=CONFIG["app"]["log_level"],
+            ssl_certfile="/etc/certs/fullchain.pem",
+            ssl_keyfile="/etc/certs/privkey.pem"
         )
     )
