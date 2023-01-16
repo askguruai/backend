@@ -1,6 +1,6 @@
 import logging
 import pickle
-from typing import Any, Dict, Tuple, List
+from typing import Any, Dict, List, Tuple
 
 from bson.objectid import ObjectId
 
@@ -17,9 +17,15 @@ class DocumentHandler(GeneralHandler):
         elif isinstance(request.document_id, list):
             document_ids = request.document_id
         else:
-            raise RequestDataModelMismatchError(f"document_id param should be either str or list, "
-                                                f"but is {type(request.document_id)}")
-        all_chunks, all_embeddings, doc_ids = [], [], []  # todo: consider cases with huge doc input. will we run into oom?
+            raise RequestDataModelMismatchError(
+                f"document_id param should be either str or list, "
+                f"but is {type(request.document_id)}"
+            )
+        all_chunks, all_embeddings, doc_ids = (
+            [],
+            [],
+            [],
+        )  # todo: consider cases with huge doc input. will we run into oom?
         for doc_id in document_ids:
             document = DB[CONFIG["mongo"]["requests_inputs_collection"]].find_one(
                 {"_id": ObjectId(doc_id)}
@@ -32,10 +38,12 @@ class DocumentHandler(GeneralHandler):
             all_embeddings.extend(embeddings)
             all_chunks.extend(chunks)
             doc_ids.extend([doc_id] * len(chunks))
-        context, indices = self.get_context_from_chunks_embeddings(all_chunks, all_embeddings, request.query)
+        context, indices = self.get_context_from_chunks_embeddings(
+            all_chunks, all_embeddings, request.query
+        )
         info_sources = [
-            {"document": doc_ids[global_idx],
-             "chunk": all_chunks[global_idx]} for global_idx in indices
+            {"document": doc_ids[global_idx], "chunk": all_chunks[global_idx]}
+            for global_idx in indices
         ]
         answer = ml_requests.get_answer(context, request.query)
         return answer, context, info_sources, document_ids

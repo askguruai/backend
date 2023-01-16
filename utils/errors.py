@@ -3,7 +3,11 @@ class BasicError(BaseException):
         self.message = "An error occured"
 
     def response(self, **kwargs):
-        response_dict = {"error_msg": self.message, "error": self.__class__.__name__, "status": "error"}
+        response_dict = {
+            "error_msg": self.message,
+            "error": self.__class__.__name__,
+            "status": "error",
+        }
         for k, v in kwargs.items():
             response_dict.update({k: str(v)})
         return response_dict

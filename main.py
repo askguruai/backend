@@ -1,7 +1,7 @@
 import datetime
 import logging
 import shutil
-from typing import Union, List
+from typing import List, Union
 
 import bson
 import uvicorn
@@ -54,12 +54,14 @@ def read_root():
 
 
 def log_get_answer(
-    answer: str, context: str, document_ids: List[str], query: str, request: Request
+    answer: str, context: str, document_ids: Union[str, List[str]], query: str, request: Request
 ) -> str:
+    if isinstance(document_ids, str) == str:
+        document_ids = [document_ids]
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "document_ids": document_ids,
+        "document_id": document_ids,
         "query": query,
         "model_context": context,
         "answer": answer,
@@ -72,14 +74,14 @@ def log_get_answer(
 @app.post("/get_answer/text")
 async def get_answer_text(text_request: TextRequest, request: Request):
     answer, context, document_id = TEXT_HANDLER.get_answer(text_request)
-    request_id = log_get_answer(answer, context, [document_id], text_request.query, request)
+    request_id = log_get_answer(answer, context, document_id, text_request.query, request)
     return {"data": answer, "request_id": request_id}
 
 
 @app.post("/get_answer/link")
 async def get_answer_link(link_request: LinkRequest, request: Request):
     answer, context, document_id = LINK_HANDLER.get_answer(link_request)
-    request_id = log_get_answer(answer, context, [document_id], link_request.query, request)
+    request_id = log_get_answer(answer, context, document_id, link_request.query, request)
     return {"data": answer, "request_id": request_id}
 
 
@@ -134,6 +136,6 @@ if __name__ == "__main__":
             port=int(CONFIG["app"]["port"]),
             log_level=CONFIG["app"]["log_level"],
             ssl_certfile="/etc/certs/fullchain.pem",
-            ssl_keyfile="/etc/certs/privkey.pem"
+            ssl_keyfile="/etc/certs/privkey.pem",
         )
     )

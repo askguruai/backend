@@ -42,7 +42,9 @@ class GeneralHandler:
         else:
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
-        context, indices = self.get_context_from_chunks_embeddings(chunks, embeddings, request.query)
+        context, indices = self.get_context_from_chunks_embeddings(
+            chunks, embeddings, request.query
+        )
         answer = ml_requests.get_answer(context, request.query)
 
         return answer, context, text_hash
