@@ -42,7 +42,9 @@ class GeneralHandler:
         else:
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
-        context = self.get_context_from_chunks_embeddings(chunks, embeddings, request.query)
+        context, indices = self.get_context_from_chunks_embeddings(
+            chunks, embeddings, request.query
+        )
         answer = ml_requests.get_answer(context, request.query)
 
         return answer, context, text_hash
@@ -54,12 +56,12 @@ class GeneralHandler:
 
     def get_context_from_chunks_embeddings(
         self, chunks: List[str], embeddings: List[List[float]], query: str
-    ) -> str:
+    ) -> tuple[str, np.ndarray]:
         query_embedding = ml_requests.get_embeddings(query)[0]
         distances = [np.dot(embedding, query_embedding) for embedding in embeddings]
         indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
-        return context
+        return context, indices
 
     @staticmethod
     def get_hash(text: str) -> str:

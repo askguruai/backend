@@ -1,7 +1,7 @@
 import datetime
 import logging
 import shutil
-from typing import Union
+from typing import List, Union
 
 import bson
 import uvicorn
@@ -15,7 +15,7 @@ from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
-from utils.errors import InvalidDocumentIdError
+from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -54,12 +54,14 @@ def read_root():
 
 
 def log_get_answer(
-    answer: str, context: str, document_id: str, query: str, request: Request
+    answer: str, context: str, document_ids: Union[str, List[str]], query: str, request: Request
 ) -> str:
+    if isinstance(document_ids, str) == str:
+        document_ids = [document_ids]
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "document_id": document_id,
+        "document_id": document_ids,
         "query": query,
         "model_context": context,
         "answer": answer,
@@ -86,12 +88,12 @@ async def get_answer_link(link_request: LinkRequest, request: Request):
 @app.post("/get_answer/document")
 async def get_answer_document(document_request: DocumentRequest, request: Request):
     try:
-        answer, context, document_id = DOCUMENT_HANDLER.get_answer(document_request)
-    except InvalidDocumentIdError as e:
-        logging.error("Error happened: Invalid document id")
+        answer, context, info_source, document_ids = DOCUMENT_HANDLER.get_answer(document_request)
+    except (InvalidDocumentIdError, RequestDataModelMismatchError) as e:
+        logging.error(f"Error happened: {e.__class__.__name__}")
         return e.response()
-    request_id = log_get_answer(answer, context, document_id, document_request.query, request)
-    return {"data": answer, "request_id": request_id}
+    request_id = log_get_answer(answer, context, document_ids, document_request.query, request)
+    return {"data": answer, "request_id": request_id, "info_source": info_source}
 
 
 @app.post("/upload/pdf")
@@ -134,6 +136,6 @@ if __name__ == "__main__":
             port=int(CONFIG["app"]["port"]),
             log_level=CONFIG["app"]["log_level"],
             ssl_certfile="/etc/certs/fullchain.pem",
-            ssl_keyfile="/etc/certs/privkey.pem"
+            ssl_keyfile="/etc/certs/privkey.pem",
         )
     )
