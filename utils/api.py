@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union, List
 
 from pydantic import BaseModel
 
@@ -15,7 +15,7 @@ class LinkRequest(BaseModel):
 
 
 class DocumentRequest(BaseModel):
-    document_id: Optional[str] = None
+    document_id: Union[str, List[str]] = None
     query: str
 
 

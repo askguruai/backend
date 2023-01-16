@@ -1,7 +1,7 @@
 import datetime
 import logging
 import shutil
-from typing import Union
+from typing import Union, List
 
 import bson
 import uvicorn
@@ -15,7 +15,7 @@ from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
-from utils.errors import InvalidDocumentIdError
+from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -54,12 +54,12 @@ def read_root():
 
 
 def log_get_answer(
-    answer: str, context: str, document_id: str, query: str, request: Request
+    answer: str, context: str, document_ids: List[str], query: str, request: Request
 ) -> str:
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "document_id": document_id,
+        "document_ids": document_ids,
         "query": query,
         "model_context": context,
         "answer": answer,
@@ -72,26 +72,26 @@ def log_get_answer(
 @app.post("/get_answer/text")
 async def get_answer_text(text_request: TextRequest, request: Request):
     answer, context, document_id = TEXT_HANDLER.get_answer(text_request)
-    request_id = log_get_answer(answer, context, document_id, text_request.query, request)
+    request_id = log_get_answer(answer, context, [document_id], text_request.query, request)
     return {"data": answer, "request_id": request_id}
 
 
 @app.post("/get_answer/link")
 async def get_answer_link(link_request: LinkRequest, request: Request):
     answer, context, document_id = LINK_HANDLER.get_answer(link_request)
-    request_id = log_get_answer(answer, context, document_id, link_request.query, request)
+    request_id = log_get_answer(answer, context, [document_id], link_request.query, request)
     return {"data": answer, "request_id": request_id}
 
 
 @app.post("/get_answer/document")
 async def get_answer_document(document_request: DocumentRequest, request: Request):
     try:
-        answer, context, document_id = DOCUMENT_HANDLER.get_answer(document_request)
-    except InvalidDocumentIdError as e:
-        logging.error("Error happened: Invalid document id")
+        answer, context, info_source, document_ids = DOCUMENT_HANDLER.get_answer(document_request)
+    except (InvalidDocumentIdError, RequestDataModelMismatchError) as e:
+        logging.error(f"Error happened: {e.__class__.__name__}")
         return e.response()
-    request_id = log_get_answer(answer, context, document_id, document_request.query, request)
-    return {"data": answer, "request_id": request_id}
+    request_id = log_get_answer(answer, context, document_ids, document_request.query, request)
+    return {"data": answer, "request_id": request_id, "info_source": info_source}
 
 
 @app.post("/upload/pdf")

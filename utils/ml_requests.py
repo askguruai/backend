@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import numpy as np
 import requests
@@ -6,7 +6,7 @@ import requests
 from utils import CONFIG
 
 
-def get_embeddings(chunks: List[str]) -> List[np.ndarray]:
+def get_embeddings(chunks: Union[str, List[str]]) -> List[np.ndarray]:
     embeddings = []
     req_data = {"input": chunks}
     response = requests.post(
