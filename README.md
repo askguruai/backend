@@ -54,6 +54,7 @@ To connect to mongo-express forward ports and visit [localhost:8081](http://loca
   conda create --name backend python=3.10
   conda activate backend
   pip install -r requirements.txt
+  python -m textblob.download_corpora
   python <<HEREDOC
   import nltk
   nltk.download('punkt')

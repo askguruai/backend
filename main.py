@@ -55,7 +55,8 @@ def read_root():
 
 
 def log_get_answer(
-    answer: str, context: str, document_ids: Union[str, List[str]], query: str, request: Request
+    answer: str, context: str, document_ids: Union[str, List[str]], query: str, request: Request,
+        request_type: str = "webapp"
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -66,6 +67,7 @@ def log_get_answer(
         "query": query,
         "model_context": context,
         "answer": answer,
+        "type": request_type
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
     logging.info(row)
@@ -99,7 +101,13 @@ async def get_answer_document(document_request: DocumentRequest, request: Reques
 
 @app.post("/get_answer/confluence")
 async def get_answer_confluence(conf_request: ConfluenceSearchRequest, request: Request):
-    search_request_handler(conf_request)
+    answer, context, info_sources, doc_ids = search_request_handler(conf_request)
+    request_id = log_get_answer(answer, context, doc_ids, conf_request.query, request, "confluence")
+    return {
+        "data": answer,
+        "request_id": request_id,
+        "info_sources": info_sources
+    }
 
 
 @app.post("/upload/pdf")

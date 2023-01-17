@@ -9,9 +9,10 @@ from bson.binary import Binary
 import pickle
 from parsers.general_parser import GeneralParser as GP
 from handlers.general_handler import GeneralHandler as GH
-from utils.ml_requests import get_embeddings
+from utils.ml_requests import get_embeddings, get_context_from_chunks_embeddings, get_answer
 from utils.api import ConfluenceSearchRequest
 from textblob import TextBlob
+import logging
 
 DOMAIN = 'testaskai.atlassian.net'
 TOKEN = 'kCYEAtKobeBsEcc82GCzD51E'
@@ -45,10 +46,25 @@ def get_search_result_ids(query: str) -> List[str]:
 def search_request_handler(request: ConfluenceSearchRequest):
     query = request.query
     search_ids = get_search_result_ids(query)
+    all_chunks, all_embeddings, all_titles = (
+        [],
+        [],
+        [],
+    )
     for page_id in search_ids:
-        print(f"Page {page_id}")
-        chunks, embeddings = get_page_by_id(page_id)
-        print(chunks[0])
+        chunks, embeddings, page_title = get_page_by_id(page_id)
+        all_chunks.extend(chunks)
+        all_embeddings.extend(embeddings)
+        all_titles.extend([page_title] * len(chunks))
+    context, indices = get_context_from_chunks_embeddings(
+        all_chunks, all_embeddings, query
+    )
+    info_sources = [
+        {"document": all_titles[global_idx], "chunk": all_chunks[global_idx]}
+        for global_idx in indices
+    ]
+    answer = get_answer(context, request.query)
+    return answer, context, info_sources, search_ids
 
 
 def get_page_contents(page_id: str) -> Tuple[str, str]:
@@ -70,20 +86,23 @@ def get_page_by_id(page_id):
         {"_id": page_id}
     )
     if document is None:
-        chunks, embeddings = process_confluence_page(page_id=page_id)
+        logging.info(f"Confluence: document (page) not found, processing it")
+        chunks, embeddings, page_title = process_confluence_page(page_id=page_id)
     else:
         page_title, page_text = get_page_contents(page_id)
         content_hash = GH.get_hash(page_text)
         stored_hash = document["hash"]
         if content_hash != stored_hash:  # page content has changed
-            chunks, embeddings = process_confluence_page(page_id=page_id)
+            logging.info(f"Confluence: document (page) found, but content changed => processing it")
+            chunks, embeddings, _ = process_confluence_page(page_id=page_id)
         else:
+            logging.info(f"Confluence: document (page) found!")
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
-    return chunks, embeddings
+    return chunks, embeddings, page_title
 
 
-def process_confluence_page(page_id: str) -> Tuple[List[str], List[np.ndarray]]:
+def process_confluence_page(page_id: str) -> Tuple[List[str], List[np.ndarray], str]:
     page_title, page_text = get_page_contents(page_id)
     content_hash = GH.get_hash(page_text)
     sentences = GP.text_to_sentences(page_text)
@@ -98,5 +117,5 @@ def process_confluence_page(page_id: str) -> Tuple[List[str], List[np.ndarray]]:
         "embeddings": Binary(pickle.dumps(embeddings)),
     }
     DB[DOMAIN].insert_one(document)
-    return chunks, embeddings
+    return chunks, embeddings, page_title
 
