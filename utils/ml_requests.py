@@ -27,7 +27,7 @@ def get_answer(context: str, query: str) -> str:
 
 
 def get_context_from_chunks_embeddings(
-     chunks: List[str], embeddings: List[List[float]], query: str, top_k_chunks: int = 3
+    chunks: List[str], embeddings: List[List[float]], query: str, top_k_chunks: int = 3
 ) -> tuple[str, np.ndarray]:
     query_embedding = get_embeddings(query)[0]
     distances = [np.dot(embedding, query_embedding) for embedding in embeddings]

@@ -11,12 +11,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
-from handlers import DocumentHandler, LinkHandler, TextHandler, PDFUploadHandler
+from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from handlers.confluence_handler import search_request_handler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
-from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest, ConfluenceSearchRequest
+from utils.api import (
+    ConfluenceSearchRequest,
+    DocumentRequest,
+    LinkRequest,
+    SetReactionRequest,
+    TextRequest,
+)
+from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -55,8 +61,12 @@ def read_root():
 
 
 def log_get_answer(
-    answer: str, context: str, document_ids: Union[str, List[str]], query: str, request: Request,
-        request_type: str = "webapp"
+    answer: str,
+    context: str,
+    document_ids: Union[str, List[str]],
+    query: str,
+    request: Request,
+    request_type: str = "webapp",
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -67,7 +77,7 @@ def log_get_answer(
         "query": query,
         "model_context": context,
         "answer": answer,
-        "type": request_type
+        "type": request_type,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
     logging.info(row)
@@ -102,12 +112,10 @@ async def get_answer_document(document_request: DocumentRequest, request: Reques
 @app.post("/get_answer/confluence")
 async def get_answer_confluence(conf_request: ConfluenceSearchRequest, request: Request):
     answer, context, info_sources, doc_ids = search_request_handler(conf_request)
-    request_id = log_get_answer(answer, context, doc_ids, conf_request.query, request, "confluence")
-    return {
-        "data": answer,
-        "request_id": request_id,
-        "info_sources": info_sources
-    }
+    request_id = log_get_answer(
+        answer, context, doc_ids, conf_request.query, request, "confluence"
+    )
+    return {"data": answer, "request_id": request_id, "info_sources": info_sources}
 
 
 @app.post("/upload/pdf")

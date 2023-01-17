@@ -10,6 +10,7 @@ class ConfluenceSearchRequest(BaseModel):
     # email: str
     # domain: str
 
+
 class TextRequest(BaseModel):
     text: Optional[str] = None
     query: str
