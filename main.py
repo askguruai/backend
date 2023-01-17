@@ -11,11 +11,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
+from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
+from handlers import DocumentHandler, LinkHandler, TextHandler, PDFUploadHandler
+from handlers.confluence_handler import search_request_handler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
-from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
-from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest, ConfluenceSearchRequest
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -94,6 +95,11 @@ async def get_answer_document(document_request: DocumentRequest, request: Reques
         return e.response()
     request_id = log_get_answer(answer, context, document_ids, document_request.query, request)
     return {"data": answer, "request_id": request_id, "info_source": info_source}
+
+
+@app.post("/get_answer/confluence")
+async def get_answer_confluence(conf_request: ConfluenceSearchRequest, request: Request):
+    search_request_handler(conf_request)
 
 
 @app.post("/upload/pdf")
