@@ -21,3 +21,8 @@ class InvalidDocumentIdError(BasicError):
 class RequestDataModelMismatchError(BasicError):
     def __init__(self, message: str = None):
         self.message = "Request data did not match data model" if message is not None else message
+
+
+class CoreMLError(BasicError):
+    def __init__(self, message: str = None):
+        self.message = "CoreML error" if message is not None else message

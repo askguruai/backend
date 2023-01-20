@@ -15,7 +15,7 @@ from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import DocumentRequest, LinkRequest, SetReactionRequest, TextRequest
-from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError, CoreMLError
 from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
@@ -73,14 +73,22 @@ def log_get_answer(
 
 @app.post("/get_answer/text")
 async def get_answer_text(text_request: TextRequest, request: Request):
-    answer, context, document_id = TEXT_HANDLER.get_answer(text_request)
+    try:
+        answer, context, document_id = TEXT_HANDLER.get_answer(text_request)
+    except CoreMLError as e:
+        logging.error(f"Error: {e.__class__.__name__}")
+        return e.response()
     request_id = log_get_answer(answer, context, document_id, text_request.query, request)
     return {"data": answer, "request_id": request_id}
 
 
 @app.post("/get_answer/link")
 async def get_answer_link(link_request: LinkRequest, request: Request):
-    answer, context, document_id = LINK_HANDLER.get_answer(link_request)
+    try:
+        answer, context, document_id = LINK_HANDLER.get_answer(link_request)
+    except CoreMLError as e:
+        logging.error(f"Error: {e.__class__.__name__}")
+        return e.response()
     request_id = log_get_answer(answer, context, document_id, link_request.query, request)
     return {"data": answer, "request_id": request_id}
 
@@ -89,8 +97,8 @@ async def get_answer_link(link_request: LinkRequest, request: Request):
 async def get_answer_document(document_request: DocumentRequest, request: Request):
     try:
         answer, context, info_source, document_ids = DOCUMENT_HANDLER.get_answer(document_request)
-    except (InvalidDocumentIdError, RequestDataModelMismatchError) as e:
-        logging.error(f"Error happened: {e.__class__.__name__}")
+    except (InvalidDocumentIdError, RequestDataModelMismatchError, CoreMLError) as e:
+        logging.error(f"Error: {e.__class__.__name__}")
         return e.response()
     request_id = log_get_answer(answer, context, document_ids, document_request.query, request)
     return {"data": answer, "request_id": request_id, "info_source": info_source}
@@ -98,7 +106,11 @@ async def get_answer_document(document_request: DocumentRequest, request: Reques
 
 @app.post("/upload/pdf")
 async def upload_pdf(file: UploadFile = File(...)):
-    document_id = PDF_UPLOAD_HANDLER.process_file(file)
+    try:
+        document_id = PDF_UPLOAD_HANDLER.process_file(file)
+    except CoreMLError as e:
+        logging.error(f"Error: {e.__class__.__name__}")
+        return e.response()
     return {"status": "success", "document_id": document_id}
 
 
