@@ -4,6 +4,7 @@ import shutil
 from typing import List, Union
 
 import bson
+import requests
 import uvicorn
 from bson.objectid import ObjectId
 from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, status
@@ -105,7 +106,11 @@ async def get_answer_text(text_request: TextRequest, request: Request):
 async def get_answer_link(link_request: LinkRequest, request: Request):
     try:
         answer, context, document_id = LINK_HANDLER.get_answer(link_request)
-    except CoreMLError as e:
+    except (
+        CoreMLError,
+        requests.exceptions.MissingSchema,
+        requests.exceptions.ConnectionError,
+    ) as e:
         logging.error(e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
