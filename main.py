@@ -15,6 +15,8 @@ from pymongo.collection import ReturnDocument
 from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
+from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.logging import run_uvicorn_loguru
 from utils.schemas import (
     DocumentRequest,
     GetAnswerResponse,
@@ -24,8 +26,6 @@ from utils.schemas import (
     TextRequest,
     UploadDocumentResponse,
 )
-from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
-from utils.logging import run_uvicorn_loguru
 
 app = FastAPI()
 
