@@ -15,8 +15,9 @@ class LinkParser(GeneralParser):
         self.converter.ignore_links = True
 
     def get_text(self, link: str) -> str:
-        text = self.parse_wiki(link) if "wikipedia.org" in link else ""
-        return text if text else self.parse_website(link)
+        # text = self.parse_wiki(link) if "wikipedia.org" in link else ""
+        # return text if text else self.parse_website(link)
+        return self.parse_website(link)
 
     def parse_wiki(self, link: str) -> str:
         title = link.split("/")[-1]
