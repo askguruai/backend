@@ -15,9 +15,11 @@ from pymongo.collection import ReturnDocument
 from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
+from utils.api import catch_errors, log_get_answer
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.logging import run_uvicorn_loguru
 from utils.schemas import (
+    ApiVersion,
     DocumentRequest,
     GetAnswerResponse,
     HTTPExceptionResponse,
@@ -29,32 +31,33 @@ from utils.schemas import (
 
 app = FastAPI()
 
-
-origins = ["*"]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-TEXT_HANDLER = TextHandler(
-    parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-    top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
-)
-LINK_HANDLER = LinkHandler(
-    parser=LinkParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-    top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
-)
-DOCUMENT_HANDLER = DocumentHandler(
-    parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-    top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
-)
-PDF_UPLOAD_HANDLER = PDFUploadHandler(
-    parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-)
+
+@app.on_event("startup")
+def init_handlers():
+    global text_handler, link_handler, document_handler, pdf_upload_handler
+    text_handler = TextHandler(
+        parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+        top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+    )
+    link_handler = LinkHandler(
+        parser=LinkParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+        top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+    )
+    document_handler = DocumentHandler(
+        parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+        top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+    )
+    pdf_upload_handler = PDFUploadHandler(
+        parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+    )
 
 
 @app.get("/")
@@ -62,100 +65,53 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
-def log_get_answer(
-    answer: str,
-    context: str,
-    document_ids: Union[str, List[str]],
-    query: str,
-    request: Request,
-) -> str:
-    if isinstance(document_ids, str) == str:
-        document_ids = [document_ids]
-    row = {
-        "ip": request.client.host,
-        "datetime": datetime.datetime.utcnow(),
-        "document_id": document_ids,
-        "query": query,
-        "model_context": context,
-        "answer": answer,
-    }
-    request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
-    logging.info(row)
-    return str(request_id)
-
-
 @app.post(
-    "/get_answer/text",
+    "/{api_version}/get_answer/text",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
 )
-async def get_answer_text(text_request: TextRequest, request: Request):
-    try:
-        answer, context, document_id = TEXT_HANDLER.get_answer(text_request)
-    except CoreMLError as e:
-        logging.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+@catch_errors
+async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, request: Request):
+    logging.info(api_version)
+    answer, context, document_id = text_handler.get_answer(text_request)
     request_id = log_get_answer(answer, context, document_id, text_request.query, request)
     return GetAnswerResponse(answer=answer, request_id=request_id)
 
 
 @app.post(
-    "/get_answer/link",
+    "/{api_version}/get_answer/link",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
 )
-async def get_answer_link(link_request: LinkRequest, request: Request):
-    try:
-        answer, context, document_id = LINK_HANDLER.get_answer(link_request)
-    except (
-        CoreMLError,
-        requests.exceptions.MissingSchema,
-        requests.exceptions.ConnectionError,
-    ) as e:
-        logging.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+@catch_errors
+async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, request: Request):
+    answer, context, document_id = link_handler.get_answer(link_request)
     request_id = log_get_answer(answer, context, document_id, link_request.query, request)
     return GetAnswerResponse(answer=answer, request_id=request_id)
 
 
 @app.post(
-    "/get_answer/document",
+    "/{api_version}/get_answer/document",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
 )
-async def get_answer_document(document_request: DocumentRequest, request: Request):
-    try:
-        answer, context, info_source, document_ids = DOCUMENT_HANDLER.get_answer(document_request)
-    except (InvalidDocumentIdError, RequestDataModelMismatchError, CoreMLError) as e:
-        logging.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+@catch_errors
+async def get_answer_document(
+    api_version: ApiVersion, document_request: DocumentRequest, request: Request
+):
+    answer, context, info_source, document_ids = document_handler.get_answer(document_request)
     request_id = log_get_answer(answer, context, document_ids, document_request.query, request)
     return GetAnswerResponse(answer=answer, request_id=request_id, info_source=info_source)
 
 
 @app.post(
-    "/upload/pdf",
+    "/{api_version}/upload/pdf",
     response_model=UploadDocumentResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
 )
-async def upload_pdf(file: UploadFile = File(...)):
-    try:
-        document_id = PDF_UPLOAD_HANDLER.process_file(file)
-    except CoreMLError as e:
-        logging.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        )
+@catch_errors
+async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
+    document_id = pdf_upload_handler.process_file(file)
     return UploadDocumentResponse(document_id=document_id)
 
 
