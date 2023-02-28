@@ -11,7 +11,9 @@ from utils.schemas import DocumentRequest
 
 
 class DocumentHandler(GeneralHandler):
-    def get_answer(self, request: DocumentRequest) -> Tuple[str, str, List[Dict], List[str]]:
+    def get_answer(
+        self, request: DocumentRequest, api_version: str
+    ) -> Tuple[str, str, List[Dict], List[str]]:
         if isinstance(request.document_id, str):
             document_ids = [request.document_id]
         elif isinstance(request.document_id, list):
@@ -27,7 +29,7 @@ class DocumentHandler(GeneralHandler):
             [],
         )  # todo: consider cases with huge doc input. will we run into oom?
         for doc_id in document_ids:
-            document = DB[CONFIG["mongo"]["requests_inputs_collection"]].find_one(
+            document = DB[api_version + CONFIG["mongo"]["requests_inputs_collection"]].find_one(
                 {"_id": ObjectId(doc_id)}
             )
             if document is None:

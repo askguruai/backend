@@ -18,7 +18,9 @@ class GeneralHandler:
         self.top_k_chunks = top_k_chunks
 
     def get_answer(
-        self, request: Union[TextRequest, LinkRequest, DocumentRequest]
+        self,
+        request: Union[TextRequest, LinkRequest, DocumentRequest],
+        api_version: str,
     ) -> Tuple[str, str, str]:
         text = self.get_text_from_request(request)
         if not text:
@@ -26,7 +28,7 @@ class GeneralHandler:
 
         text_hash = GeneralHandler.get_hash(text)
 
-        document = DB[CONFIG["mongo"]["requests_inputs_collection"]].find_one(
+        document = DB[api_version + CONFIG["mongo"]["requests_inputs_collection"]].find_one(
             {"_id": ObjectId(text_hash)}
         )
         if not document:
@@ -38,7 +40,7 @@ class GeneralHandler:
                 "chunks": chunks,
                 "embeddings": Binary(pickle.dumps(embeddings)),
             } | self.get_additional_request_data(request)
-            DB[CONFIG["mongo"]["requests_inputs_collection"]].insert_one(document)
+            DB[api_version + CONFIG["mongo"]["requests_inputs_collection"]].insert_one(document)
         else:
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
