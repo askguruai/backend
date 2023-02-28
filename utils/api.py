@@ -1,0 +1,44 @@
+import logging
+from functools import wraps
+from typing import List, Union
+
+from fastapi import HTTPException, Request, status
+
+from utils import CONFIG
+
+
+def log_get_answer(
+    answer: str,
+    context: str,
+    document_ids: Union[str, List[str]],
+    query: str,
+    request: Request,
+) -> str:
+    if isinstance(document_ids, str) == str:
+        document_ids = [document_ids]
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "document_id": document_ids,
+        "query": query,
+        "model_context": context,
+        "answer": answer,
+    }
+    request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
+    logging.info(row)
+    return str(request_id)
+
+
+def catch_errors(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logging.error(f"{e.__class__.__name__}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"{e.__class__.__name__}: {e}",
+            )
+
+    return wrapper

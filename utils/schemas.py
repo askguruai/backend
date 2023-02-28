@@ -4,6 +4,11 @@ from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
+class ApiVersion(str, Enum):
+    v1 = "v1"
+    v2 = "v2"
+
+
 class TextRequest(BaseModel):
     text: str | None = Field(
         defalt=None,
@@ -78,4 +83,4 @@ class SetReactionRequest(BaseModel):
 
 
 class HTTPExceptionResponse(BaseModel):
-    detail: str = Field(example="OpenAI API returned an API Error: 400 Bad Request")
+    detail: str = Field(example="Internal Server Error")
