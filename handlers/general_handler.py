@@ -24,7 +24,7 @@ class GeneralHandler:
     ) -> Tuple[str, str, str]:
         text = self.get_text_from_request(request)
         if not text:
-            return ml_requests.get_answer("", request.query), "", ""
+            return ml_requests.get_answer("", request.query, api_version), "", ""
 
         text_hash = GeneralHandler.get_hash(text)
 
@@ -33,7 +33,7 @@ class GeneralHandler:
         )
         if not document:
             chunks = self.parser.get_chunks_from_text(text)
-            embeddings = self.get_embeddings_from_chunks(chunks)
+            embeddings = self.get_embeddings_from_chunks(chunks, api_version)
             document = {
                 "_id": ObjectId(text_hash),
                 "text": text,
@@ -45,21 +45,21 @@ class GeneralHandler:
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
         context, indices = self.get_context_from_chunks_embeddings(
-            chunks, embeddings, request.query
+            chunks, embeddings, request.query, api_version
         )
-        answer = ml_requests.get_answer(context, request.query)
+        answer = ml_requests.get_answer(context, request.query, api_version)
 
         return answer, context, text_hash
 
-    def get_embeddings_from_chunks(self, chunks: List[str]) -> List[List[float]]:
-        embeddings = ml_requests.get_embeddings(chunks)
+    def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
+        embeddings = ml_requests.get_embeddings(chunks, api_version)
         assert len(embeddings) == len(chunks)
         return embeddings
 
     def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: List[List[float]], query: str
+        self, chunks: List[str], embeddings: List[List[float]], query: str, api_version: str
     ) -> tuple[str, np.ndarray]:
-        query_embedding = ml_requests.get_embeddings(query)[0]
+        query_embedding = ml_requests.get_embeddings(query, api_version)[0]
         distances = [np.dot(embedding, query_embedding) for embedding in embeddings]
         indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])

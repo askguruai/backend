@@ -19,8 +19,8 @@ class PDFUploadHandler:
     def __init__(self, parser: DocumentParser):
         self.parser = parser
 
-    def get_embeddings_from_chunks(self, chunks: List[str]) -> List[List[float]]:
-        embeddings = ml_requests.get_embeddings(chunks)
+    def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
+        embeddings = ml_requests.get_embeddings(chunks, api_version)
         assert len(embeddings) == len(chunks)
         return embeddings
 
@@ -43,7 +43,7 @@ class PDFUploadHandler:
         sentences = self.parser.text_to_sentences(text)
         sentences = [sent.replace("\n", " ") for sent in sentences]
         chunks = self.parser.chunkise_sentences(sentences, int(CONFIG["handlers"]["chunk_size"]))
-        embeddings = self.get_embeddings_from_chunks(chunks)
+        embeddings = self.get_embeddings_from_chunks(chunks, api_version)
         document = {
             "_id": ObjectId(text_hash),
             "text": text,
