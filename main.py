@@ -58,12 +58,16 @@ PDF_UPLOAD_HANDLER = PDFUploadHandler(
 
 
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+async def docs_redirect():
+    return RedirectResponse(url="/docs")
 
 
 def log_get_answer(
-    answer: str, context: str, document_ids: Union[str, List[str]], query: str, request: Request
+    answer: str,
+    context: str,
+    document_ids: Union[str, List[str]],
+    query: str,
+    request: Request,
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -190,7 +194,6 @@ async def set_reaction(set_reaction_request: SetReactionRequest):
 
 
 if __name__ == "__main__":
-
     run_uvicorn_loguru(
         uvicorn.Config(
             "main:app",
