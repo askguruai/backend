@@ -15,7 +15,7 @@ from pymongo.collection import ReturnDocument
 from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
-from utils.api import (
+from utils.schemas import (
     DocumentRequest,
     GetAnswerResponse,
     HTTPExceptionResponse,

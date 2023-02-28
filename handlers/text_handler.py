@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from handlers.general_handler import GeneralHandler
-from utils.api import TextRequest
+from utils.schemas import TextRequest
 
 
 class TextHandler(GeneralHandler):

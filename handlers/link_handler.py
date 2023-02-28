@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from handlers.general_handler import GeneralHandler
-from utils.api import LinkRequest
+from utils.schemas import LinkRequest
 
 
 class LinkHandler(GeneralHandler):

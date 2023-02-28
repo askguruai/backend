@@ -6,7 +6,7 @@ from bson.objectid import ObjectId
 
 from handlers.general_handler import GeneralHandler
 from utils import CONFIG, DB, ml_requests
-from utils.api import DocumentRequest
+from utils.schemas import DocumentRequest
 from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
 
 

@@ -9,7 +9,7 @@ from bson.objectid import ObjectId
 
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB, ml_requests
-from utils.api import DocumentRequest, LinkRequest, TextRequest
+from utils.schemas import DocumentRequest, LinkRequest, TextRequest
 
 
 class GeneralHandler:
