@@ -13,6 +13,7 @@ def log_get_answer(
     document_ids: Union[str, List[str]],
     query: str,
     request: Request,
+    api_version: str,
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -23,6 +24,7 @@ def log_get_answer(
         "query": query,
         "model_context": context,
         "answer": answer,
+        "api_version": api_version,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
     logging.info(row)
