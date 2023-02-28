@@ -26,7 +26,8 @@ class LinkRequest(BaseModel):
 
 class DocumentRequest(BaseModel):
     document_id: str | List[str] = Field(
-        description="Document ID(s) to generate answer from.", example="7af8c3e548e40aeb984c42dd"
+        description="Document ID(s) to generate answer from.",
+        example="7af8c3e548e40aeb984c42dd",
     )
     query: str = Field(
         description="Query to generate answer for.",
@@ -64,7 +65,8 @@ class LikeStatus(str, Enum):
 
 class SetReactionRequest(BaseModel):
     request_id: str = Field(
-        description="Request ID to set reaction for.", example="63cbd74e8d31a62a1512eab1"
+        description="Request ID to set reaction for.",
+        example="63cbd74e8d31a62a1512eab1",
     )
     like_status: LikeStatus = Field(description="Reaction to set.", example=LikeStatus.good_answer)
     comment: str | None = Field(

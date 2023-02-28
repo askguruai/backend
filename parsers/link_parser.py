@@ -19,7 +19,7 @@ class LinkParser(GeneralParser):
         return text if text else self.parse_website(link)
 
     def parse_wiki(self, link: str) -> str:
-        title = link.split('/')[-1]
+        title = link.split("/")[-1]
         i, text = 0, ""
         while not text and i < len(WIKI_LANGUAGES):
             wikipedia.set_lang(WIKI_LANGUAGES[i])
