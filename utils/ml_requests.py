@@ -14,7 +14,7 @@ def get_embeddings(chunks: List[str], api_version: str) -> List[np.ndarray]:
     response = requests.post(
         f"{CONFIG['coreml']['route']}/{api_version}/embeddings/",
         json={"input": chunks},
-        timeout=20.0,
+        timeout=60.0,
     )
     if response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
         raise CoreMLError(response.json()["detail"])
