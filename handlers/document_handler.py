@@ -6,12 +6,14 @@ from bson.objectid import ObjectId
 
 from handlers.general_handler import GeneralHandler
 from utils import CONFIG, DB, ml_requests
-from utils.api import DocumentRequest
 from utils.errors import InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.schemas import DocumentRequest
 
 
 class DocumentHandler(GeneralHandler):
-    def get_answer(self, request: DocumentRequest) -> Tuple[str, str, List[Dict], List[str]]:
+    def get_answer(
+        self, request: DocumentRequest, api_version: str
+    ) -> Tuple[str, str, List[Dict], List[str]]:
         if isinstance(request.document_id, str):
             document_ids = [request.document_id]
         elif isinstance(request.document_id, list):
@@ -27,7 +29,7 @@ class DocumentHandler(GeneralHandler):
             [],
         )  # todo: consider cases with huge doc input. will we run into oom?
         for doc_id in document_ids:
-            document = DB[CONFIG["mongo"]["requests_inputs_collection"]].find_one(
+            document = DB[api_version + CONFIG["mongo"]["requests_inputs_collection"]].find_one(
                 {"_id": ObjectId(doc_id)}
             )
             if document is None:
@@ -39,13 +41,13 @@ class DocumentHandler(GeneralHandler):
             all_chunks.extend(chunks)
             doc_ids.extend([doc_id] * len(chunks))
         context, indices = self.get_context_from_chunks_embeddings(
-            all_chunks, all_embeddings, request.query
+            all_chunks, all_embeddings, request.query, api_version
         )
         info_sources = [
             {"document": doc_ids[global_idx], "chunk": all_chunks[global_idx]}
             for global_idx in indices
         ]
-        answer = ml_requests.get_answer(context, request.query)
+        answer = ml_requests.get_answer(context, request.query, api_version)
         return answer, context, info_sources, document_ids
 
     def get_additional_request_data(self, request: DocumentRequest) -> Dict[str, Any]:
