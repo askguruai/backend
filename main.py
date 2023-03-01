@@ -127,13 +127,13 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
 
 
 @app.post(
-    "/set_reaction",
+    "/{api_version}/set_reaction",
     responses={
         status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
         status.HTTP_404_NOT_FOUND: {"model": HTTPExceptionResponse},
     },
 )
-async def set_reaction(set_reaction_request: SetReactionRequest):
+async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactionRequest):
     row_update = {
         "like_status": set_reaction_request.like_status,
         "comment": set_reaction_request.comment,
