@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
+from handlers import CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
@@ -19,7 +19,10 @@ from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMi
 from utils.logging import run_uvicorn_loguru
 from utils.schemas import (
     ApiVersion,
+    Collection,
+    CollectionRequest,
     DocumentRequest,
+    GetAnswerCollectionResponse,
     GetAnswerResponse,
     HTTPExceptionResponse,
     LinkRequest,
@@ -41,7 +44,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
@@ -54,6 +57,10 @@ def init_handlers():
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
     )
+    collection_handler = CollectionHandler(
+        collections_prefix=CONFIG["mongo"]["collections_prefix"],
+        top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+    )
     pdf_upload_handler = PDFUploadHandler(
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
     )
@@ -62,6 +69,29 @@ def init_handlers():
 @app.get("/", include_in_schema=False)
 async def docs_redirect():
     return RedirectResponse(url="/docs")
+
+
+@app.post(
+    "/{api_version}/get_answer/collection",
+    response_model=GetAnswerCollectionResponse,
+    responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+)
+@catch_errors
+async def get_answer_collection(
+    collection_request: CollectionRequest, api_version: ApiVersion, request: Request
+):
+    answer, context = collection_handler.get_answer(collection_request, api_version.value)
+    request_id = log_get_answer(
+        answer=answer,
+        context=context,
+        document_ids=None,
+        query=collection_request.query,
+        request=request,
+        api_version=api_version.value,
+        collection=collection_request.collection.value,
+        subcollections=collection_request.subcollections,
+    )
+    return GetAnswerCollectionResponse(answer=answer, request_id=request_id)
 
 
 @app.post(
