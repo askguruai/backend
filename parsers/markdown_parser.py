@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Any, Union, List
+from typing import Any, Union, List, Tuple
 import marko
 import re
 
@@ -15,7 +15,7 @@ class MarkdownParser(GeneralParser):
             text = f.read()
         return text
 
-    def process_file(self, path) -> List[str]:
+    def process_file(self, path) -> Tuple[List[str], str]:
         text = self.get_text(path)
         text, meta = self.preprocess_text(text)
         document = marko.parse(text)
@@ -60,7 +60,7 @@ class MarkdownParser(GeneralParser):
             })
 
         chunks = self.compress_chunks(chunks)
-        return ["\n".join([ch["title"], ch["text"]]) for ch in chunks]
+        return ["\n".join([ch["title"], ch["text"]]) for ch in chunks], meta
 
     def preprocess_text(self, text: str):
         # removing placeholder tags
@@ -71,20 +71,18 @@ class MarkdownParser(GeneralParser):
         text = re.sub(r"{#.*?}", "", text)
         text = re.sub(r"{{<.*?>}}", "", text)
 
-        # compressing metainfo section
-        meta = []
-        for key, regex in [
-            ("title", "title: (.*)\ndate: "),
-            # ("description", "description:(.*)---")
-        ]:
-            reg = re.compile(regex, re.DOTALL)
-            search = re.search(reg, text)
-            if search:
-                matched = search.group(1).strip().replace('\n', '')
-                meta.append(f"{key}: {matched}")
+        elem_meta_re = re.compile(r"---(.*)?---", re.DOTALL)
+        search = re.search(elem_meta_re, text)
+        meta = ""
+        if search:
+            matched = search.group(1).strip().split('\n')
+            for line in matched:
+                key, val = line.split(":", maxsplit=1)
+                if key.strip() == "title":
+                    meta = val.strip()
+                    break
         elem_meta_re = re.compile(r"---.*---", re.DOTALL)
         text = re.sub(elem_meta_re, "", text)
-        meta = "\n".join(meta)
         return text, meta
 
     def preprocess_document(self, document: Document):
