@@ -23,7 +23,7 @@ class CollectionRequest(BaseModel):
         example="livechat",
     )
     subcollections: List[str] | None = Field(
-        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}",
+        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
         example=["chatbot", "internal"],
     )
 
