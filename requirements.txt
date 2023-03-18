@@ -13,3 +13,4 @@ pandas
 openpyxl
 marko
 tqdm
+python-jose[cryptography]
