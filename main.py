@@ -6,7 +6,17 @@ import bson
 import requests
 import uvicorn
 from bson.objectid import ObjectId
-from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
@@ -15,6 +25,7 @@ from handlers import CollectionHandler, DocumentHandler, LinkHandler, PDFUploadH
 from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
+from utils.auth import login, validate_auth
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.schemas import (
     ApiVersion,
@@ -71,14 +82,24 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
+# fmt: off
+@app.post("/token")(login)
+# fmt: on
+
 @app.post(
     "/{api_version}/get_answer/collection",
     response_model=GetAnswerCollectionResponse,
-    responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    responses={
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    },
+    dependencies=[Depends(validate_auth)],
 )
 @catch_errors
 async def get_answer_collection(
-    collection_request: CollectionRequest, api_version: ApiVersion, request: Request
+    collection_request: CollectionRequest,
+    api_version: ApiVersion,
+    request: Request,
 ):
     answer, context = collection_handler.get_answer(collection_request, api_version.value)
     request_id = log_get_answer(
