@@ -24,7 +24,7 @@ class CollectionRequest(BaseModel):
     )
     subcollections: List[str] | None = Field(
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
-        example=["chatbot", "internal"],
+        example=["chatbot", "livechat"],
     )
 
     @validator("subcollections")
