@@ -11,3 +11,5 @@ wikipedia
 html2text
 pandas
 openpyxl
+marko
+tqdm
