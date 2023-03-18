@@ -1,18 +1,21 @@
 import os
 import sys
+
 sys.path.insert(1, os.getcwd())
 
+import hashlib
+import logging
+import pickle
+from argparse import ArgumentParser
+
+from bson.binary import Binary
+from bson.objectid import ObjectId
+from tqdm import tqdm
+
+from parsers.markdown_parser import MarkdownParser
+from utils import DB
 from utils.errors import CoreMLError
 from utils.ml_requests import get_embeddings
-from parsers.markdown_parser import MarkdownParser
-from argparse import ArgumentParser
-from utils import DB
-from bson.binary import Binary
-import pickle
-import logging
-from tqdm import tqdm
-import hashlib
-from bson.objectid import ObjectId
 
 
 def process_single_file(path, collection, parser: MarkdownParser, api_version: str):
@@ -54,5 +57,9 @@ if __name__ == '__main__':
         if doc.endswith(".md") or doc.endswith(".markdownd"):
             process_ok = False
             while not process_ok:
-                process_ok = process_single_file(os.path.join(args.source_dir, doc),
-                                                 collection_name, md_parser, api_version=args.api_version)
+                process_ok = process_single_file(
+                    os.path.join(args.source_dir, doc),
+                    collection_name,
+                    md_parser,
+                    api_version=args.api_version,
+                )

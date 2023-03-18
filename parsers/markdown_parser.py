@@ -1,12 +1,14 @@
-from copy import deepcopy
-from typing import Any, Union, List, Tuple
-import marko
 import re
+from copy import deepcopy
+from typing import Any, List, Tuple, Union
+
+import marko
+from marko.block import BlankLine, CodeBlock, Document, FencedCode, Heading, HTMLBlock
+from marko.block import List as MDList
+from marko.block import ListItem, Paragraph, Quote, ThematicBreak
+from marko.inline import Emphasis, LineBreak, Link, Literal, RawText, StrongEmphasis
 
 from parsers.general_parser import GeneralParser
-from marko.block import Paragraph, Heading, Document, BlankLine, ThematicBreak, List as MDList, ListItem, \
-    FencedCode, HTMLBlock, Quote, CodeBlock
-from marko.inline import RawText, Emphasis, StrongEmphasis, Link, Literal, LineBreak
 
 
 class MarkdownParser(GeneralParser):
@@ -31,12 +33,13 @@ class MarkdownParser(GeneralParser):
                 if child.level == 1 or child.level == 2:
                     # creating text chunk from level-1/2 section
                     if len(accumulated_text) > 0:
-                        chunk_text = f"{current_heading}\n{accumulated_text}" if current_heading != "" else accumulated_text
+                        chunk_text = (
+                            f"{current_heading}\n{accumulated_text}"
+                            if current_heading != ""
+                            else accumulated_text
+                        )
                         accumulated_text = ""
-                        chunks.append({
-                            "title": meta,
-                            "text": chunk_text
-                        })
+                        chunks.append({"title": meta, "text": chunk_text})
                     current_heading = heading_text
                 else:
                     accumulated_text += f"\n{self.render_text(child)}\n"
@@ -44,20 +47,20 @@ class MarkdownParser(GeneralParser):
                 cur_text = self.render_text(child)
                 if len(accumulated_text) + len(cur_text) > 2000:
                     if accumulated_text != "":
-                        chunks.append({
-                            "title": meta,
-                            "text": f"{current_heading}\n{accumulated_text}"
-                        })
+                        chunks.append(
+                            {"title": meta, "text": f"{current_heading}\n{accumulated_text}"}
+                        )
                     accumulated_text = cur_text
                 else:
                     accumulated_text += cur_text
 
         if len(accumulated_text) > 0:
-            chunk_text = f"{current_heading}\n{accumulated_text}" if current_heading != "" else accumulated_text
-            chunks.append({
-                "title": meta,
-                "text": chunk_text
-            })
+            chunk_text = (
+                f"{current_heading}\n{accumulated_text}"
+                if current_heading != ""
+                else accumulated_text
+            )
+            chunks.append({"title": meta, "text": chunk_text})
 
         chunks = self.compress_chunks(chunks)
         return ["\n".join([ch["title"], ch["text"]]) for ch in chunks], meta
@@ -86,7 +89,9 @@ class MarkdownParser(GeneralParser):
         return text, meta
 
     def preprocess_document(self, document: Document):
-        new_children = [ch for ch in document.children if not isinstance(ch, (ThematicBreak, HTMLBlock))]
+        new_children = [
+            ch for ch in document.children if not isinstance(ch, (ThematicBreak, HTMLBlock))
+        ]
         document.children = new_children
         return document
 
