@@ -16,7 +16,6 @@ from parsers import DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
-from utils.uvicorn_logging import run_uvicorn_loguru
 from utils.schemas import (
     ApiVersion,
     Collection,
@@ -30,6 +29,7 @@ from utils.schemas import (
     TextRequest,
     UploadDocumentResponse,
 )
+from utils.uvicorn_logging import run_uvicorn_loguru
 
 app = FastAPI()
 
