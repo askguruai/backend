@@ -22,10 +22,10 @@ def get_embeddings(chunks: List[str], api_version: str) -> List[np.ndarray]:
     return embeddings
 
 
-def get_answer(context: str, query: str, api_version: str) -> str:
+def get_answer(context: str, query: str, api_version: str, mode: str = "general") -> str:
     response = requests.post(
         f"{CONFIG['coreml']['route']}/{api_version}/completions/",
-        json={"info": context, "query": query},
+        json={"info": context, "query": query, "mode": mode},
         timeout=20.0,
     )
     if response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
