@@ -9,3 +9,8 @@ python-multipart
 pymongo
 wikipedia
 html2text
+pandas
+openpyxl
+marko
+tqdm
+python-jose[cryptography]

@@ -1,12 +1,41 @@
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 
 class ApiVersion(str, Enum):
     v1 = "v1"
     v2 = "v2"
+
+
+class Collection(str, Enum):
+    livechat = "livechat"
+
+
+SubCollections = {"livechat": ["chatbot", "helpdesk", "livechat", "knowledgebase", "internal"]}
+
+
+class CollectionRequest(BaseModel):
+    query: str = Field(description="Query to generate answer for.", example="What is your name?")
+    collection: Collection = Field(
+        description=f"Collection to use. Possible values: {', '.join([c.value for c in Collection])}",
+        example="livechat",
+    )
+    subcollections: List[str] | None = Field(
+        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
+        example=["chatbot", "livechat"],
+    )
+
+    @validator("subcollections")
+    def subcollections_are_valid(cls, v, values, **kwargs):
+        if v is not None:
+            for subcollection in v:
+                if subcollection not in SubCollections[values["collection"]]:
+                    raise ValueError(
+                        f"Invalid subcollection: {subcollection}. Valid subcollections are: {SubCollections[values['collection']]}"
+                    )
+        return v
 
 
 class TextRequest(BaseModel):
@@ -53,6 +82,21 @@ class GetAnswerResponse(BaseModel):
         default=None,
         description="A list of dictionaries with information about the source of the answer.",
     )
+
+
+class GetAnswerCollectionResponse(BaseModel):
+    answer: str = Field(
+        description="Answer to the query",
+        example="I used to play drums.",
+    )
+    request_id: str = Field(
+        description="A request id which is used to /set_reaction.",
+        example="63cbd74e8d31a62a1512eab1",
+    )
+    # source_docs: List[str] | None = Field(
+    #     default=None,
+    #     description="A list of links to the docs which were used for generating the answer.",
+    # )
 
 
 class UploadDocumentResponse(BaseModel):
