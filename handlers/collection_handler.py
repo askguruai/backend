@@ -48,8 +48,6 @@ class CollectionHandler:
                 1
             ]
 
-        print(self.embeddings_sizes)
-
     def get_answer(
         self,
         request: CollectionRequest,
