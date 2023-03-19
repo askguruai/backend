@@ -71,6 +71,7 @@ def init_handlers():
     collection_handler = CollectionHandler(
         collections_prefix=CONFIG["mongo"]["collections_prefix"],
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
+        chunk_size=int(CONFIG["handlers"]["chunk_size"]),
     )
     pdf_upload_handler = PDFUploadHandler(
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),

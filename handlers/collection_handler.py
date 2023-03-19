@@ -6,13 +6,14 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from utils import CONFIG, DB, ml_requests
+from utils import DB, ml_requests
 from utils.schemas import CollectionRequest
 
 
 class CollectionHandler:
-    def __init__(self, collections_prefix: str, top_k_chunks: int):
+    def __init__(self, collections_prefix: str, top_k_chunks: int, chunk_size: int):
         self.top_k_chunks = top_k_chunks
+        self.chunk_size = chunk_size
 
         self.collections = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
@@ -35,12 +36,19 @@ class CollectionHandler:
         for api_version in self.collections:
             self.embeddings_sizes[api_version] = self.collections[api_version][
                 list(self.collections[api_version].keys())[0]
-            ][list(self.collections[api_version][list(self.collections[api_version].keys())[0]].keys())[0]][
+            ][
+                list(
+                    self.collections[api_version][
+                        list(self.collections[api_version].keys())[0]
+                    ].keys()
+                )[0]
+            ][
                 "embeddings"
-            ].shape[1]
+            ].shape[
+                1
+            ]
 
         print(self.embeddings_sizes)
-
 
     def get_answer(
         self,
@@ -81,4 +89,5 @@ class CollectionHandler:
         distances = np.dot(embeddings, query_embedding)
         indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
+        context = context[: self.chunk_size * self.top_k_chunks]
         return context, indices
