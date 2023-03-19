@@ -27,6 +27,21 @@ class CollectionHandler:
                     [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                 )
 
+        self.embeddings_sizes = {}
+
+        # this ugly piece of crap just loads random
+        # embedding for each api version and remembers
+        # its size
+        for api_version in self.collections:
+            self.embeddings_sizes[api_version] = self.collections[api_version][
+                list(self.collections[api_version].keys())[0]
+            ][list(self.collections[api_version][list(self.collections[api_version].keys())[0]].keys())[0]][
+                "embeddings"
+            ].shape[1]
+
+        print(self.embeddings_sizes)
+
+
     def get_answer(
         self,
         request: CollectionRequest,
@@ -38,7 +53,7 @@ class CollectionHandler:
             else self.collections[api_version][request.collection].keys()
         )
 
-        chunks, embeddings = [], np.array([]).reshape(0, 1536)
+        chunks, embeddings = [], np.array([]).reshape(0, self.embeddings_sizes[api_version])
         for subcollection in subcollections:
             chunks.extend(
                 self.collections[api_version][request.collection][subcollection]["chunks"]
