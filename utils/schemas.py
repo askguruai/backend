@@ -7,13 +7,18 @@ from pydantic import BaseModel, Field, validator
 class ApiVersion(str, Enum):
     v1 = "v1"
     v2 = "v2"
+    v3 = "v3"
 
 
 class Collection(str, Enum):
     livechat = "livechat"
+    groovehq = "groovehq"
 
 
-SubCollections = {"livechat": ["chatbot", "helpdesk", "livechat", "knowledgebase", "internal"]}
+SubCollections = {
+    "livechat": ["chatbot", "helpdesk", "livechat", "knowledgebase", "internal"],
+    "groovehq": ["public"],
+}
 
 
 class CollectionRequest(BaseModel):
