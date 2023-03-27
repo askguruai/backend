@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from utils import DB, ml_requests
-from utils.schemas import CollectionRequest
+from utils.schemas import ApiVersion, CollectionRequest
 
 
 class CollectionHandler:
@@ -51,34 +51,38 @@ class CollectionHandler:
             ]
         logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
 
-        # logging.info(len(self.collections["v2"]["livechat"]["chatbot"]["embeddings"][0]))
-
     def get_answer(
         self,
         request: CollectionRequest,
         api_version: str,
     ) -> Tuple[str, str, str]:
+        query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
+
+        api_version_embeds = api_version if api_version in self.embeddings_sizes else "v2"
+
         subcollections = (
             request.subcollections
             if request.subcollections
-            else self.collections[api_version][request.collection].keys()
+            else self.collections[api_version_embeds][request.collection].keys()
         )
 
-        chunks, embeddings = [], np.array([]).reshape(0, self.embeddings_sizes[api_version])
+        chunks, embeddings = [], np.array([]).reshape(0, self.embeddings_sizes[api_version_embeds])
         for subcollection in subcollections:
             chunks.extend(
-                self.collections[api_version][request.collection][subcollection]["chunks"]
+                self.collections[api_version_embeds][request.collection][subcollection]["chunks"]
             )
             embeddings = np.concatenate(
                 (
                     embeddings,
-                    self.collections[api_version][request.collection][subcollection]["embeddings"],
+                    self.collections[api_version_embeds][request.collection][subcollection][
+                        "embeddings"
+                    ],
                 ),
                 axis=0,
             )
 
         context, indices = self.get_context_from_chunks_embeddings(
-            chunks, embeddings, request.query, api_version
+            chunks, embeddings, query_embedding
         )
 
         answer = ml_requests.get_answer(context, request.query, api_version, "support")
@@ -86,9 +90,8 @@ class CollectionHandler:
         return answer, context
 
     def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: NDArray, query: str, api_version: str
+        self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray
     ) -> tuple[str, np.ndarray]:
-        query_embedding = ml_requests.get_embeddings(query, api_version)[0]
         distances = np.dot(embeddings, query_embedding)
         indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
