@@ -28,11 +28,13 @@ class CollectionHandler:
                     [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                 )
 
-        self.embeddings_sizes = {}
+        logs = CollectionHandler.get_dict_logs(self.collections)
+        logging.info(logs)
 
         # this ugly piece of crap just loads random
         # embedding for each api version and remembers
         # its size
+        self.embeddings_sizes = {}
         for api_version in self.collections:
             self.embeddings_sizes[api_version] = self.collections[api_version][
                 list(self.collections[api_version].keys())[0]
@@ -47,6 +49,9 @@ class CollectionHandler:
             ].shape[
                 1
             ]
+        logging.info(f"Embedding sizes: {self.embeddings_sizes}")
+
+        # logging.info(len(self.collections["v2"]["livechat"]["chatbot"]["embeddings"][0]))
 
     def get_answer(
         self,
@@ -89,3 +94,13 @@ class CollectionHandler:
         context = "\n\n".join([chunks[i] for i in indices])
         context = context[: self.chunk_size * self.top_k_chunks]
         return context, indices
+
+    @staticmethod
+    def get_dict_logs(d, indent=0, logs='Collections structure:\n'):
+        for key, value in sorted(d.items()):
+            if isinstance(value, dict):
+                logs += '  ' * indent + f"{key}: \n"
+                logs = CollectionHandler.get_dict_logs(value, indent + 1, logs)
+            else:
+                logs += '  ' * indent + f"{key}\n"
+        return logs
