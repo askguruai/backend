@@ -5,6 +5,7 @@ sys.path.insert(1, os.getcwd())
 
 import hashlib
 import logging
+import json
 import pickle
 from argparse import ArgumentParser
 
@@ -54,16 +55,15 @@ if __name__ == '__main__':
     parser.add_argument("--cname", type=str, help="collection name (will be cnnected with api version")
     args = parser.parse_args()
 
-    collection_name = args.source_dir.split("_")[0].split("-")[1]
-    md_parser = MarkdownParser(1024)
-    docs = os.listdir(args.source_dir)
-    for doc in tqdm(docs):
-        if doc.endswith(".md") or doc.endswith(".markdownd"):
-            process_ok = False
-            while not process_ok:
-                process_ok = process_single_file(
-                    os.path.join(args.source_dir, doc),
-                    collection_name,
-                    md_parser,
-                    api_version=args.api_version,
-                )
+    h_parser = HTMLParser(1024)
+    with open("groove_data_full.json", "rt") as f:
+        data = json.load(f)
+    for doc in tqdm(data["articles"]):
+        process_ok = False
+        while not process_ok:
+            process_ok = process_single_file(
+                doc,
+                args.cname,
+                h_parser,
+                api_version=args.api_version,
+            )
