@@ -49,7 +49,7 @@ class CollectionHandler:
             ].shape[
                 1
             ]
-        logging.info(f"Embedding sizes: {self.embeddings_sizes}")
+        logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
 
         # logging.info(len(self.collections["v2"]["livechat"]["chatbot"]["embeddings"][0]))
 
