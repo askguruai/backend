@@ -58,7 +58,7 @@ class CollectionHandler:
     ) -> Tuple[str, str, str]:
         query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
 
-        api_version_embeds = api_version if api_version in self.embeddings_sizes else "v2"
+        api_version_embeds = api_version if api_version in self.embeddings_sizes else "v1"
 
         subcollections = (
             request.subcollections
