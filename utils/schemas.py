@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
 
@@ -98,10 +98,11 @@ class GetAnswerCollectionResponse(BaseModel):
         description="A request id which is used to /set_reaction.",
         example="63cbd74e8d31a62a1512eab1",
     )
-    # source_docs: List[str] | None = Field(
-    #     default=None,
-    #     description="A list of links to the docs which were used for generating the answer.",
-    # )
+    source: List[Tuple[str, str]] | None = Field(
+        default=None,
+        description="A list of pairs (title, url) with information about the source of the answer.",
+        example=[("Java Man", "https://en.wikipedia.org/wiki/Java_Man")],
+    )
 
 
 class UploadDocumentResponse(BaseModel):
