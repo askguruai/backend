@@ -27,6 +27,10 @@ class CollectionHandler:
                 self.collections[api_version][collection][subcollection]["embeddings"] = np.array(
                     [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                 )
+                if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
+                    self.collections[api_version][collection][subcollection]["sources"] = [
+                        (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
+                    ]
 
         logs = CollectionHandler.get_dict_logs(self.collections)
         logging.info(logs)
@@ -55,7 +59,7 @@ class CollectionHandler:
         self,
         request: CollectionRequest,
         api_version: str,
-    ) -> Tuple[str, str, str]:
+    ) -> Tuple[str, str, Tuple[str, str] | None]:
         query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
 
         api_version_embeds = api_version if api_version in self.embeddings_sizes else "v1"
@@ -66,7 +70,11 @@ class CollectionHandler:
             else self.collections[api_version_embeds][request.collection].keys()
         )
 
-        chunks, embeddings = [], np.array([]).reshape(0, self.embeddings_sizes[api_version_embeds])
+        chunks, embeddings, sources = (
+            [],
+            np.array([]).reshape(0, self.embeddings_sizes[api_version_embeds]),
+            [],
+        )
         for subcollection in subcollections:
             chunks.extend(
                 self.collections[api_version_embeds][request.collection][subcollection]["chunks"]
@@ -80,14 +88,27 @@ class CollectionHandler:
                 ),
                 axis=0,
             )
+            if (
+                "sources"
+                in self.collections[api_version_embeds][request.collection][subcollection]
+            ):
+                sources.extend(
+                    self.collections[api_version_embeds][request.collection][subcollection][
+                        "sources"
+                    ]
+                )
 
         context, indices = self.get_context_from_chunks_embeddings(
             chunks, embeddings, query_embedding
         )
 
+        if sources:
+            sources = [sources[i] for i in indices]
+            sources = list(dict.fromkeys(sources))
+
         answer = ml_requests.get_answer(context, request.query, api_version, "support")
 
-        return answer, context
+        return answer, context, sources
 
     def get_context_from_chunks_embeddings(
         self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray
