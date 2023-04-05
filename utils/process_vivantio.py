@@ -38,7 +38,7 @@ def process_single_file(document: dict, collection: str, parser: VivantioHTMLPar
             document = {
                 "_id": ObjectId(text_hash),
                 "doc_title": meta_info["title"],
-                "link": f"https://help.groovehq.com/help/{meta_info['slug']}",
+                "link": meta_info["link"],
                 "doc_id": meta_info["id"],
                 "chunk": chunk,
                 "embedding": Binary(pickle.dumps(emb)),
