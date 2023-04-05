@@ -21,7 +21,7 @@ from utils.ml_requests import get_embeddings
 def process_single_file(path, collection, parser: MarkdownParser, api_version: str):
     chunks, title = parser.process_file(path)
     try:
-        embeddings = get_embeddings(chunks, api_version="v1")
+        embeddings = get_embeddings(chunks, api_version=api_version)
     except CoreMLError:
         print("Failed")
         return False

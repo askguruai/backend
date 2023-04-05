@@ -13,13 +13,13 @@ from bson.binary import Binary
 from bson.objectid import ObjectId
 from tqdm import tqdm
 
-from parsers.html_parser import GrooveHTMLParser
 from utils import DB
 from utils.errors import CoreMLError
 from utils.ml_requests import get_embeddings
+from parsers.html_parser import VivantioHTMLParser
 
 
-def process_single_file(document: dict, collection: str, parser: GrooveHTMLParser, api_version: str) -> bool:
+def process_single_file(document: dict, collection: str, parser: VivantioHTMLParser, api_version: str) -> bool:
     chunks, meta_info = parser.process_document(document)
 
     try:
@@ -55,10 +55,12 @@ if __name__ == '__main__':
     parser.add_argument("--cname", type=str, help="collection name (will be cnnected with api version")
     args = parser.parse_args()
 
-    h_parser = GrooveHTMLParser()
-    with open("groove_data_full.json", "rt") as f:
+    h_parser = VivantioHTMLParser(2000)
+    with open("response.json", "rt") as f:
         data = json.load(f)
-    for doc in tqdm(data["articles"]):
+
+    all_docs = data["Results"]
+    for doc in tqdm(all_docs):
         process_ok = False
         while not process_ok:
             process_ok = process_single_file(
@@ -67,3 +69,4 @@ if __name__ == '__main__':
                 h_parser,
                 api_version=args.api_version,
             )
+

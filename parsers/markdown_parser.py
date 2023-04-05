@@ -6,7 +6,7 @@ import marko
 from marko.block import BlankLine, CodeBlock, Document, FencedCode, Heading, HTMLBlock
 from marko.block import List as MDList
 from marko.block import ListItem, Paragraph, Quote, ThematicBreak
-from marko.inline import Emphasis, LineBreak, Link, Literal, RawText, StrongEmphasis
+from marko.inline import Emphasis, LineBreak, Link, Literal, RawText, StrongEmphasis, InlineHTML
 
 from parsers.general_parser import GeneralParser
 
@@ -97,15 +97,43 @@ class MarkdownParser(GeneralParser):
 
     def extract_text(self, elem):
         text_parts = []
+        link_buffer = ""
         for ch in elem.children:
             if isinstance(ch, (RawText, Literal)):
                 text_parts.append(ch.children)
+                if link_buffer != "":
+                    text_parts.append(link_buffer)
+                    link_buffer = ""
             elif isinstance(ch, LineBreak):
                 text_parts.append("\n")
-            elif isinstance(ch, (Emphasis, StrongEmphasis, Link)):
+            elif isinstance(ch, (Emphasis, StrongEmphasis)):
                 text_parts.extend(self.extract_text(ch))
+            elif isinstance(ch, InlineHTML):
+                # todo: more elegant solution
+                link_buffer = self._render_inline_link(ch.children)
+            elif isinstance(ch, Link):
+                text_parts.append(self._render_link(ch))
         text = "".join(text_parts)
         return text.strip()
+
+    def _render_inline_link(self, inline: str):
+        linksearch = re.search('href=\"(.*?)\"', inline)
+        if linksearch:
+            link = linksearch.group(1).strip()
+            if link.startswith("#"):
+                # not rendering anchors
+                return ""
+            else:
+                return f"(link: {linksearch.group(1).strip()}) "
+        return ""
+
+    def _render_link(self, link: Link):
+        dest = link.dest
+        if dest.startswith("#"):
+            # not rendering anchors
+            return self.extract_text(link)
+        else:
+            return f"{self.extract_text(link)} (link: {dest})"
 
     def render_quote(self, blockquote: Quote):
         quote_parts = []
@@ -136,7 +164,7 @@ class MarkdownParser(GeneralParser):
         return "".join(items)
 
     def render_text(self, element):
-        if isinstance(element, Paragraph):
+        if isinstance(element, (Paragraph, Link)):
             rendered = self.render_paragraph(element)
         elif isinstance(element, Heading):
             rendered = self.render_heading(element)
