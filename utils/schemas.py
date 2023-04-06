@@ -13,11 +13,13 @@ class ApiVersion(str, Enum):
 class Collection(str, Enum):
     livechat = "livechat"
     groovehq = "groovehq"
+    vivantio = "vivantio"
 
 
 SubCollections = {
     "livechat": ["chatbot", "helpdesk", "livechat", "knowledgebase", "internal"],
     "groovehq": ["public"],
+    "vivantio": ["internal"],
 }
 
 
