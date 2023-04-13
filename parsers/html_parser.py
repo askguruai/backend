@@ -78,17 +78,28 @@ class ChunksManager:
         return new_chunks
 
     def opt_split_into_smaller_chunks(self, chunk: dict) -> list[dict]:
-        # todo: split by \n
-        smaller_chunks = []
-        while len(chunk["text"]) > 3000:
+        # todo: index throw
+        if len(chunk["text"]) < 3000:
+            return [chunk]
+        txt = chunk["text"]
+        n_ids = []
+        for i in range(len(txt)):
+            if txt[i] == "\n":
+                n_ids.append(i)
+        if len(n_ids) == 0:
+            # no breaks at all
             part = {"title": chunk["title"],
                     "text": chunk["text"][:3000]}
-            smaller_chunks.append(part)
-            chunk["text"] = chunk["text"][3000:]
-        smaller_chunks.append(chunk)
-        if len(smaller_chunks) > 1:
-            print(f"Hard split happened! Number of chunks: {len(smaller_chunks)}")
-        return smaller_chunks
+            remaining = {"title": chunk["title"],
+                         "text": chunk["text"][3000:]}
+            print(f"Hard split!")
+            return [part] + self.opt_split_into_smaller_chunks(remaining)
+        split_id = n_ids[len(n_ids) // 2]
+        part = {"title": chunk["title"],
+                "text": chunk["text"][:split_id]}
+        remaining = {"title": chunk["title"],
+                     "text": chunk["text"][split_id + 1:]}
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(remaining)
 
     def digest(self):
         if self.accumulated_text != "":
@@ -280,7 +291,7 @@ class HTMLParser:
     def process_document(self, article: dict, debug=False):
         meta, body, meta_info = self.preprocess_document(article)
 
-        parsed = BeautifulSoup(body)
+        parsed = BeautifulSoup(body, features="html.parser")
         if debug:
             print(parsed)
         # print("".join(parsed.strings))
@@ -289,7 +300,7 @@ class HTMLParser:
         while len(queue) > 0:
             ch = queue.popleft()
             if isinstance(ch, Tag):
-                if ch.name == "div":
+                if ch.name in ["div", "html", "body"]:
                     queue.extendleft(list(ch.children)[::-1])
                     continue
                 elif ch.name in ["h1", "h2"]:
@@ -302,7 +313,7 @@ class HTMLParser:
                 elif ch.name in ["h3", "h4", "h5", "h6"]:
                     heading_text = f"\n\n{self.render_text(ch)}"
                     chunks_manager.update([[heading_text, "text"]])
-                elif ch.name in ["iframe", "img"]:
+                elif ch.name in ["iframe", "img", "head"]:
                     continue
                 else:
                     if debug:

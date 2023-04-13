@@ -21,7 +21,8 @@ from parsers.html_parser import VivantioHTMLParser
 
 def process_single_file(document: dict, collection: str, parser: VivantioHTMLParser, api_version: str) -> bool:
     chunks, meta_info = parser.process_document(document)
-
+    if len(chunks) == 0:
+        return True  # nothing to do
     try:
         embeddings = get_embeddings(chunks, api_version=api_version)
     except CoreMLError:
@@ -31,7 +32,7 @@ def process_single_file(document: dict, collection: str, parser: VivantioHTMLPar
     for i, pair in enumerate(zip(chunks, embeddings)):
         chunk, emb = pair
         text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-        document = DB[f"{api_version}{collection}"].find_one(
+        document = DB[f"{api_version}.{collection}"].find_one(
             {"_id": ObjectId(text_hash)}
         )
         if not document:
@@ -43,7 +44,7 @@ def process_single_file(document: dict, collection: str, parser: VivantioHTMLPar
                 "chunk": chunk,
                 "embedding": Binary(pickle.dumps(emb)),
             }
-            DB[f"{api_version}{collection}"].insert_one(document)
+            DB[f"{api_version}.{collection}"].insert_one(document)
             logging.info(f"Document {meta_info['title']} chunk {i} inserted in the database")
     return True
 
@@ -56,7 +57,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     h_parser = VivantioHTMLParser(2000)
-    with open("response.json", "rt") as f:
+    with open(args.source, "rt") as f:
         data = json.load(f)
 
     all_docs = data["Results"]
