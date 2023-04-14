@@ -6,7 +6,7 @@ import marko
 from marko.block import BlankLine, CodeBlock, Document, FencedCode, Heading, HTMLBlock
 from marko.block import List as MDList
 from marko.block import ListItem, Paragraph, Quote, ThematicBreak
-from marko.inline import Emphasis, LineBreak, Link, Literal, RawText, StrongEmphasis, InlineHTML
+from marko.inline import Emphasis, InlineHTML, LineBreak, Link, Literal, RawText, StrongEmphasis
 
 from parsers.general_parser import GeneralParser
 

@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from utils import DB, ml_requests
-from utils.schemas import CollectionRequest
+from utils.schemas import ApiVersion, CollectionRequest
 
 
 class CollectionHandler:
@@ -27,12 +27,18 @@ class CollectionHandler:
                 self.collections[api_version][collection][subcollection]["embeddings"] = np.array(
                     [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                 )
+                if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
+                    self.collections[api_version][collection][subcollection]["sources"] = [
+                        (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
+                    ]
 
-        self.embeddings_sizes = {}
+        logs = CollectionHandler.get_dict_logs(self.collections)
+        logging.info(logs)
 
         # this ugly piece of crap just loads random
         # embedding for each api version and remembers
         # its size
+        self.embeddings_sizes = {}
         for api_version in self.collections:
             self.embeddings_sizes[api_version] = self.collections[api_version][
                 list(self.collections[api_version].keys())[0]
@@ -47,45 +53,78 @@ class CollectionHandler:
             ].shape[
                 1
             ]
+        logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
 
     def get_answer(
         self,
         request: CollectionRequest,
         api_version: str,
-    ) -> Tuple[str, str, str]:
+    ) -> Tuple[str, str, Tuple[str, str] | None]:
+        query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
+
+        api_version_embeds = api_version if api_version in self.embeddings_sizes else "v1"
+
         subcollections = (
             request.subcollections
             if request.subcollections
-            else self.collections[api_version][request.collection].keys()
+            else self.collections[api_version_embeds][request.collection].keys()
         )
 
-        chunks, embeddings = [], np.array([]).reshape(0, self.embeddings_sizes[api_version])
+        chunks, embeddings, sources = (
+            [],
+            np.array([]).reshape(0, self.embeddings_sizes[api_version_embeds]),
+            [],
+        )
         for subcollection in subcollections:
             chunks.extend(
-                self.collections[api_version][request.collection][subcollection]["chunks"]
+                self.collections[api_version_embeds][request.collection][subcollection]["chunks"]
             )
             embeddings = np.concatenate(
                 (
                     embeddings,
-                    self.collections[api_version][request.collection][subcollection]["embeddings"],
+                    self.collections[api_version_embeds][request.collection][subcollection][
+                        "embeddings"
+                    ],
                 ),
                 axis=0,
             )
+            if (
+                "sources"
+                in self.collections[api_version_embeds][request.collection][subcollection]
+            ):
+                sources.extend(
+                    self.collections[api_version_embeds][request.collection][subcollection][
+                        "sources"
+                    ]
+                )
 
         context, indices = self.get_context_from_chunks_embeddings(
-            chunks, embeddings, request.query, api_version
+            chunks, embeddings, query_embedding
         )
+
+        if sources:
+            sources = [sources[i] for i in indices]
+            sources = list(dict.fromkeys(sources))
 
         answer = ml_requests.get_answer(context, request.query, api_version, "support")
 
-        return answer, context
+        return answer, context, sources
 
     def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: NDArray, query: str, api_version: str
+        self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray
     ) -> tuple[str, np.ndarray]:
-        query_embedding = ml_requests.get_embeddings(query, api_version)[0]
         distances = np.dot(embeddings, query_embedding)
         indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
         context = context[: self.chunk_size * self.top_k_chunks]
         return context, indices
+
+    @staticmethod
+    def get_dict_logs(d, indent=0, logs='Collections structure:\n'):
+        for key, value in sorted(d.items()):
+            if isinstance(value, dict):
+                logs += '  ' * indent + f"{key}: \n"
+                logs = CollectionHandler.get_dict_logs(value, indent + 1, logs)
+            else:
+                logs += '  ' * indent + f"{key}\n"
+        return logs
