@@ -102,7 +102,7 @@ async def get_answer_collection(
     api_version: ApiVersion,
     request: Request,
 ):
-    answer, context = collection_handler.get_answer(collection_request, api_version.value)
+    answer, context, source = collection_handler.get_answer(collection_request, api_version.value)
     request_id = log_get_answer(
         answer=answer,
         context=context,
@@ -113,7 +113,7 @@ async def get_answer_collection(
         collection=collection_request.collection.value,
         subcollections=collection_request.subcollections,
     )
-    return GetAnswerCollectionResponse(answer=answer, request_id=request_id)
+    return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
 
 
 @app.post(
