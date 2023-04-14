@@ -21,8 +21,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
-from parsers import DocumentParser, LinkParser, TextParser
+from handlers import (
+    ChatsUploadHandler,
+    CollectionHandler,
+    DocumentHandler,
+    LinkHandler,
+    PDFUploadHandler,
+    TextHandler,
+)
+from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
 from utils.auth import login, validate_auth
@@ -38,6 +45,8 @@ from utils.schemas import (
     LinkRequest,
     SetReactionRequest,
     TextRequest,
+    UploadChatsRequest,
+    UploadChatsResponse,
     UploadDocumentResponse,
 )
 from utils.uvicorn_logging import run_uvicorn_loguru
@@ -55,7 +64,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
@@ -75,6 +84,9 @@ def init_handlers():
     )
     pdf_upload_handler = PDFUploadHandler(
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+    )
+    chats_upload_handler = ChatsUploadHandler(
+        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"]))
     )
 
 
@@ -176,6 +188,22 @@ async def get_answer_document(
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
     document_id = pdf_upload_handler.process_file(file, api_version.value)
     return UploadDocumentResponse(document_id=document_id)
+
+
+@app.post(
+    "/{api_version}/upload/chats",
+    response_model=UploadChatsResponse,
+    responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+               # status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    },
+    # dependencies=[Depends(validate_auth)],
+)
+@catch_errors
+async def upload_chats(api_version: ApiVersion, upload_chats_request: UploadChatsRequest):
+    processed_chats = chats_upload_handler.handle_request(chats=upload_chats_request.chats,
+                                                          collection=upload_chats_request.collection,
+                                                          api_version=api_version.value)
+    return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
 
 
 @app.post(

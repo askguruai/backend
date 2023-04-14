@@ -14,12 +14,14 @@ class Collection(str, Enum):
     livechat = "livechat"
     groovehq = "groovehq"
     vivantio = "vivantio"
+    askguru = "askguru"
 
 
 SubCollections = {
     "livechat": ["chatbot", "helpdesk", "livechat", "knowledgebase", "internal"],
     "groovehq": ["public"],
     "vivantio": ["internal"],
+    "askguru": ["chats"],
 }
 
 
@@ -76,6 +78,37 @@ class DocumentRequest(BaseModel):
     )
 
 
+class UploadChatsRequest(BaseModel):
+    chats: List[dict] = Field(
+        description="A list of all archive chat objects",
+        example=[
+            {
+                "id": "RSF0JQSFEJ",
+                "user": {"name": "Mike", "id": "c5753edc-0051-4a7a-8b61-2ae64c7aad51"},
+                "history": [
+                    {"author": "agent", "text": "Hello. How may I help you?"},
+                    {"author": "user", "text": "hi do you offer screen sharing chat"},
+                ],
+            },
+            {
+                "id": "RSF0JQB8J4",
+                "user": {"name": "Bob", "id": "efb1f05f-dd19-4b95-95e9-3cd2feb149bf"},
+                "history": [
+                    {"author": "agent", "text": "Hello. How may I help you?"},
+                    {
+                        "author": "user",
+                        "text": "i want to change my subscription from monthly to annually",
+                    },
+                ],
+            },
+        ],
+    )
+    collection: Collection = Field(
+        description=f"Collection to use. Possible values: {', '.join([c.value for c in Collection])}",
+        example="askguru",
+    )
+
+
 class GetAnswerResponse(BaseModel):
     answer: str = Field(
         description="Answer to the query",
@@ -110,6 +143,12 @@ class GetAnswerCollectionResponse(BaseModel):
 class UploadDocumentResponse(BaseModel):
     document_id: str = Field(
         description="ID of an uploaded document.", example="7af8c3e548e40aeb984c42dd"
+    )
+
+
+class UploadChatsResponse(BaseModel):
+    uploaded_chats_number: str = Field(
+        description="Number of chats successfully uploaded", example="5"
     )
 
 
