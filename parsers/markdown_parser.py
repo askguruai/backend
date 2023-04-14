@@ -119,11 +119,21 @@ class MarkdownParser(GeneralParser):
     def _render_inline_link(self, inline: str):
         linksearch = re.search('href=\"(.*?)\"', inline)
         if linksearch:
-            return f"(link: {linksearch.group(1).strip()}) "
+            link = linksearch.group(1).strip()
+            if link.startswith("#"):
+                # not rendering anchors
+                return ""
+            else:
+                return f"(link: {linksearch.group(1).strip()}) "
         return ""
 
     def _render_link(self, link: Link):
-        return f"{self.extract_text(link)} (link: {link.dest})"
+        dest = link.dest
+        if dest.startswith("#"):
+            # not rendering anchors
+            return self.extract_text(link)
+        else:
+            return f"{self.extract_text(link)} (link: {dest})"
 
     def render_quote(self, blockquote: Quote):
         quote_parts = []
