@@ -27,24 +27,31 @@ SubCollections = {
 
 class CollectionRequest(BaseModel):
     query: str = Field(description="Query to generate answer for.", example="What is your name?")
-    collection: Collection = Field(
-        description=f"Collection to use. Possible values: {', '.join([c.value for c in Collection])}",
-        example="livechat",
+    organization_id: str = Field(
+        description=f"aka collection to use",
+        example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
     )
     subcollections: List[str] | None = Field(
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
         example=["chatbot", "livechat"],
     )
 
-    @validator("subcollections")
-    def subcollections_are_valid(cls, v, values, **kwargs):
-        if v is not None:
-            for subcollection in v:
-                if subcollection not in SubCollections[values["collection"]]:
-                    raise ValueError(
-                        f"Invalid subcollection: {subcollection}. Valid subcollections are: {SubCollections[values['collection']]}"
-                    )
-        return v
+    # todo: make subcollection validation via database request maybe
+    # @validator("subcollections")
+    # def subcollections_are_valid(cls, v, values, **kwargs):
+    #     if v is not None:
+    #         for subcollection in v:
+    #             if subcollection not in SubCollections[values["collection"]]:
+    #                 raise ValueError(
+    #                     f"Invalid subcollection: {subcollection}. Valid subcollections are: {SubCollections[values['collection']]}"
+    #                 )
+    #     return v
+
+
+class LivechatLoginRequest(BaseModel):
+    livechat_token: str = Field(
+        description="Token received through livechat auth",
+    )
 
 
 class TextRequest(BaseModel):
@@ -103,9 +110,9 @@ class UploadChatsRequest(BaseModel):
             },
         ],
     )
-    collection: Collection = Field(
-        description=f"Collection to use. Possible values: {', '.join([c.value for c in Collection])}",
-        example="askguru",
+    organization_id: str = Field(
+        description=f"Organization id from authentication token",
+        example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
     )
 
 

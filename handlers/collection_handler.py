@@ -67,7 +67,7 @@ class CollectionHandler:
         subcollections = (
             request.subcollections
             if request.subcollections
-            else self.collections[api_version_embeds][request.collection].keys()
+            else self.collections[api_version_embeds][request.organization_id].keys()
         )
 
         chunks, embeddings, sources = (
@@ -77,12 +77,12 @@ class CollectionHandler:
         )
         for subcollection in subcollections:
             chunks.extend(
-                self.collections[api_version_embeds][request.collection][subcollection]["chunks"]
+                self.collections[api_version_embeds][request.organization_id][subcollection]["chunks"]
             )
             embeddings = np.concatenate(
                 (
                     embeddings,
-                    self.collections[api_version_embeds][request.collection][subcollection][
+                    self.collections[api_version_embeds][request.organization_id][subcollection][
                         "embeddings"
                     ],
                 ),
@@ -90,10 +90,10 @@ class CollectionHandler:
             )
             if (
                 "sources"
-                in self.collections[api_version_embeds][request.collection][subcollection]
+                in self.collections[api_version_embeds][request.organization_id][subcollection]
             ):
                 sources.extend(
-                    self.collections[api_version_embeds][request.collection][subcollection][
+                    self.collections[api_version_embeds][request.organization_id][subcollection][
                         "sources"
                     ]
                 )

@@ -32,7 +32,7 @@ from handlers import (
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import login, validate_auth
+from utils.auth import login, validate_auth, login_livechat, validate_auth_livechat
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.schemas import (
     ApiVersion,
@@ -97,6 +97,7 @@ async def docs_redirect():
 
 # fmt: off
 @app.post("/token")(login)
+@app.post("/token_livechat")(login_livechat)
 # fmt: on
 
 @app.post(
@@ -106,24 +107,24 @@ async def docs_redirect():
         status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
         status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
     },
-    dependencies=[Depends(validate_auth)],
+    dependencies=[Depends(validate_auth_livechat)],
 )
 @catch_errors
 async def get_answer_collection(
-    collection_request: CollectionRequest,
+    user_request: CollectionRequest,
     api_version: ApiVersion,
     request: Request,
 ):
-    answer, context, source = collection_handler.get_answer(collection_request, api_version.value)
+    answer, context, source = collection_handler.get_answer(user_request, api_version.value)
     request_id = log_get_answer(
         answer=answer,
         context=context,
         document_ids=None,
-        query=collection_request.query,
+        query=user_request.query,
         request=request,
         api_version=api_version.value,
-        collection=collection_request.collection.value,
-        subcollections=collection_request.subcollections,
+        collection=user_request.organization_id,
+        subcollections=user_request.subcollections,
     )
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
 
@@ -194,14 +195,14 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
     "/{api_version}/upload/chats",
     response_model=UploadChatsResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
-               # status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+               status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
     },
-    # dependencies=[Depends(validate_auth)],
+    dependencies=[Depends(validate_auth_livechat)],
 )
 @catch_errors
-async def upload_chats(api_version: ApiVersion, upload_chats_request: UploadChatsRequest):
-    processed_chats = chats_upload_handler.handle_request(chats=upload_chats_request.chats,
-                                                          collection=upload_chats_request.collection,
+async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
+    processed_chats = chats_upload_handler.handle_request(chats=user_request.chats,
+                                                          collection=user_request.organization_id,
                                                           api_version=api_version.value)
     return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
 
