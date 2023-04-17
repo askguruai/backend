@@ -15,7 +15,9 @@ class CollectionHandler:
         self.top_k_chunks = top_k_chunks
         self.chunk_size = chunk_size
 
-        self.collections = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
+        self.collections = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+        )
 
         for name in DB.list_collection_names():
             if collections_prefix in name:
@@ -26,13 +28,13 @@ class CollectionHandler:
                     self.collections[api_version][vendor][collection][subcollection]["chunks"] = [
                         chunk["chunk"] for chunk in chunks_embeddings
                     ]
-                    self.collections[api_version][vendor][collection][subcollection]["embeddings"] = np.array(
-                        [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
-                    )
+                    self.collections[api_version][vendor][collection][subcollection][
+                        "embeddings"
+                    ] = np.array([pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings])
                     if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
-                        self.collections[api_version][vendor][collection][subcollection]["sources"] = [
-                            (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
-                        ]
+                        self.collections[api_version][vendor][collection][subcollection][
+                            "sources"
+                        ] = [(chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings]
 
         logs = CollectionHandler.get_dict_logs(self.collections)
         logging.info(logs)
@@ -82,25 +84,29 @@ class CollectionHandler:
         )
         for subcollection in subcollections:
             chunks.extend(
-                self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection]["chunks"]
+                self.collections[api_version_embeds][request.vendor][request.organization_id][
+                    subcollection
+                ]["chunks"]
             )
             embeddings = np.concatenate(
                 (
                     embeddings,
-                    self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection][
-                        "embeddings"
-                    ],
+                    self.collections[api_version_embeds][request.vendor][request.organization_id][
+                        subcollection
+                    ]["embeddings"],
                 ),
                 axis=0,
             )
             if (
                 "sources"
-                in self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection]
+                in self.collections[api_version_embeds][request.vendor][request.organization_id][
+                    subcollection
+                ]
             ):
                 sources.extend(
-                    self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection][
-                        "sources"
-                    ]
+                    self.collections[api_version_embeds][request.vendor][request.organization_id][
+                        subcollection
+                    ]["sources"]
                 )
 
         context, indices = self.get_context_from_chunks_embeddings(
@@ -111,7 +117,9 @@ class CollectionHandler:
             sources = [sources[i] for i in indices]
             sources = list(dict.fromkeys(sources))
 
-        answer = ml_requests.get_answer(context, request.query, api_version, "support")
+        answer = ml_requests.get_answer(
+            context, request.query, api_version, "support", chat=request.chat
+        )
 
         return answer, context, sources
 

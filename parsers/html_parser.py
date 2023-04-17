@@ -1,16 +1,15 @@
-import re
-from typing import Tuple, List
-
-import requests
-from argparse import ArgumentParser
-import json
-import htmltabletomd
-from copy import deepcopy
-from collections import deque
 import abc
+import json
+import re
+from argparse import ArgumentParser
+from collections import deque
+from copy import deepcopy
+from typing import List, Tuple
 
+import htmltabletomd
+import requests
 from bs4 import BeautifulSoup
-from bs4.element import Tag, NavigableString
+from bs4.element import NavigableString, Tag
 
 
 class TagPartsList(list):
@@ -88,18 +87,16 @@ class ChunksManager:
                 n_ids.append(i)
         if len(n_ids) == 0:
             # no breaks at all
-            part = {"title": chunk["title"],
-                    "text": chunk["text"][:3000]}
-            remaining = {"title": chunk["title"],
-                         "text": chunk["text"][3000:]}
+            part = {"title": chunk["title"], "text": chunk["text"][:3000]}
+            remaining = {"title": chunk["title"], "text": chunk["text"][3000:]}
             print(f"Hard split!")
             return [part] + self.opt_split_into_smaller_chunks(remaining)
         split_id = n_ids[len(n_ids) // 2]
-        part = {"title": chunk["title"],
-                "text": chunk["text"][:split_id]}
-        remaining = {"title": chunk["title"],
-                     "text": chunk["text"][split_id + 1:]}
-        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(remaining)
+        part = {"title": chunk["title"], "text": chunk["text"][:split_id]}
+        remaining = {"title": chunk["title"], "text": chunk["text"][split_id + 1 :]}
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(
+            remaining
+        )
 
     def digest(self):
         if self.accumulated_text != "":
@@ -117,7 +114,7 @@ class ChunksManager:
 
 
 class HTMLParser:
-    def __init__(self, chunk_length = 1024):
+    def __init__(self, chunk_length=1024):
         self.chunk_length = chunk_length
 
     def render_list(self, elem: Tag, depth=0):
@@ -129,7 +126,7 @@ class HTMLParser:
             if isinstance(ch, NavigableString):
                 continue
             if ch.name in ["ol", "ul"]:
-                items.append(self.render_list(ch, depth=depth+1))
+                items.append(self.render_list(ch, depth=depth + 1))
                 continue
             elif ch.name == "br":
                 continue
@@ -141,9 +138,9 @@ class HTMLParser:
                 continue
             assert ch.name in ["li", "option"], (ch.name, type(ch))
             # print("rendering li")
-            pref = " " * (2*depth) + (f"{cnter}. " if ordered else "* ")
+            pref = " " * (2 * depth) + (f"{cnter}. " if ordered else "* ")
             # print(f"_______Pref: {pref}")
-            text_within = self.render_text(ch, list_depth=depth+1)
+            text_within = self.render_text(ch, list_depth=depth + 1)
             # print(text_within.__repr__())
             # exit(0)
             items.append(f"{pref}{text_within}")
@@ -176,12 +173,33 @@ class HTMLParser:
                 rendered = "".join(ch.strings) + "\n"
             elif ch.name == "a":
                 rendered = self.render_link(ch)
-            elif ch.name in ["span", "code", "em", "strong", "p", "small", "div", "sub", "sup",
-                             "label", "time", "u", "b", "span2.", "i", "center", "var", "font", "option"]:
+            elif ch.name in [
+                "span",
+                "code",
+                "em",
+                "strong",
+                "p",
+                "small",
+                "div",
+                "sub",
+                "sup",
+                "label",
+                "time",
+                "u",
+                "b",
+                "span2.",
+                "i",
+                "center",
+                "var",
+                "font",
+                "option",
+            ]:
                 rendered = self.render_text(ch)
-            elif ch.name.startswith("st1:") or \
-                    ch.name.startswith("mailto") or \
-                    ch.name.startswith("http"):  # vivantio specificity
+            elif (
+                ch.name.startswith("st1:")
+                or ch.name.startswith("mailto")
+                or ch.name.startswith("http")
+            ):  # vivantio specificity
                 rendered = self.render_text(ch)
             elif ch.name in ["br", "hr"]:
                 rendered = "\n"
@@ -200,8 +218,19 @@ class HTMLParser:
             elif ch.name in ["li"]:
                 # print(f"li outinside of the list!!!")
                 rendered = f"\n* {self.render_text(ch)}"
-            elif ch.name in ["o:p", 'br=""', "source", "audio", "video", "input", "picture", "w:wrap", "o:o:p",
-                             "noscript", "table"]:
+            elif ch.name in [
+                "o:p",
+                'br=""',
+                "source",
+                "audio",
+                "video",
+                "input",
+                "picture",
+                "w:wrap",
+                "o:o:p",
+                "noscript",
+                "table",
+            ]:
                 continue
             elif ch.name.startswith("v:"):  # vivantio specificity
                 continue
@@ -221,8 +250,22 @@ class HTMLParser:
         elif elem.name in ["p"]:
             p_text = self.render_text(elem)
             return p_text
-        elif elem.name in ["div", "blockquote", "strong", "br", "hr", "span", "b", "font", "u", "i",
-                           "center", "em", "option", "sup"]:
+        elif elem.name in [
+            "div",
+            "blockquote",
+            "strong",
+            "br",
+            "hr",
+            "span",
+            "b",
+            "font",
+            "u",
+            "i",
+            "center",
+            "em",
+            "option",
+            "sup",
+        ]:
             elem_text = self.render_text(elem)
             return elem_text
         elif elem.name == "pre":
@@ -236,8 +279,21 @@ class HTMLParser:
         elif elem.name == "li":
             li_text = f"\n*{self.render_text(elem)}"
             return li_text
-        elif elem.name in ["style", "meta", "noscript", "title", "link", "style", "form", "button", "figure",
-                           "header", "video", "script", "database"]:
+        elif elem.name in [
+            "style",
+            "meta",
+            "noscript",
+            "title",
+            "link",
+            "style",
+            "form",
+            "button",
+            "figure",
+            "header",
+            "video",
+            "script",
+            "database",
+        ]:
             return ""
         elif elem.name in ["code"]:
             code_text = self.render_code(elem)
@@ -245,8 +301,7 @@ class HTMLParser:
         elif elem.name.startswith("mailto"):  # vivantio
             text = self.render_text(elem)
             return text
-        elif elem.name.startswith("w:") or\
-                elem.name.startswith("http"):  # vivantio
+        elif elem.name.startswith("w:") or elem.name.startswith("http"):  # vivantio
             return ""
         else:
             # print(f"Unknown element with name {elem.name}!: {render_text(elem)}")
@@ -276,17 +331,16 @@ class HTMLParser:
         parts = []
 
         for i in range(len(start_poss)):
-            text_part = text[text_start_poss[i]:text_end_poss[i]]
+            text_part = text[text_start_poss[i] : text_end_poss[i]]
             if len(text_part) > 0:
                 parts.append([text_part, "text"])
-            header_part = text[start_poss[i]: end_poss[i]]
+            header_part = text[start_poss[i] : end_poss[i]]
             header_part = header_part[5:-5]
             parts.append([header_part, "header"])
-        text_part = text[text_start_poss[-1]: text_end_poss[-1]]
+        text_part = text[text_start_poss[-1] : text_end_poss[-1]]
         if len(text_part) > 0:
             parts.append([text_part, "text"])
         return parts
-
 
     def process_document(self, article: dict, debug=False):
         meta, body, meta_info = self.preprocess_document(article)
@@ -346,11 +400,7 @@ class GrooveHTMLParser(HTMLParser):
             meta.append(f"related: {','.join(article['related_titles'])}")
         meta = "\n".join(meta)
 
-        meta_info = {
-            "title": article["title"],
-            "slug": article["slug"],
-            "id": article["id"]
-        }
+        meta_info = {"title": article["title"], "slug": article["slug"], "id": article["id"]}
 
         body = article["body"]
         return meta, body, meta_info
@@ -375,7 +425,7 @@ class VivantioHTMLParser(HTMLParser):
         meta_info = {
             "title": article["Title"],
             "id": article["Id"],
-            "link": f"https://{self.companyname}.flex.vivantio.com/item/Article/{article['Id']}"
+            "link": f"https://{self.companyname}.flex.vivantio.com/item/Article/{article['Id']}",
         }
 
         body = article["Text"]

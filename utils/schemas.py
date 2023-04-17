@@ -30,15 +30,12 @@ AUTH_METHODS = ["org_scope", "default"]
 class AuthenticatedRequest(BaseModel):
     auth_method: str = Field(
         description=f"Auth strategy name. Possible values: {', '.join(AUTH_METHODS)}",
-        example="default"
+        example="default",
     )
 
 
 class VendorCollectionRequest(BaseModel):
-    vendor: str = Field(
-        description="Vendor that hosts data",
-        example="askguru"
-    )
+    vendor: str = Field(description="Vendor that hosts data", example="askguru")
     organization_id: str = Field(
         description=f"aka collection to use",
         example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
@@ -46,9 +43,7 @@ class VendorCollectionRequest(BaseModel):
 
 
 class VendorCollectionTokenRequest(VendorCollectionRequest):
-    password: str = Field(
-        description="This is for staff use"
-    )
+    password: str = Field(description="This is for staff use")
 
 
 class CollectionRequest(VendorCollectionRequest):
@@ -60,23 +55,11 @@ class CollectionRequest(VendorCollectionRequest):
     chat: List[dict] | None = Field(
         description="Optional: ongoing chat with the client",
         example=[
-            {
-              "role": "user",
-              "content": "hi"
-            },
-            {
-              "role": "user",
-              "content": "do you offer screen sharing chat"
-            },
-            {
-              "role": "assistant",
-              "content": "Hello, I will check, thanks for waiting."
-            },
-            {
-              "role": "user",
-              "content": "Sure."
-            }
-        ]
+            {"role": "user", "content": "hi"},
+            {"role": "user", "content": "do you offer screen sharing chat"},
+            {"role": "assistant", "content": "Hello, I will check, thanks for waiting."},
+            {"role": "user", "content": "Sure."},
+        ],
     )
 
 

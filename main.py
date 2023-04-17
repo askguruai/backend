@@ -32,7 +32,7 @@ from handlers import (
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import login, validate_auth_org_scope, login_livechat, get_org_collection_token
+from utils.auth import get_org_collection_token, login, login_livechat, validate_auth_org_scope
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.schemas import (
     ApiVersion,

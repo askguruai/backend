@@ -20,8 +20,7 @@ class ChatsUploadHandler:
     def __init__(self, parser: ChatParser):
         self.parser = parser
 
-    def handle_request(self, chats: List[dict], api_version: str, org_id: str,
-                       vendor: str) -> int:
+    def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
             embeddings = get_embeddings(chunks, api_version=api_version)
