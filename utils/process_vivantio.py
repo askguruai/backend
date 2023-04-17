@@ -32,7 +32,7 @@ def process_single_file(document: dict, collection: str, parser: VivantioHTMLPar
     for i, pair in enumerate(zip(chunks, embeddings)):
         chunk, emb = pair
         text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-        document = DB[f"{api_version}.{collection}"].find_one(
+        document = DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].find_one(
             {"_id": ObjectId(text_hash)}
         )
         if not document:
@@ -44,7 +44,7 @@ def process_single_file(document: dict, collection: str, parser: VivantioHTMLPar
                 "chunk": chunk,
                 "embedding": Binary(pickle.dumps(emb)),
             }
-            DB[f"{api_version}.{collection}"].insert_one(document)
+            DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].insert_one(document)
             logging.info(f"Document {meta_info['title']} chunk {i} inserted in the database")
     return True
 
