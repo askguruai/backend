@@ -5,9 +5,24 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 import requests
 
-from utils.schemas import Collection, LivechatLoginRequest, CollectionRequest, UploadChatsRequest
+from utils.schemas import Collection, LivechatLoginRequest, CollectionRequest, \
+    UploadChatsRequest, AuthenticatedRequest, VendorCollectionTokenRequest
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+
+async def get_org_collection_token(request: VendorCollectionTokenRequest):
+    if request.password != os.environ["AUTH_COLLECTION_PASSWORD"]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token({
+        "organization_id": request.organization_id,
+        "vendor": request.vendor
+    })
+    return {"access_token": access_token}
 
 
 def create_access_token(data: dict):
@@ -43,11 +58,14 @@ async def login_livechat(request: LivechatLoginRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
     resp_data = response.json()
-    access_token = create_access_token(data={"organization_id": resp_data["organization_id"]})
+    access_token = create_access_token(data={
+        "organization_id": resp_data["organization_id"],
+        "vendor": "livechat"
+    })
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-async def validate_auth(token: str = Depends(oauth2_scheme)):
+async def validate_auth_default(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -64,8 +82,8 @@ async def validate_auth(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 
-async def validate_auth_livechat(user_request: CollectionRequest | UploadChatsRequest,
-                                 token: str = Depends(oauth2_scheme)):
+async def validate_auth_org_scope(user_request: CollectionRequest | UploadChatsRequest,
+                                  token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -76,7 +94,8 @@ async def validate_auth_livechat(user_request: CollectionRequest | UploadChatsRe
             token, os.environ["JWT_SECRET_KEY"], algorithms=[os.environ["JWT_ALGORITHM"]]
         )
         org_id: str = payload.get("organization_id")
-        if org_id is None or org_id != user_request.organization_id:
+        vendor: str = payload.get("vendor")
+        if org_id is None or org_id != user_request.organization_id or vendor != user_request.vendor:
             raise credentials_exception
     except JWTError:
         raise credentials_exception

@@ -24,9 +24,39 @@ SubCollections = {
     "askguru": ["chats"],
 }
 
+AUTH_METHODS = ["org_scope", "default"]
 
-class CollectionRequest(BaseModel):
+
+class AuthenticatedRequest(BaseModel):
+    auth_method: str = Field(
+        description=f"Auth strategy name. Possible values: {', '.join(AUTH_METHODS)}",
+        example="default"
+    )
+
+
+class VendorCollectionRequest(BaseModel):
+    vendor: str = Field(
+        description="Vendor that hosts data",
+        example="askguru"
+    )
+    organization_id: str = Field(
+        description=f"aka collection to use",
+        example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
+    )
+
+
+class VendorCollectionTokenRequest(VendorCollectionRequest):
+    password: str = Field(
+        description="This is for staff use"
+    )
+
+
+class CollectionRequest(VendorCollectionRequest):
     query: str = Field(description="Query to generate answer for.", example="What is your name?")
+    vendor: str = Field(
+        description="Vendor that hosts data",
+        example="askguru"
+    )
     organization_id: str = Field(
         description=f"aka collection to use",
         example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
@@ -85,7 +115,7 @@ class DocumentRequest(BaseModel):
     )
 
 
-class UploadChatsRequest(BaseModel):
+class UploadChatsRequest(VendorCollectionRequest):
     chats: List[dict] = Field(
         description="A list of all archive chat objects",
         example=[
@@ -109,10 +139,6 @@ class UploadChatsRequest(BaseModel):
                 ],
             },
         ],
-    )
-    organization_id: str = Field(
-        description=f"Organization id from authentication token",
-        example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
     )
 
 

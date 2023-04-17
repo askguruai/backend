@@ -32,7 +32,7 @@ from handlers import (
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import login, validate_auth, login_livechat, validate_auth_livechat
+from utils.auth import login, validate_auth_org_scope, login_livechat, get_org_collection_token
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.schemas import (
     ApiVersion,
@@ -98,6 +98,7 @@ async def docs_redirect():
 # fmt: off
 @app.post("/token")(login)
 @app.post("/token_livechat")(login_livechat)
+@app.post("/godmode_token")(get_org_collection_token)
 # fmt: on
 
 @app.post(
@@ -107,10 +108,10 @@ async def docs_redirect():
         status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
         status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
     },
-    dependencies=[Depends(validate_auth_livechat)],
+    dependencies=[Depends(validate_auth_org_scope)],
 )
 @catch_errors
-async def get_answer_collection(
+async def get_answer_collection_deprecated(
     user_request: CollectionRequest,
     api_version: ApiVersion,
     request: Request,
@@ -192,17 +193,18 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
 
 
 @app.post(
-    "/{api_version}/upload/chats",
+    "/{api_version}/upload/chats/",
     response_model=UploadChatsResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
                status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
     },
-    dependencies=[Depends(validate_auth_livechat)],
+    dependencies=[Depends(validate_auth_org_scope)],
 )
 @catch_errors
 async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
     processed_chats = chats_upload_handler.handle_request(chats=user_request.chats,
-                                                          collection=user_request.organization_id,
+                                                          vendor=user_request.vendor,
+                                                          org_id=user_request.organization_id,
                                                           api_version=api_version.value)
     return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
 
