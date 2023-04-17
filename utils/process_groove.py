@@ -31,7 +31,7 @@ def process_single_file(document: dict, collection: str, parser: GrooveHTMLParse
     for i, pair in enumerate(zip(chunks, embeddings)):
         chunk, emb = pair
         text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-        document = DB[f"{api_version}{collection}"].find_one(
+        document = DB[f"{api_version}.collections.groovehq.groovehq.{collection}"].find_one(
             {"_id": ObjectId(text_hash)}
         )
         if not document:
@@ -43,7 +43,7 @@ def process_single_file(document: dict, collection: str, parser: GrooveHTMLParse
                 "chunk": chunk,
                 "embedding": Binary(pickle.dumps(emb)),
             }
-            DB[f"{api_version}{collection}"].insert_one(document)
+            DB[f"{api_version}.collections.groovehq.groovehq.{collection}"].insert_one(document)
             logging.info(f"Document {meta_info['title']} chunk {i} inserted in the database")
     return True
 
@@ -56,9 +56,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     h_parser = GrooveHTMLParser()
-    with open("groove_data_full.json", "rt") as f:
+    with open(args.source, "rt") as f:
         data = json.load(f)
-    for doc in tqdm(data["articles"]):
+    for doc in tqdm(list(data["articles"].values())):
         process_ok = False
         while not process_ok:
             process_ok = process_single_file(

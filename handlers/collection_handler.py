@@ -15,45 +15,50 @@ class CollectionHandler:
         self.top_k_chunks = top_k_chunks
         self.chunk_size = chunk_size
 
-        self.collections = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+        self.collections = defaultdict(lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict))))
 
         for name in DB.list_collection_names():
             if collections_prefix in name:
-                api_version, _, collection, subcollection = name.split(".")
-                chunks_embeddings = list(DB[name].find({}))
-                self.collections[api_version][collection][subcollection]["chunks"] = [
-                    chunk["chunk"] for chunk in chunks_embeddings
-                ]
-                self.collections[api_version][collection][subcollection]["embeddings"] = np.array(
-                    [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
-                )
-                if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
-                    self.collections[api_version][collection][subcollection]["sources"] = [
-                        (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
+                structure = name.split(".")
+                if len(structure) == 5:
+                    api_version, _, vendor, collection, subcollection = name.split(".")
+                    chunks_embeddings = list(DB[name].find({}))
+                    self.collections[api_version][vendor][collection][subcollection]["chunks"] = [
+                        chunk["chunk"] for chunk in chunks_embeddings
                     ]
+                    self.collections[api_version][vendor][collection][subcollection]["embeddings"] = np.array(
+                        [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
+                    )
+                    if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
+                        self.collections[api_version][vendor][collection][subcollection]["sources"] = [
+                            (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
+                        ]
 
         logs = CollectionHandler.get_dict_logs(self.collections)
         logging.info(logs)
 
+        self.embeddings_sizes = {'v1': 1536, 'v2': 768}  # idk maybe make it proper way later
         # this ugly piece of crap just loads random
         # embedding for each api version and remembers
         # its size
-        self.embeddings_sizes = {}
-        for api_version in self.collections:
-            self.embeddings_sizes[api_version] = self.collections[api_version][
-                list(self.collections[api_version].keys())[0]
-            ][
-                list(
-                    self.collections[api_version][
-                        list(self.collections[api_version].keys())[0]
-                    ].keys()
-                )[0]
-            ][
-                "embeddings"
-            ].shape[
-                1
-            ]
-        logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
+        # for api_version in self.collections:
+        #     self.embeddings_sizes[api_version] = self.collections[api_version].values().
+        #
+        #
+        #     self.embeddings_sizes[api_version] = self.collections[api_version][
+        #         list(self.collections[api_version].keys())[0]
+        #     ][
+        #         list(
+        #             self.collections[api_version][
+        #                 list(self.collections[api_version].keys())[0]
+        #             ].keys()
+        #         )[0]
+        #     ][
+        #         "embeddings"
+        #     ].shape[
+        #         1
+        #     ]
+        # logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
 
     def get_answer(
         self,
@@ -67,7 +72,7 @@ class CollectionHandler:
         subcollections = (
             request.subcollections
             if request.subcollections
-            else self.collections[api_version_embeds][request.collection].keys()
+            else self.collections[api_version_embeds][request.organization_id].keys()
         )
 
         chunks, embeddings, sources = (
@@ -77,12 +82,12 @@ class CollectionHandler:
         )
         for subcollection in subcollections:
             chunks.extend(
-                self.collections[api_version_embeds][request.collection][subcollection]["chunks"]
+                self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection]["chunks"]
             )
             embeddings = np.concatenate(
                 (
                     embeddings,
-                    self.collections[api_version_embeds][request.collection][subcollection][
+                    self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection][
                         "embeddings"
                     ],
                 ),
@@ -90,10 +95,10 @@ class CollectionHandler:
             )
             if (
                 "sources"
-                in self.collections[api_version_embeds][request.collection][subcollection]
+                in self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection]
             ):
                 sources.extend(
-                    self.collections[api_version_embeds][request.collection][subcollection][
+                    self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection][
                         "sources"
                     ]
                 )
