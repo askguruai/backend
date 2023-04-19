@@ -30,7 +30,7 @@ class CollectionHandler:
                     ]
                     self.collections[api_version][vendor][collection][subcollection][
                         "embeddings"
-                    ] = np.array([pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings])
+                    ] = [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                     if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
                         self.collections[api_version][vendor][collection][subcollection][
                             "sources"
@@ -91,9 +91,11 @@ class CollectionHandler:
             embeddings = np.concatenate(
                 (
                     embeddings,
-                    self.collections[api_version_embeds][request.vendor][request.organization_id][
-                        subcollection
-                    ]["embeddings"],
+                    np.array(
+                        self.collections[api_version_embeds][request.vendor][
+                            request.organization_id
+                        ][subcollection]["embeddings"]
+                    ),
                 ),
                 axis=0,
             )
@@ -122,6 +124,28 @@ class CollectionHandler:
         )
 
         return answer, context, sources
+
+    def update(
+        self, api_version: str, vendor: str, collection: str, subcollection: str, data: dict
+    ):
+        if subcollection not in self.collections[api_version][vendor][collection]:
+            self.collections[api_version][vendor][collection][subcollection]["chunks"] = []
+            self.collections[api_version][vendor][collection][subcollection]["embeddings"] = []
+            self.collections[api_version][vendor][collection][subcollection]["sources"] = []
+        if not ("embedding" in data and "chunk" in data):
+            logging.error("Local collection update data malformed")
+        embedding = np.array(data["embedding"]).reshape((self.embeddings_sizes[api_version],))
+
+        self.collections[api_version][vendor][collection][subcollection]["embeddings"].append(
+            embedding
+        )
+        self.collections[api_version][vendor][collection][subcollection]["chunks"].append(
+            data["chunk"]
+        )
+        if ["sources"] in data:
+            self.collections[api_version][vendor][collection][subcollection]["sources"].append(
+                data["sources"]
+            )
 
     def get_context_from_chunks_embeddings(
         self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray

@@ -86,7 +86,8 @@ def init_handlers():
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
     )
     chats_upload_handler = ChatsUploadHandler(
-        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"]))
+        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+        collections_handler=collection_handler,
     )
 
 
