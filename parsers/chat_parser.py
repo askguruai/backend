@@ -8,7 +8,7 @@ class ChatParser:
     def process_document(self, chat: dict) -> Tuple[List[str], dict]:
         meta = {"chat_id": chat["id"]}
         history = chat["history"]
-        text = [f"{line['author']}: {line['text']}" for line in history]
+        text = [f"{line['role']}: {line['content']}" for line in history]
         return self.to_chunks(text), meta
 
     def to_chunks(self, text_lines: List[str]) -> List[str]:
