@@ -15,6 +15,7 @@ from handlers.collection_handler import CollectionHandler
 from parsers import ChatParser
 from utils import CONFIG, DB, ml_requests
 from utils.ml_requests import get_embeddings
+from utils.schemas import ResponseSourceChat
 
 
 class ChatsUploadHandler:
@@ -46,7 +47,8 @@ class ChatsUploadHandler:
                         vendor=vendor,
                         collection=org_id,
                         subcollection="chats",
-                        data={"embedding": emb, "chunk": chunk},
+                        data={"embedding": emb, "chunk": chunk,
+                              "source": ResponseSourceChat(type="chat", chat_id=meta_info["chat_id"])},
                     )
                     logging.info(f"Chat {meta_info['chat_id']} chunk {i} inserted in the database")
         return len(chats)
