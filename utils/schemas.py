@@ -35,7 +35,7 @@ class AuthenticatedRequest(BaseModel):
 
 
 class VendorCollectionRequest(BaseModel):
-    vendor: str = Field(description="Vendor that hosts data", example="askguru")
+    vendor: str = Field(description="Vendor that hosts data", example="livechat")
     organization_id: str = Field(
         description=f"aka collection to use",
         example="f1ac8408-27b2-465e-89c6-b8708bfc262c",
