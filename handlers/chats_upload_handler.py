@@ -11,14 +11,17 @@ from bson.binary import Binary
 from bson.objectid import ObjectId
 from fastapi import File, UploadFile
 
+from handlers.collection_handler import CollectionHandler
 from parsers import ChatParser
 from utils import CONFIG, DB, ml_requests
 from utils.ml_requests import get_embeddings
+from utils.schemas import ResponseSourceChat
 
 
 class ChatsUploadHandler:
-    def __init__(self, parser: ChatParser):
+    def __init__(self, parser: ChatParser, collections_handler: CollectionHandler):
         self.parser = parser
+        self.collection_handler = collections_handler
 
     def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
         for chat in chats:
@@ -39,5 +42,13 @@ class ChatsUploadHandler:
                         "embedding": Binary(pickle.dumps(emb)),
                     }
                     DB[f"{api_version}.collections.{vendor}.{org_id}.chats"].insert_one(document)
+                    self.collection_handler.update(
+                        api_version=api_version,
+                        vendor=vendor,
+                        collection=org_id,
+                        subcollection="chats",
+                        data={"embedding": emb, "chunk": chunk,
+                              "source": ResponseSourceChat(type="chat", chat_id=meta_info["chat_id"])},
+                    )
                     logging.info(f"Chat {meta_info['chat_id']} chunk {i} inserted in the database")
         return len(chats)
