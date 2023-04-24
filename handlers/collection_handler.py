@@ -7,7 +7,14 @@ import numpy as np
 from numpy.typing import NDArray
 
 from utils import DB, ml_requests
-from utils.schemas import ApiVersion, CollectionRequest, ResponseSourceArticle, ResponseSourceChat
+from utils.schemas import (
+    ApiVersion,
+    CollectionRequest,
+    GetRankingRequest,
+    GetRankingResponse,
+    ResponseSourceArticle,
+    ResponseSourceChat,
+)
 
 
 class CollectionHandler:
@@ -167,6 +174,21 @@ class CollectionHandler:
         context = "\n\n".join([chunks[i] for i in indices])
         context = context[: self.chunk_size * self.top_k_chunks]
         return context, indices
+
+    def get_ranking(
+        self, ranking_request: GetRankingRequest, api_version: ApiVersion
+    ) -> GetRankingResponse:
+        if ranking_request.query:
+            embedding = ml_requests.get_embeddings(ranking_request.query, api_version)[0]
+        else:
+            document_id = ranking_request.document_id
+            # get all embeddings for this document
+            # and average them
+            embeddings = []
+            for subcollection in self.collections[api_version][ranking_request.vendor][
+                ranking_request.organization_id
+            ]:
+                pass
 
     @staticmethod
     def get_dict_logs(d, indent=0, logs='Collections structure:\n'):
