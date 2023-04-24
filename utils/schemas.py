@@ -42,6 +42,40 @@ class VendorCollectionRequest(BaseModel):
     )
 
 
+class GetRankingRequest(VendorCollectionRequest):
+    query: str | None = Field(
+        description="Query to get ranking for.", example="i want separate income mail view"
+    )
+    document_id: str | None = Field(
+        description="Document ID to get ranking for.",
+        example="5f9f2b0b4b6b4c0001b0b0b0",
+    )
+    k: int = Field(
+        description="Number of documents to return.",
+        example=3,
+    )
+
+    # check that only query or document_id is provided
+    @validator("query", "document_id", always=True)
+    def check_query_or_document_id(cls, v, values):
+        if v is None and values.get("document_id") is None:
+            raise ValueError("Either query or document_id must be provided.")
+        if v is not None and values.get("document_id") is not None:
+            raise ValueError("Only one of query or document_id must be provided.")
+        return v
+
+
+class GetRankingResponse(BaseModel):
+    ranking: List[Tuple[str, float]] = Field(
+        description="A list of tuples (document_id, score) sorted by score in descending order.",
+        example=[
+            ("5f9f2b0b4b6b4c0001b0b0b0", 0.9),
+            ("5f9f2b0b4b6b4c0001b0b0b1", 0.8),
+            ("5f9f2b0b4b6b4c0001b0b0b2", 0.7),
+        ],
+    )
+
+
 class VendorCollectionTokenRequest(VendorCollectionRequest):
     password: str = Field(description="This is for staff use")
 
