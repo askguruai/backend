@@ -143,10 +143,7 @@ class GetAnswerResponse(BaseModel):
 
 
 class ResponseSource(BaseModel):
-    type: str = Field(
-        description="Source type",
-        example="article"
-    )
+    type: str = Field(description="Source type", example="article")
 
 
 class ResponseSourceArticle(ResponseSource):
@@ -155,16 +152,12 @@ class ResponseSourceArticle(ResponseSource):
         example="Java Man",
     )
     link: str = Field(
-        description="Link to that source article",
-        example="https://en.wikipedia.org/wiki/Java_Man"
+        description="Link to that source article", example="https://en.wikipedia.org/wiki/Java_Man"
     )
 
 
 class ResponseSourceChat(ResponseSource):
-    chat_id: str = Field(
-        description="Chat internal id",
-        example="RSF0YV2NMB"
-    )
+    chat_id: str = Field(description="Chat internal id", example="RSF0YV2NMB")
 
 
 class GetAnswerCollectionResponse(BaseModel):
@@ -179,9 +172,13 @@ class GetAnswerCollectionResponse(BaseModel):
     source: List[ResponseSourceArticle | ResponseSourceChat] | None = Field(
         default=None,
         description="A list of pairs (title, url) with information about the source of the answer.",
-        example=[{"type": "article",
-                  "title": "Java Man",
-                  "link": "https://en.wikipedia.org/wiki/Java_Man"}],
+        example=[
+            {
+                "type": "article",
+                "title": "Java Man",
+                "link": "https://en.wikipedia.org/wiki/Java_Man",
+            }
+        ],
     )
 
 

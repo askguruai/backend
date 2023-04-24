@@ -47,8 +47,13 @@ class ChatsUploadHandler:
                         vendor=vendor,
                         collection=org_id,
                         subcollection="chats",
-                        data={"embedding": emb, "chunk": chunk,
-                              "source": ResponseSourceChat(type="chat", chat_id=meta_info["chat_id"])},
+                        data={
+                            "embedding": emb,
+                            "chunk": chunk,
+                            "source": ResponseSourceChat(
+                                type="chat", chat_id=meta_info["chat_id"]
+                            ),
+                        },
                     )
                     logging.info(f"Chat {meta_info['chat_id']} chunk {i} inserted in the database")
         return len(chats)

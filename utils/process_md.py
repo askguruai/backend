@@ -18,7 +18,9 @@ from utils.errors import CoreMLError
 from utils.ml_requests import get_embeddings
 
 
-def process_single_file(path, vendor, org_id, subcollection, parser: MarkdownParser, api_version: str):
+def process_single_file(
+    path, vendor, org_id, subcollection, parser: MarkdownParser, api_version: str
+):
     chunks, title = parser.process_file(path)
     try:
         embeddings = get_embeddings(chunks, api_version=api_version)
@@ -29,9 +31,9 @@ def process_single_file(path, vendor, org_id, subcollection, parser: MarkdownPar
     for i, pair in enumerate(zip(chunks, embeddings)):
         chunk, emb = pair
         text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-        document = DB[f"{api_version}.collections.{vendor}.{org_id}.articles_{subcollection}"].find_one(
-            {"_id": ObjectId(text_hash)}
-        )
+        document = DB[
+            f"{api_version}.collections.{vendor}.{org_id}.articles_{subcollection}"
+        ].find_one({"_id": ObjectId(text_hash)})
         if not document:
             document = {
                 "_id": ObjectId(text_hash),
@@ -40,7 +42,9 @@ def process_single_file(path, vendor, org_id, subcollection, parser: MarkdownPar
                 "chunk": chunk,
                 "embedding": Binary(pickle.dumps(emb)),
             }
-            DB[f"{api_version}.collections.{vendor}.{org_id}.articles_{subcollection}"].insert_one(document)
+            DB[f"{api_version}.collections.{vendor}.{org_id}.articles_{subcollection}"].insert_one(
+                document
+            )
             logging.info(f"Document {title} chunk {i} inserted in the database")
     return True
 

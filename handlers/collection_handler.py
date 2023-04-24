@@ -34,14 +34,19 @@ class CollectionHandler:
                     if subcollection.startswith("chats"):
                         self.collections[api_version][vendor][collection][subcollection][
                             "sources"
-                        ] = [ResponseSourceChat(type="chat", chat_id=chunk["doc_id"])
-                             for chunk in chunks_embeddings]
+                        ] = [
+                            ResponseSourceChat(type="chat", chat_id=chunk["doc_id"])
+                            for chunk in chunks_embeddings
+                        ]
                     elif subcollection.startswith("articles"):
                         self.collections[api_version][vendor][collection][subcollection][
                             "sources"
                         ] = [
-                            ResponseSourceArticle(type="article", title=chunk["doc_title"], link=chunk["link"])
-                            for chunk in chunks_embeddings]
+                            ResponseSourceArticle(
+                                type="article", title=chunk["doc_title"], link=chunk["link"]
+                            )
+                            for chunk in chunks_embeddings
+                        ]
 
         logs = CollectionHandler.get_dict_logs(self.collections)
         logging.info(logs)

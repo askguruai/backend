@@ -1,10 +1,11 @@
 import datetime
 import logging
+import traceback
 from functools import wraps
 from typing import List, Union
 
 from fastapi import HTTPException, Request, status
-import traceback
+
 from utils import CONFIG, DB
 
 
