@@ -41,6 +41,8 @@ from utils.schemas import (
     DocumentRequest,
     GetAnswerCollectionResponse,
     GetAnswerResponse,
+    GetRankingRequest,
+    GetRankingResponse,
     HTTPExceptionResponse,
     LinkRequest,
     SetReactionRequest,
@@ -102,6 +104,7 @@ async def docs_redirect():
 @app.post("/godmode_token")(get_org_collection_token)
 # fmt: on
 
+
 @app.post(
     "/{api_version}/get_answer/collection",
     response_model=GetAnswerCollectionResponse,
@@ -129,6 +132,35 @@ async def get_answer_collection_deprecated(
         subcollections=user_request.subcollections,
     )
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
+
+
+@app.post(
+    "/{api_version}/get_ranking",
+    response_model=GetRankingResponse,
+    responses={
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    },
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_ranking(
+    user_request: GetRankingRequest,
+    api_version: ApiVersion,
+    request: Request,
+):
+    response = collection_handler.get_ranking(user_request, api_version.value)
+    # request_id = log_get_answer(
+    #     answer=answer,
+    #     context=context,
+    #     document_ids=None,
+    #     query=user_request.query,
+    #     request=request,
+    #     api_version=api_version.value,
+    #     collection=user_request.organization_id,
+    #     subcollections=user_request.subcollections,
+    # )
+    return response
 
 
 @app.post(
