@@ -1,4 +1,4 @@
-class BasicError(BaseException):
+class BasicError(Exception):
     def __init__(self):
         self.message = "An error occured"
 

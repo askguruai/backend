@@ -32,10 +32,10 @@ def process_single_file(
         chunk = summary["raw"][:1024]
         short_description = document["hdctitle"]
     elif "problem" in summary and "solution" in summary:
-        chunk = f"Problem:  {summary['problem']}"
+        chunk = f"Problem:  {str(summary['problem'])}"
         if summary["solution"] is not None:
-            chunk += f"\nSolution:  {summary['solution']}"
-        short_description = summary["problem"]
+            chunk += f"\nSolution:  {str(summary['solution'])}"
+        short_description = str(summary["problem"])
     else:
         print(f"Ticket {document['idhdcall']} has malformed summary")
         return True
@@ -57,7 +57,7 @@ def process_single_file(
                 "_id": ObjectId(text_hash),
                 "doc_title": document['hdctitle'],
                 "link": f"https://vivantio.flex.vivantio.com/item/Ticket/{document['idhdcall']}",
-                "doc_id": document['idhdcall'],
+                "doc_id": str(document['idhdcall']),
                 "chunk": chunk,
                 "description": short_description,
                 "embedding": Binary(pickle.dumps(embedding)),
