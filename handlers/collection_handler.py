@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 
 from utils import DB, ml_requests
 from utils.schemas import CollectionRequest
+from utils.errors import SubcollectionDoesNotExist
 
 
 class CollectionHandler:
@@ -32,9 +33,17 @@ class CollectionHandler:
                         "embeddings"
                     ] = [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                     if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
-                        self.collections[api_version][vendor][collection][subcollection]["sources"] = [
-                            (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
-                        ]
+                        if "description" in chunks_embeddings[0]:
+                            self.collections[api_version][vendor][collection][subcollection]["sources"] = [
+                                [chunk["doc_title"], 
+                                chunk["link"],
+                                chunk["description"]] for chunk in chunks_embeddings
+                            ]
+                        else:
+                            self.collections[api_version][vendor][collection][subcollection]["sources"] = [
+                                [chunk["doc_title"], 
+                                chunk["link"]] for chunk in chunks_embeddings
+                            ]
 
 
         logs = CollectionHandler.get_dict_logs(self.collections)
@@ -67,7 +76,7 @@ class CollectionHandler:
         self,
         request: CollectionRequest,
         api_version: str,
-    ) -> Tuple[str, str, Tuple[str, str] | None]:
+    ) -> Tuple[str, str, List[str] | None]:
         query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
 
         api_version_embeds = api_version if api_version in self.embeddings_sizes else "v1"
@@ -84,6 +93,8 @@ class CollectionHandler:
             [],
         )
         for subcollection in subcollections:
+            if "chunks" not in self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection]:
+                raise SubcollectionDoesNotExist()
             chunks.extend(
                 self.collections[api_version_embeds][request.vendor][request.organization_id][
                     subcollection
@@ -118,7 +129,7 @@ class CollectionHandler:
 
         if sources:
             sources = [sources[i] for i in indices]
-            sources = list(dict.fromkeys(sources))
+            # sources = list(dict.fromkeys(sources))
 
         answer = ml_requests.get_answer(
             context, request.query, api_version, "support", chat=request.chat

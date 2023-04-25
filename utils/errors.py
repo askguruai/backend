@@ -19,3 +19,7 @@ class RequestDataModelMismatchError(BasicError):
 class CoreMLError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message
+
+class SubcollectionDoesNotExist(BasicError):
+    def __init__(self, message: str = "Requested collection does not exist!"):
+        self.message = message
