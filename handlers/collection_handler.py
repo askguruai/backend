@@ -113,7 +113,7 @@ class CollectionHandler:
                 )
 
         context, indices = self.get_context_from_chunks_embeddings(
-            chunks, embeddings, query_embedding
+            chunks, embeddings, query_embedding, return_top_k=request.n_top_ranking
         )
 
         if sources:
@@ -127,13 +127,17 @@ class CollectionHandler:
         return answer, context, sources
 
     def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray
+        self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray, return_top_k: int = None,
     ) -> tuple[str, np.ndarray]:
-        distances = np.dot(embeddings, query_embedding)
-        indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
-        context = "\n\n".join([chunks[i] for i in indices])
-        context = context[: self.chunk_size * self.top_k_chunks]
-        return context, indices
+        similarities = np.dot(embeddings, query_embedding)
+        take_top_k = self.top_k_chunks
+        if return_top_k is None:
+            return_top_k = take_top_k
+        slice = max(take_top_k, return_top_k)
+        indices = np.argsort(similarities)[-slice:][::-1]
+        context = "\n\n".join([chunks[i] for i in indices[take_top_k]])
+        context = context[: self.chunk_size * take_top_k]
+        return context, indices[return_top_k]
 
     @staticmethod
     def get_dict_logs(d, indent=0, logs='Collections structure:\n'):

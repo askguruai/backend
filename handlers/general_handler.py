@@ -60,8 +60,8 @@ class GeneralHandler:
         self, chunks: List[str], embeddings: List[List[float]], query: str, api_version: str
     ) -> tuple[str, np.ndarray]:
         query_embedding = ml_requests.get_embeddings(query, api_version)[0]
-        distances = [np.dot(embedding, query_embedding) for embedding in embeddings]
-        indices = np.argsort(distances)[-int(self.top_k_chunks) :][::-1]
+        similarities = [np.dot(embedding, query_embedding) for embedding in embeddings]
+        indices = np.argsort(similarities)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
         return context, indices
 

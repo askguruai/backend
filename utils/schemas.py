@@ -61,6 +61,11 @@ class CollectionRequest(VendorCollectionRequest):
             {"role": "user", "content": "Sure."},
         ],
     )
+    n_top_ranking: int | None = Field(
+        description="Number of most relevant sources to be returned",
+        default=3,
+        example=3
+    )
 
 
 class LivechatLoginRequest(BaseModel):
