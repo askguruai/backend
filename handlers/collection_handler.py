@@ -135,9 +135,9 @@ class CollectionHandler:
             return_top_k = take_top_k
         slice = max(take_top_k, return_top_k)
         indices = np.argsort(similarities)[-slice:][::-1]
-        context = "\n\n".join([chunks[i] for i in indices[take_top_k]])
+        context = "\n\n".join([chunks[i] for i in indices[:take_top_k]])
         context = context[: self.chunk_size * take_top_k]
-        return context, indices[return_top_k]
+        return context, indices[:return_top_k]
 
     @staticmethod
     def get_dict_logs(d, indent=0, logs='Collections structure:\n'):
