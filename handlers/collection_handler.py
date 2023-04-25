@@ -1,13 +1,13 @@
 import logging
 import pickle
 from collections import defaultdict
-from typing import Any, Dict, List, Tuple, Union
+from typing import List, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
 
 from utils import DB, ml_requests
-from utils.schemas import ApiVersion, CollectionRequest, ResponseSourceArticle, ResponseSourceChat
+from utils.schemas import CollectionRequest
 
 
 class CollectionHandler:
@@ -31,22 +31,11 @@ class CollectionHandler:
                     self.collections[api_version][vendor][collection][subcollection][
                         "embeddings"
                     ] = [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
-                    if subcollection.startswith("chats"):
-                        self.collections[api_version][vendor][collection][subcollection][
-                            "sources"
-                        ] = [
-                            ResponseSourceChat(type="chat", chat_id=chunk["doc_id"])
-                            for chunk in chunks_embeddings
+                    if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
+                        self.collections[api_version][vendor][collection][subcollection]["sources"] = [
+                            (chunk["doc_title"], chunk["link"]) for chunk in chunks_embeddings
                         ]
-                    elif subcollection.startswith("articles"):
-                        self.collections[api_version][vendor][collection][subcollection][
-                            "sources"
-                        ] = [
-                            ResponseSourceArticle(
-                                type="article", title=chunk["doc_title"], link=chunk["link"]
-                            )
-                            for chunk in chunks_embeddings
-                        ]
+
 
         logs = CollectionHandler.get_dict_logs(self.collections)
         logging.info(logs)
@@ -78,7 +67,7 @@ class CollectionHandler:
         self,
         request: CollectionRequest,
         api_version: str,
-    ) -> Tuple[str, str, List[ResponseSourceChat | ResponseSourceArticle] | None]:
+    ) -> Tuple[str, str, Tuple[str, str] | None]:
         query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
 
         api_version_embeds = api_version if api_version in self.embeddings_sizes else "v1"
@@ -129,35 +118,13 @@ class CollectionHandler:
 
         if sources:
             sources = [sources[i] for i in indices]
-            # sources = list(dict.fromkeys(sources))
+            sources = list(dict.fromkeys(sources))
 
         answer = ml_requests.get_answer(
             context, request.query, api_version, "support", chat=request.chat
         )
 
         return answer, context, sources
-
-    def update(
-        self, api_version: str, vendor: str, collection: str, subcollection: str, data: dict
-    ):
-        if subcollection not in self.collections[api_version][vendor][collection]:
-            self.collections[api_version][vendor][collection][subcollection]["chunks"] = []
-            self.collections[api_version][vendor][collection][subcollection]["embeddings"] = []
-            self.collections[api_version][vendor][collection][subcollection]["sources"] = []
-        if not ("embedding" in data and "chunk" in data):
-            logging.error("Local collection update data malformed")
-        embedding = np.array(data["embedding"]).reshape((self.embeddings_sizes[api_version],))
-
-        self.collections[api_version][vendor][collection][subcollection]["embeddings"].append(
-            embedding
-        )
-        self.collections[api_version][vendor][collection][subcollection]["chunks"].append(
-            data["chunk"]
-        )
-        if "source" in data:
-            self.collections[api_version][vendor][collection][subcollection]["sources"].append(
-                data["source"]
-            )
 
     def get_context_from_chunks_embeddings(
         self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray

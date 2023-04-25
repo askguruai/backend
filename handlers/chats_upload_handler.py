@@ -1,21 +1,15 @@
 import hashlib
 import logging
-import os.path as osp
 import pickle
-import random
-import shutil
-import tempfile
 from typing import List
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from fastapi import File, UploadFile
 
 from handlers.collection_handler import CollectionHandler
 from parsers import ChatParser
-from utils import CONFIG, DB, ml_requests
+from utils import DB
 from utils.ml_requests import get_embeddings
-from utils.schemas import ResponseSourceChat
 
 
 class ChatsUploadHandler:
@@ -42,18 +36,5 @@ class ChatsUploadHandler:
                         "embedding": Binary(pickle.dumps(emb)),
                     }
                     DB[f"{api_version}.collections.{vendor}.{org_id}.chats"].insert_one(document)
-                    self.collection_handler.update(
-                        api_version=api_version,
-                        vendor=vendor,
-                        collection=org_id,
-                        subcollection="chats",
-                        data={
-                            "embedding": emb,
-                            "chunk": chunk,
-                            "source": ResponseSourceChat(
-                                type="chat", chat_id=meta_info["chat_id"]
-                            ),
-                        },
-                    )
                     logging.info(f"Chat {meta_info['chat_id']} chunk {i} inserted in the database")
         return len(chats)
