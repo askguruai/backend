@@ -153,7 +153,12 @@ class CollectionHandler:
             sources = [sources[i] for i in indices]
             # sources = list(dict.fromkeys(sources))
 
-        answer = ml_requests.get_answer(context, query, api_version, "support", chat=request.chat)
+        if request.organization_id == "vivantio" and request.subcollections == ["tickets"]:
+            answer = ""
+        else:
+            answer = ml_requests.get_answer(
+                context, query, api_version, "support", chat=request.chat
+            )
 
         return answer, context, sources
 
