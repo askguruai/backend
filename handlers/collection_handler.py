@@ -199,5 +199,5 @@ class CollectionHandler:
                 logs += '  ' * indent + f"{key}: \n"
                 logs = CollectionHandler.get_dict_logs(value, indent + 1, logs)
             else:
-                logs += '  ' * indent + f"{key}\n"
+                logs += '  ' * indent + f"{key}: {len(value)}\n"
         return logs
