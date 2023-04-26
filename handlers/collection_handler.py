@@ -96,7 +96,11 @@ class CollectionHandler:
             else self.get_query_from_id(
                 doc_id=request.document_id,
                 org_id=request.organization_id,
-                subcollections=subcollections,
+                subcollections=["tickets"]
+                if request.organization_id == "vivantio"
+                and request.subcollections == ["internal"]
+                and request.document_id
+                else subcollections,
                 api_ver=api_version_embeds,
                 vendor=request.vendor,
             )
