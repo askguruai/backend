@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, root_validator
 
 
 class ApiVersion(str, Enum):
@@ -69,6 +69,13 @@ class CollectionRequest(VendorCollectionRequest):
     n_top_ranking: int | None = Field(
         description="Number of most relevant sources to be returned", default=3, example=3
     )
+
+    # check that only query or document_id is provided
+    @root_validator
+    def check_query_or_document_id(cls, values):
+        if not (bool(values.get("query")) ^ bool(values.get("document_id"))):
+            raise ValueError("Provide either query or document_id")
+        return values
 
 
 class LivechatLoginRequest(BaseModel):

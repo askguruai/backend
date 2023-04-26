@@ -90,24 +90,17 @@ class CollectionHandler:
             else self.collections[api_version_embeds][request.organization_id].keys()
         )
 
-        if request.query is not None:
-            if request.document_id is not None:
-                raise RequestDataModelMismatchError(
-                    "Should present only `query` or `document_id`, not both"
-                )
-            query = request.query
-        else:
-            if request.document_id is None:
-                raise RequestDataModelMismatchError(
-                    "Either `query` or `document_id` should be present"
-                )
-            query = self.get_query_from_id(
+        query = (
+            request.query
+            if request.query
+            else self.get_query_from_id(
                 doc_id=request.document_id,
                 org_id=request.organization_id,
                 subcollections=subcollections,
                 api_ver=api_version_embeds,
                 vendor=request.vendor,
             )
+        )
 
         query_embedding = ml_requests.get_embeddings(query, api_version)[0]
 
