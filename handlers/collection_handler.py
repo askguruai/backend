@@ -7,8 +7,12 @@ import numpy as np
 from numpy.typing import NDArray
 
 from utils import DB, ml_requests
+from utils.errors import (
+    InvalidDocumentIdError,
+    RequestDataModelMismatchError,
+    SubcollectionDoesNotExist,
+)
 from utils.schemas import CollectionRequest
-from utils.errors import SubcollectionDoesNotExist, InvalidDocumentIdError, RequestDataModelMismatchError
 
 
 class CollectionHandler:
@@ -34,17 +38,18 @@ class CollectionHandler:
                     ] = [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
                     if "doc_title" in chunks_embeddings[0] and "link" in chunks_embeddings[0]:
                         if "description" in chunks_embeddings[0]:
-                            self.collections[api_version][vendor][collection][subcollection]["sources"] = [
-                                [chunk["doc_title"], 
-                                chunk["link"],
-                                chunk["description"]] for chunk in chunks_embeddings
+                            self.collections[api_version][vendor][collection][subcollection][
+                                "sources"
+                            ] = [
+                                [chunk["doc_title"], chunk["link"], chunk["description"]]
+                                for chunk in chunks_embeddings
                             ]
                         else:
-                            self.collections[api_version][vendor][collection][subcollection]["sources"] = [
-                                [chunk["doc_title"], 
-                                chunk["link"]] for chunk in chunks_embeddings
+                            self.collections[api_version][vendor][collection][subcollection][
+                                "sources"
+                            ] = [
+                                [chunk["doc_title"], chunk["link"]] for chunk in chunks_embeddings
                             ]
-
 
         logs = CollectionHandler.get_dict_logs(self.collections)
         logging.info(logs)
@@ -85,20 +90,25 @@ class CollectionHandler:
             else self.collections[api_version_embeds][request.organization_id].keys()
         )
 
-
         if request.query is not None:
             if request.document_id is not None:
-                raise RequestDataModelMismatchError("Should present only `query` or `document_id`, not both")
+                raise RequestDataModelMismatchError(
+                    "Should present only `query` or `document_id`, not both"
+                )
             query = request.query
         else:
             if request.document_id is None:
-                raise RequestDataModelMismatchError("Either `query` or `document_id` should be present")
-            query = self.get_query_from_id(doc_id=request.document_id, org_id=request.organization_id, 
-                                           subcollections=subcollections, api_ver=api_version_embeds,
-                                           vendor=request.vendor)
-            
-        
-        
+                raise RequestDataModelMismatchError(
+                    "Either `query` or `document_id` should be present"
+                )
+            query = self.get_query_from_id(
+                doc_id=request.document_id,
+                org_id=request.organization_id,
+                subcollections=subcollections,
+                api_ver=api_version_embeds,
+                vendor=request.vendor,
+            )
+
         query_embedding = ml_requests.get_embeddings(query, api_version)[0]
 
         chunks, embeddings, sources = (
@@ -107,7 +117,12 @@ class CollectionHandler:
             [],
         )
         for subcollection in subcollections:
-            if "chunks" not in self.collections[api_version_embeds][request.vendor][request.organization_id][subcollection]:
+            if (
+                "chunks"
+                not in self.collections[api_version_embeds][request.vendor][
+                    request.organization_id
+                ][subcollection]
+            ):
                 raise SubcollectionDoesNotExist()
             chunks.extend(
                 self.collections[api_version_embeds][request.vendor][request.organization_id][
@@ -145,19 +160,18 @@ class CollectionHandler:
             sources = [sources[i] for i in indices]
             # sources = list(dict.fromkeys(sources))
 
-        answer = ml_requests.get_answer(
-            context, query, api_version, "support", chat=request.chat
-        )
+        answer = ml_requests.get_answer(context, query, api_version, "support", chat=request.chat)
 
         return answer, context, sources
-    
-    def get_query_from_id(self, doc_id: str, org_id:str, 
-                          subcollections: List[str], api_ver: str,
-                          vendor: str) -> str:
+
+    def get_query_from_id(
+        self, doc_id: str, org_id: str, subcollections: List[str], api_ver: str, vendor: str
+    ) -> str:
         document = None
         for sub in subcollections:
             document = DB[f"{api_ver}.collections.{vendor}.{org_id}.{sub}"].find_one(
-                {"doc_id": doc_id})
+                {"doc_id": doc_id}
+            )
             if document is not None:
                 print("Document found!")
                 chunk = document["chunk"]
@@ -169,7 +183,11 @@ class CollectionHandler:
         raise InvalidDocumentIdError(f"Requested document with id {doc_id} was not found")
 
     def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray, return_top_k: int = None,
+        self,
+        chunks: List[str],
+        embeddings: NDArray,
+        query_embedding: np.ndarray,
+        return_top_k: int = None,
     ) -> tuple[str, np.ndarray]:
         similarities = np.dot(embeddings, query_embedding)
         take_top_k = self.top_k_chunks

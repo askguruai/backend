@@ -19,11 +19,7 @@ from utils.errors import CoreMLError
 from utils.ml_requests import get_embeddings
 
 
-def process_single_file(
-    document: dict, collection: str, api_version: str
-) -> bool:
-
-
+def process_single_file(document: dict, collection: str, api_version: str) -> bool:
     if "summary" not in document:
         # nothing to do
         return True
@@ -54,14 +50,14 @@ def process_single_file(
             print("Failed")
             return False
         db_document = {
-                "_id": ObjectId(text_hash),
-                "doc_title": document['hdctitle'],
-                "link": f"https://vivantio.flex.vivantio.com/item/Ticket/{document['idhdcall']}",
-                "doc_id": str(document['idhdcall']),
-                "chunk": chunk,
-                "description": short_description,
-                "embedding": Binary(pickle.dumps(embedding)),
-            }
+            "_id": ObjectId(text_hash),
+            "doc_title": document['hdctitle'],
+            "link": f"https://vivantio.flex.vivantio.com/item/Ticket/{document['idhdcall']}",
+            "doc_id": str(document['idhdcall']),
+            "chunk": chunk,
+            "description": short_description,
+            "embedding": Binary(pickle.dumps(embedding)),
+        }
         DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].insert_one(db_document)
         logging.info(f"Document {document['hdctitle']} inserted in the database")
     return True

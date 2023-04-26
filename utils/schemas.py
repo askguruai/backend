@@ -47,8 +47,12 @@ class VendorCollectionTokenRequest(VendorCollectionRequest):
 
 
 class CollectionRequest(VendorCollectionRequest):
-    query: str | None = Field(description="Query to generate answer for.", example="What is your name?", default=None)
-    document_id: str | None = Field(description="Doc id. Use only if you know what this is.", default=None)
+    query: str | None = Field(
+        description="Query to generate answer for.", example="What is your name?", default=None
+    )
+    document_id: str | None = Field(
+        description="Doc id. Use only if you know what this is.", default=None
+    )
     subcollections: List[str] | None = Field(
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
         example=["chatbot", "livechat"],
@@ -63,9 +67,7 @@ class CollectionRequest(VendorCollectionRequest):
         ],
     )
     n_top_ranking: int | None = Field(
-        description="Number of most relevant sources to be returned",
-        default=3,
-        example=3
+        description="Number of most relevant sources to be returned", default=3, example=3
     )
 
 
