@@ -34,6 +34,7 @@ async def get_embeddings(chunks: List[str] | str, api_version: str) -> List[np.n
         embeddings = [np.array(emb) for emb in response_json["data"]]
         return embeddings
 
+
 async def get_answer(
     context: str,
     query: str,
