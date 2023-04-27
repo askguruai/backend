@@ -1,5 +1,6 @@
 import datetime
 import logging
+import traceback
 from functools import wraps
 from typing import List, Union
 
@@ -45,6 +46,7 @@ def catch_errors(func):
             if type(e) == HTTPException:
                 raise e
             logging.error(f"{e.__class__.__name__}: {e}")
+            traceback.print_exc()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"{e.__class__.__name__}: {e}",

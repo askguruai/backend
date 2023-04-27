@@ -5,6 +5,7 @@ from typing import List, Union
 import bson
 import requests
 import uvicorn
+from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import (
     Depends,
@@ -21,12 +22,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
-from parsers import DocumentParser, LinkParser, TextParser
+from handlers import (
+    ChatsUploadHandler,
+    CollectionHandler,
+    DocumentHandler,
+    LinkHandler,
+    PDFUploadHandler,
+    TextHandler,
+)
+from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import login, validate_auth
+from utils.auth import get_org_collection_token, login, login_livechat, validate_auth_org_scope
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.ml_requests import client_session_wrapper
 from utils.schemas import (
     ApiVersion,
     Collection,
@@ -38,6 +47,8 @@ from utils.schemas import (
     LinkRequest,
     SetReactionRequest,
     TextRequest,
+    UploadChatsRequest,
+    UploadChatsResponse,
     UploadDocumentResponse,
 )
 from utils.uvicorn_logging import run_uvicorn_loguru
@@ -54,8 +65,9 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler
+async def init_handlers():
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, client_session_wrapper
+    client_session_wrapper.session = ClientSession(CONFIG['coreml']['route'])
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
@@ -76,6 +88,10 @@ def init_handlers():
     pdf_upload_handler = PDFUploadHandler(
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
     )
+    chats_upload_handler = ChatsUploadHandler(
+        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+        collections_handler=collection_handler,
+    )
 
 
 @app.get("/", include_in_schema=False)
@@ -85,6 +101,8 @@ async def docs_redirect():
 
 # fmt: off
 @app.post("/token")(login)
+@app.post("/token_livechat")(login_livechat)
+@app.post("/godmode_token")(get_org_collection_token)
 # fmt: on
 
 @app.post(
@@ -94,24 +112,25 @@ async def docs_redirect():
         status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
         status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
     },
-    dependencies=[Depends(validate_auth)],
+    dependencies=[Depends(validate_auth_org_scope)],
 )
 @catch_errors
-async def get_answer_collection(
-    collection_request: CollectionRequest,
+async def get_answer_collection_deprecated(
+    user_request: CollectionRequest,
     api_version: ApiVersion,
     request: Request,
 ):
-    answer, context, source = collection_handler.get_answer(collection_request, api_version.value)
+    logging.info("/get_answer/collection")
+    answer, context, source = (await collection_handler.get_answer(user_request, api_version.value))
     request_id = log_get_answer(
         answer=answer,
         context=context,
         document_ids=None,
-        query=collection_request.query,
+        query=user_request.query,
         request=request,
         api_version=api_version.value,
-        collection=collection_request.collection.value,
-        subcollections=collection_request.subcollections,
+        collection=user_request.organization_id,
+        subcollections=user_request.subcollections,
     )
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
 
@@ -176,6 +195,23 @@ async def get_answer_document(
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
     document_id = pdf_upload_handler.process_file(file, api_version.value)
     return UploadDocumentResponse(document_id=document_id)
+
+
+@app.post(
+    "/{api_version}/upload/chats/",
+    response_model=UploadChatsResponse,
+    responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+               status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    },
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
+    processed_chats = chats_upload_handler.handle_request(chats=user_request.chats,
+                                                          vendor=user_request.vendor,
+                                                          org_id=user_request.organization_id,
+                                                          api_version=api_version.value)
+    return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
 
 
 @app.post(
