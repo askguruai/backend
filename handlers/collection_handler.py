@@ -157,7 +157,10 @@ class CollectionHandler:
             sources = [sources[i] for i in indices]
             # sources = list(dict.fromkeys(sources))
 
-        if request.organization_id == "vivantio" and request.subcollections == ["tickets"]:
+        if request.organization_id == "vivantio" and (
+            request.subcollections == ["tickets"]
+            or (request.subcollections == ["internal"] and request.n_top_ranking != 0)
+        ):
             answer = ""
         else:
             answer = (
