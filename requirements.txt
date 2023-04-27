@@ -14,3 +14,4 @@ openpyxl
 marko
 tqdm
 python-jose[cryptography]
+aiohttp[speedups]

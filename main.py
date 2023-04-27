@@ -5,6 +5,7 @@ from typing import List, Union
 import bson
 import requests
 import uvicorn
+from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import (
     Depends,
@@ -34,6 +35,7 @@ from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
 from utils.auth import get_org_collection_token, login, login_livechat, validate_auth_org_scope
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.ml_requests import client_session_wrapper
 from utils.schemas import (
     ApiVersion,
     Collection,
@@ -63,8 +65,9 @@ app.add_middleware(
 
 
 @app.on_event("startup")
-def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler
+async def init_handlers():
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, client_session_wrapper
+    client_session_wrapper.session = ClientSession(CONFIG['coreml']['route'])
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
@@ -117,7 +120,8 @@ async def get_answer_collection_deprecated(
     api_version: ApiVersion,
     request: Request,
 ):
-    answer, context, source = collection_handler.get_answer(user_request, api_version.value)
+    logging.info("/get_answer/collection")
+    answer, context, source = (await collection_handler.get_answer(user_request, api_version.value))
     request_id = log_get_answer(
         answer=answer,
         context=context,

@@ -77,7 +77,7 @@ class CollectionHandler:
         #     ]
         # logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
 
-    def get_answer(
+    async def get_answer(
         self,
         request: CollectionRequest,
         api_version: str,
@@ -106,7 +106,7 @@ class CollectionHandler:
             )
         )
 
-        query_embedding = ml_requests.get_embeddings(query, api_version)[0]
+        query_embedding = (await ml_requests.get_embeddings(query, api_version))[0]
 
         chunks, embeddings, sources = (
             [],
@@ -160,9 +160,11 @@ class CollectionHandler:
         if request.organization_id == "vivantio" and request.subcollections == ["tickets"]:
             answer = ""
         else:
-            answer = ml_requests.get_answer(
-                context, query, api_version, "support", chat=request.chat
-            )
+            answer = (
+                await ml_requests.get_answer(
+                    context, query, api_version, "support", chat=request.chat
+                )
+            )["data"]
 
         return answer, context, sources
 
