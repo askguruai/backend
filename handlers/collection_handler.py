@@ -96,7 +96,9 @@ class CollectionHandler:
             else self.get_query_from_id(
                 doc_id=request.document_id,
                 org_id=request.organization_id,
-                subcollections=["tickets"]
+                subcollections=[
+                    "tickets"
+                ]  # TODO remove this when we have proper solution for vivantio
                 if request.organization_id == "vivantio"
                 and request.subcollections == ["internal"]
                 and request.document_id
@@ -157,6 +159,7 @@ class CollectionHandler:
             sources = [sources[i] for i in indices]
             # sources = list(dict.fromkeys(sources))
 
+        # TODO remove this when we have proper solution for vivantio
         if request.organization_id == "vivantio" and (
             request.subcollections == ["tickets"]
             or (request.subcollections == ["internal"] and request.n_top_ranking != 0)
