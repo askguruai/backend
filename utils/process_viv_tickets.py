@@ -5,6 +5,9 @@ import openai
 from tqdm import tqdm
 from openai.error import OpenAIError
 import time
+import os
+# os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "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"
 
 PROMPT = "Following is an email conversation with support. Extract the problem description from the conversation" \
          "as verbose as possible, cite where necessary. If the solution is present, extract it in the same way. " \
@@ -14,6 +17,8 @@ PROMPT = "Following is an email conversation with support. Extract the problem d
 to_prompt = lambda text: f"{PROMPT}\n{text}"
 def retrieve_summary(ticket: dict):
     text_data = ticket["hdcDescription"]
+    if text_data is None:
+        return {"raw": ""}
     # meta = {
     #     "lineage": ticket["hdcatLineage"],
     #     "ticket_id": ticket["idhdcall"],
@@ -55,7 +60,7 @@ if __name__ == '__main__':
     with open(args.source, "rt") as f:
         data = json.load(f)
 
-    for i, ticket in tqdm(enumerate(data)):
+    for i, ticket in tqdm(enumerate(data[20000:])):
         if "summary" in ticket:
             continue
         summary = retrieve_summary(ticket)
