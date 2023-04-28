@@ -8,151 +8,42 @@ from numpy.typing import NDArray
 
 from utils import DB, ml_requests
 from utils.schemas import ApiVersion, CollectionRequest, ResponseSourceArticle, ResponseSourceChat
+from milvus_db.utils import get_collection, search_collections_set
+from pymilvus import Collection
+import hashlib
 
 
 class CollectionHandler:
-    def __init__(self, collections_prefix: str, top_k_chunks: int, chunk_size: int):
+    def __init__(self, top_k_chunks: int, chunk_size: int):
         self.top_k_chunks = top_k_chunks
         self.chunk_size = chunk_size
 
-        self.collections = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
-        )
-
-        for name in DB.list_collection_names():
-            if collections_prefix in name:
-                structure = name.split(".")
-                if len(structure) == 5:
-                    api_version, _, vendor, collection, subcollection = name.split(".")
-                    chunks_embeddings = list(DB[name].find({}))
-                    self.collections[api_version][vendor][collection][subcollection]["chunks"] = [
-                        chunk["chunk"] for chunk in chunks_embeddings
-                    ]
-                    self.collections[api_version][vendor][collection][subcollection][
-                        "embeddings"
-                    ] = [pickle.loads(chunk["embedding"]) for chunk in chunks_embeddings]
-                    if subcollection.startswith("chats"):
-                        self.collections[api_version][vendor][collection][subcollection][
-                            "sources"
-                        ] = [ResponseSourceChat(type="chat", chat_id=chunk["doc_id"])
-                             for chunk in chunks_embeddings]
-                    elif subcollection.startswith("articles"):
-                        self.collections[api_version][vendor][collection][subcollection][
-                            "sources"
-                        ] = [
-                            ResponseSourceArticle(type="article", title=chunk["doc_title"], link=chunk["link"])
-                            for chunk in chunks_embeddings]
-
-        logs = CollectionHandler.get_dict_logs(self.collections)
-        logging.info(logs)
-
-        self.embeddings_sizes = {'v1': 1536, 'v2': 768}  # idk maybe make it proper way later
-        # this ugly piece of crap just loads random
-        # embedding for each api version and remembers
-        # its size
-        # for api_version in self.collections:
-        #     self.embeddings_sizes[api_version] = self.collections[api_version].values().
-        #
-        #
-        #     self.embeddings_sizes[api_version] = self.collections[api_version][
-        #         list(self.collections[api_version].keys())[0]
-        #     ][
-        #         list(
-        #             self.collections[api_version][
-        #                 list(self.collections[api_version].keys())[0]
-        #             ].keys()
-        #         )[0]
-        #     ][
-        #         "embeddings"
-        #     ].shape[
-        #         1
-        #     ]
-        # logging.info(f"Embedding sizes:\n{self.embeddings_sizes}")
+        
 
     def get_answer(
         self,
         request: CollectionRequest,
         api_version: str,
-    ) -> Tuple[str, str, List[ResponseSourceChat | ResponseSourceArticle] | None]:
+    ) -> Tuple[str, str, List[str] | None]:
         query_embedding = ml_requests.get_embeddings(request.query, api_version)[0]
 
-        api_version_embeds = api_version if api_version in self.embeddings_sizes else "v1"
+        subcollections = request.subcollections
+        vendor = request.vendor
+        org_id = request.organization_id
+        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[:24]
 
-        subcollections = (
-            request.subcollections
-            if request.subcollections
-            else self.collections[api_version_embeds][request.organization_id].keys()
-        )
+        search_collections = [
+            get_collection(f"{vendor}_{org_hash}_{subcollection}") for subcollection in subcollections
+        ]
 
-        chunks, embeddings, sources = (
-            [],
-            np.array([]).reshape(0, self.embeddings_sizes[api_version_embeds]),
-            [],
-        )
-        for subcollection in subcollections:
-            chunks.extend(
-                self.collections[api_version_embeds][request.vendor][request.organization_id][
-                    subcollection
-                ]["chunks"]
-            )
-            embeddings = np.concatenate(
-                (
-                    embeddings,
-                    np.array(
-                        self.collections[api_version_embeds][request.vendor][
-                            request.organization_id
-                        ][subcollection]["embeddings"]
-                    ),
-                ),
-                axis=0,
-            )
-            if (
-                "sources"
-                in self.collections[api_version_embeds][request.vendor][request.organization_id][
-                    subcollection
-                ]
-            ):
-                sources.extend(
-                    self.collections[api_version_embeds][request.vendor][request.organization_id][
-                        subcollection
-                    ]["sources"]
-                )
-
-        context, indices = self.get_context_from_chunks_embeddings(
-            chunks, embeddings, query_embedding
-        )
-
-        if sources:
-            sources = [sources[i] for i in indices]
-            # sources = list(dict.fromkeys(sources))
+        chunks, titles = search_collections_set(search_collections, query_embedding, self.top_k_chunks, api_version)
+        context = "\n\n".join(chunks)
 
         answer = ml_requests.get_answer(
             context, request.query, api_version, "support", chat=request.chat
         )
 
-        return answer, context, sources
-
-    def update(
-        self, api_version: str, vendor: str, collection: str, subcollection: str, data: dict
-    ):
-        if subcollection not in self.collections[api_version][vendor][collection]:
-            self.collections[api_version][vendor][collection][subcollection]["chunks"] = []
-            self.collections[api_version][vendor][collection][subcollection]["embeddings"] = []
-            self.collections[api_version][vendor][collection][subcollection]["sources"] = []
-        if not ("embedding" in data and "chunk" in data):
-            logging.error("Local collection update data malformed")
-        embedding = np.array(data["embedding"]).reshape((self.embeddings_sizes[api_version],))
-
-        self.collections[api_version][vendor][collection][subcollection]["embeddings"].append(
-            embedding
-        )
-        self.collections[api_version][vendor][collection][subcollection]["chunks"].append(
-            data["chunk"]
-        )
-        if "source" in data:
-            self.collections[api_version][vendor][collection][subcollection]["sources"].append(
-                data["source"]
-            )
+        return answer, context, titles 
 
     def get_context_from_chunks_embeddings(
         self, chunks: List[str], embeddings: NDArray, query_embedding: np.ndarray

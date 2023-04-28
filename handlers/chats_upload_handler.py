@@ -16,39 +16,61 @@ from parsers import ChatParser
 from utils import CONFIG, DB, ml_requests
 from utils.ml_requests import get_embeddings
 from utils.schemas import ResponseSourceChat
+from milvus_db.utils import get_or_create_collection
 
 
 class ChatsUploadHandler:
-    def __init__(self, parser: ChatParser, collections_handler: CollectionHandler):
+    def __init__(self, parser: ChatParser):
         self.parser = parser
-        self.collection_handler = collections_handler
+
 
     def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
+        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[:24]
+        collection = get_or_create_collection(f"{vendor}_{org_hash}_chats")
+
+        all_chunks = []
+        all_hash_ids = []
+        all_doc_ids = []
+        all_doc_titles = []
+
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
-            embeddings = get_embeddings(chunks, api_version=api_version)
-            for i, pair in enumerate(zip(chunks, embeddings)):
-                chunk, emb = pair
+            new_chunks = []
+            id_hashes = []
+            for chunk in chunks:
                 text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-                document = DB[f"{api_version}.collections.{vendor}.{org_id}.chats"].find_one(
-                    {"_id": ObjectId(text_hash)}
+                res = collection.query(
+                    expr=f"hash_id==\"{text_hash}\"",
+                    offset=0,
+                    limit=1,
+                    output_fields=["hash_id"],
+                    consistency_level="Strong"
                 )
-                if not document:
-                    document = {
-                        "_id": ObjectId(text_hash),
-                        # "link": f"https://help.groovehq.com/help/{meta_info['slug']}",
-                        "doc_id": meta_info["chat_id"],
-                        "chunk": chunk,
-                        "embedding": Binary(pickle.dumps(emb)),
-                    }
-                    DB[f"{api_version}.collections.{vendor}.{org_id}.chats"].insert_one(document)
-                    self.collection_handler.update(
-                        api_version=api_version,
-                        vendor=vendor,
-                        collection=org_id,
-                        subcollection="chats",
-                        data={"embedding": emb, "chunk": chunk,
-                              "source": ResponseSourceChat(type="chat", chat_id=meta_info["chat_id"])},
-                    )
-                    logging.info(f"Chat {meta_info['chat_id']} chunk {i} inserted in the database")
+                if len(res) == 0:
+                    # there is no such document yet, inserting
+                    id_hashes.append(text_hash)
+                    new_chunks.append(chunk)
+            if len(new_chunks) == 0:
+                # everyting is already in the database
+                continue
+
+            # embeddings = get_embeddings(new_chunks, api_version=api_version)
+
+            # all_embeddings.extend(embeddings)
+            all_chunks.extend(new_chunks)
+            all_doc_ids.extend([meta_info["chat_id"]] * len(new_chunks))
+            all_doc_titles.extend([meta_info["chat_title"]] * len(new_chunks))
+            all_hash_ids.extend(id_hashes)
+        if len(all_chunks) != 0:
+            all_embeddings = get_embeddings(all_chunks, api_version=api_version)
+            data = [
+                all_hash_ids,
+                all_doc_ids,
+                all_chunks,
+                all_embeddings,
+                all_doc_titles
+            ]
+            collection.insert(data)
+            logging.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
+        
         return len(chats)

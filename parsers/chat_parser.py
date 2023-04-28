@@ -6,7 +6,10 @@ class ChatParser:
         self.chunk_size = chunk_size
 
     def process_document(self, chat: dict) -> Tuple[List[str], dict]:
-        meta = {"chat_id": chat["id"]}
+        meta = {
+                "chat_id": chat["id"], 
+                "chat_title": f"{chat['user']['name']}::{chat['user']['id']}"
+            }
         history = chat["history"]
         text = [f"{line['role']}: {line['content']}" for line in history]
         return self.to_chunks(text), meta

@@ -92,4 +92,4 @@ if __name__ == '__main__':
                     milvus_collection=m_collection
                 )
     # todo: takes long -- investigate!
-    m_utility.flush_all()
+    # m_utility.flush_all()

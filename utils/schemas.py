@@ -176,9 +176,10 @@ class GetAnswerCollectionResponse(BaseModel):
         description="A request id which is used to /set_reaction.",
         example="63cbd74e8d31a62a1512eab1",
     )
-    source: List[ResponseSourceArticle | ResponseSourceChat] | None = Field(
+    source: List[str] | None = Field(
         default=None,
         description="A list of pairs (title, url) with information about the source of the answer.",
+        # todo
         example=[{"type": "article",
                   "title": "Java Man",
                   "link": "https://en.wikipedia.org/wiki/Java_Man"}],

@@ -32,7 +32,7 @@ from handlers import (
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import get_org_collection_token, login, login_livechat, validate_auth_org_scope
+from utils.auth import get_org_collection_token, login, login_livechat, validate_auth_org_scope, validate_auth_default
 from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
 from utils.schemas import (
     ApiVersion,
@@ -78,7 +78,6 @@ def init_handlers():
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
     )
     collection_handler = CollectionHandler(
-        collections_prefix=CONFIG["mongo"]["collections_prefix"],
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
         chunk_size=int(CONFIG["handlers"]["chunk_size"]),
     )
@@ -86,8 +85,7 @@ def init_handlers():
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
     )
     chats_upload_handler = ChatsUploadHandler(
-        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-        collections_handler=collection_handler,
+        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"]))
     )
 
 

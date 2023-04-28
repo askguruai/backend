@@ -19,3 +19,8 @@ class RequestDataModelMismatchError(BasicError):
 class CoreMLError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message
+
+
+class DatabaseError(BasicError):
+    def __init__(self, message: str = ""):
+        self.message = message
