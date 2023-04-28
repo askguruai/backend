@@ -13,10 +13,8 @@ from fastapi import File, UploadFile
 
 from handlers.collection_handler import CollectionHandler
 from parsers import ChatParser
-from utils import CONFIG, DB, ml_requests
+from utils import CONFIG, DB, ml_requests, MILVUS_DB
 from utils import ml_requests
-from utils.schemas import ResponseSourceChat
-from milvus_db.utils import get_or_create_collection
 
 
 class ChatsUploadHandler:
@@ -26,7 +24,7 @@ class ChatsUploadHandler:
 
     def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
         org_hash = hashlib.sha256(org_id.encode()).hexdigest()[:int(CONFIG["misc"]["hash_size"])]
-        collection = get_or_create_collection(f"{vendor}_{org_hash}_chats")
+        collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_chats")
 
         all_chunks = []
         all_chunk_hashes = []

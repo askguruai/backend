@@ -6,10 +6,8 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from utils import DB, ml_requests
+from utils import DB, ml_requests, MILVUS_DB
 from utils.schemas import ApiVersion, CollectionRequest, ResponseSourceArticle, ResponseSourceChat
-from milvus_db.utils import get_collection, search_collections_set
-from pymilvus import Collection
 import hashlib
 
 
@@ -30,13 +28,13 @@ class CollectionHandler:
         subcollections = request.subcollections
         vendor = request.vendor
         org_id = request.organization_id
-        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[:24]
+        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[:int(CONFIG["misc"]["hash_size"])]
 
         search_collections = [
-            get_collection(f"{vendor}_{org_hash}_{subcollection}") for subcollection in subcollections
+            MILVUS_DB[f"{vendor}_{org_hash}_{subcollection}"] for subcollection in subcollections
         ]
 
-        chunks, titles = search_collections_set(search_collections, query_embedding, self.top_k_chunks, api_version)
+        chunks, titles = MILVUS_DB.search_collections_set(search_collections, query_embedding, self.top_k_chunks, api_version)
         context = "\n\n".join(chunks)
 
         answer = ml_requests.get_answer(
