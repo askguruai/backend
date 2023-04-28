@@ -48,7 +48,7 @@ def get_or_create_collection(collection_name: str) -> Collection:
     else:
         # todo: document_id
         fields = [
-            FieldSchema(name="hash_id", dtype=DataType.VARCHAR, is_primary=True, auto_id=False, max_length=24),
+            FieldSchema(name="chunk_hash", dtype=DataType.VARCHAR, is_primary=True, auto_id=False, max_length=24),
             FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=3000),
             FieldSchema(name="chunk", dtype=DataType.VARCHAR, max_length=3000),
             FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),

@@ -205,7 +205,7 @@ async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest
                                                           vendor=user_request.vendor,
                                                           org_id=user_request.organization_id,
                                                           api_version=api_version.value)
-    return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
+    return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))
 
 
 @app.post(

@@ -193,8 +193,8 @@ class UploadDocumentResponse(BaseModel):
 
 
 class UploadChatsResponse(BaseModel):
-    uploaded_chats_number: str = Field(
-        description="Number of chats successfully uploaded", example="5"
+    uploaded_chunks_number: str = Field(
+        description="Number of chunks successfully uploaded", example="5"
     )
 
 
