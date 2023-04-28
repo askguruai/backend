@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 from numpy.typing import NDArray
 
-from utils import DB, ml_requests, MILVUS_DB
+from utils import DB, ml_requests, MILVUS_DB, CONFIG
 from utils.schemas import ApiVersion, CollectionRequest, ResponseSourceArticle, ResponseSourceChat
 import hashlib
 

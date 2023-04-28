@@ -33,30 +33,39 @@ class ChatsUploadHandler:
 
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
+            chat_id = meta_info["chat_id"]
+            existing_chunks = collection.query(
+                expr=f"doc_id==\"{chat_id}\"",
+                offset=0,
+                limit=10000,
+                output_fields=["chunk_hash"],
+                consistency_level="Strong"
+            )
+            existing_chunks = set((hit["chunk_hash"] for hit in existing_chunks))
+            # determining which chunks are new
+            new_chunks_hashes = []
             new_chunks = []
-            chunk_hashes = []
             for chunk in chunks:
                 text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:int(CONFIG["misc"]["hash_size"])]
-                res = collection.query(
-                    expr=f"chunk_hash==\"{text_hash}\"",
-                    offset=0,
-                    limit=1,
-                    output_fields=["chunk_hash"],
-                    consistency_level="Strong"
-                )
-                if len(res) == 0:
-                    # there is no such document yet, inserting
-                    chunk_hashes.append(text_hash)
+                if text_hash in existing_chunks:
+                    existing_chunks.remove(text_hash)
+                else:
                     new_chunks.append(chunk)
+                    new_chunks_hashes.append(text_hash)
+            # dropping outdated chunks
+            existing_chunks = [f'"{ch}"' for ch in existing_chunks]
+            collection.delete(f"chunk_hash in [{','.join(existing_chunks)}]")
+
+            
             if len(new_chunks) == 0:
                 # everyting is already in the database
                 continue
-
-            # all_embeddings.extend(embeddings)
             all_chunks.extend(new_chunks)
             all_doc_ids.extend([meta_info["chat_id"]] * len(new_chunks))
             all_doc_titles.extend([meta_info["chat_title"]] * len(new_chunks))
-            all_chunk_hashes.extend(chunk_hashes)
+            all_chunk_hashes.extend(new_chunks_hashes)
+
+
         if len(all_chunks) != 0:
             all_embeddings = ml_requests.get_embeddings(all_chunks, api_version=api_version)
             data = [
