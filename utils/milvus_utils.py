@@ -3,14 +3,15 @@ from typing import List, Tuple
 
 import numpy as np
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
-from pymilvus import utility as m_utility
+from pymilvus import utility
+from utils import CONFIG
 
 from utils.errors import DatabaseError
 
 connections.connect(
     "default",
-    host="localhost",
-    port="19530",
+    host=CONFIG["milvus"]["host"],
+    port=CONFIG["milvus"]["port"],
     user=os.environ["MILVUS_USERNAME"],
     password=os.environ["MILVUS_PASSWORD"],
 )
@@ -20,16 +21,14 @@ class CollectionsManager:
     def __init__(self, collections_cache_size=20) -> None:
         self.cache_size = collections_cache_size  # does not do anything just yet
         self.cache = {}
-        all_collections = m_utility.list_collections()
-        for collection_name in all_collections:
+        for collection_name in utility.list_collections():
             col = Collection(collection_name)
             col.load()
             self.cache[collection_name] = col
 
     def get_collection(self, collection_name: str) -> Collection:
         if collection_name not in self.cache:
-            all_collections = m_utility.list_collections()
-            if collection_name not in all_collections:
+            if collection_name not in utility.list_collections():
                 raise DatabaseError(f"Colletion {collection_name} not found!")
             else:
                 m_collection = Collection(collection_name)
