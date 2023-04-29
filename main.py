@@ -130,9 +130,6 @@ async def get_answer_collection_deprecated(
         collection=user_request.organization_id,
         subcollections=user_request.subcollections,
     )
-    print(answer)
-    print(context)
-    print(source)
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
 
 

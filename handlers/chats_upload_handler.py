@@ -58,7 +58,6 @@ class ChatsUploadHandler:
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
             data = [all_chunk_hashes, all_doc_ids, all_chunks, all_embeddings, all_doc_titles]
-            print(data)
             collection.insert(data)
             logging.info(
                 f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks"
