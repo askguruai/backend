@@ -22,7 +22,7 @@ class ChatsUploadHandler:
         all_doc_titles = []
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
-            chat_id = meta_info["chat_id"]
+            chat_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f"doc_id==\"{chat_id}\"",
                 offset=0,
@@ -51,8 +51,8 @@ class ChatsUploadHandler:
                 # everyting is already in the database
                 continue
             all_chunks.extend(new_chunks)
-            all_doc_ids.extend([meta_info["chat_id"]] * len(new_chunks))
-            all_doc_titles.extend([meta_info["chat_title"]] * len(new_chunks))
+            all_doc_ids.extend([meta_info["doc_id"]] * len(new_chunks))
+            all_doc_titles.extend([meta_info["doc_title"]] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
 
         if len(all_chunks) != 0:
