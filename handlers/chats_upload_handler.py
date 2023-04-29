@@ -1,40 +1,67 @@
 import hashlib
 import logging
-import pickle
 from typing import List
 
-from bson.binary import Binary
-from bson.objectid import ObjectId
-
-from handlers.collection_handler import CollectionHandler
 from parsers import ChatParser
-from utils import DB
-from utils.ml_requests import get_embeddings
+from utils import CONFIG, MILVUS_DB, ml_requests
 
 
 class ChatsUploadHandler:
-    def __init__(self, parser: ChatParser, collections_handler: CollectionHandler):
+    def __init__(self, parser: ChatParser):
         self.parser = parser
-        self.collection_handler = collections_handler
 
-    def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
+    async def handle_request(
+        self, chats: List[dict], api_version: str, org_id: str, vendor: str
+    ) -> int:
+        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_chats")
+
+        all_chunks = []
+        all_chunk_hashes = []
+        all_doc_ids = []
+        all_doc_titles = []
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
-            embeddings = get_embeddings(chunks, api_version=api_version)
-            for i, pair in enumerate(zip(chunks, embeddings)):
-                chunk, emb = pair
-                text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-                document = DB[f"{api_version}.collections.{vendor}.{org_id}.chats"].find_one(
-                    {"_id": ObjectId(text_hash)}
-                )
-                if not document:
-                    document = {
-                        "_id": ObjectId(text_hash),
-                        # "link": f"https://help.groovehq.com/help/{meta_info['slug']}",
-                        "doc_id": meta_info["chat_id"],
-                        "chunk": chunk,
-                        "embedding": Binary(pickle.dumps(emb)),
-                    }
-                    DB[f"{api_version}.collections.{vendor}.{org_id}.chats"].insert_one(document)
-                    logging.info(f"Chat {meta_info['chat_id']} chunk {i} inserted in the database")
-        return len(chats)
+            chat_id = meta_info["chat_id"]
+            existing_chunks = collection.query(
+                expr=f"doc_id==\"{chat_id}\"",
+                offset=0,
+                limit=10000,
+                output_fields=["chunk_hash"],
+                consistency_level="Strong",
+            )
+            existing_chunks = set((hit["chunk_hash"] for hit in existing_chunks))
+            # determining which chunks are new
+            new_chunks_hashes = []
+            new_chunks = []
+            for chunk in chunks:
+                text_hash = hashlib.sha256(chunk.encode()).hexdigest()[
+                    : int(CONFIG["misc"]["hash_size"])
+                ]
+                if text_hash in existing_chunks:
+                    existing_chunks.remove(text_hash)
+                else:
+                    new_chunks.append(chunk)
+                    new_chunks_hashes.append(text_hash)
+            # dropping outdated chunks
+            existing_chunks = [f'"{ch}"' for ch in existing_chunks]
+            collection.delete(f"chunk_hash in [{','.join(existing_chunks)}]")
+
+            if len(new_chunks) == 0:
+                # everyting is already in the database
+                continue
+            all_chunks.extend(new_chunks)
+            all_doc_ids.extend([meta_info["chat_id"]] * len(new_chunks))
+            all_doc_titles.extend([meta_info["chat_title"]] * len(new_chunks))
+            all_chunk_hashes.extend(new_chunks_hashes)
+
+        if len(all_chunks) != 0:
+            all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
+            data = [all_chunk_hashes, all_doc_ids, all_chunks, all_embeddings, all_doc_titles]
+            print(data)
+            collection.insert(data)
+            logging.info(
+                f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks"
+            )
+
+        return len(all_chunks)

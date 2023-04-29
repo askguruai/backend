@@ -81,7 +81,6 @@ async def init_handlers():
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
     )
     collection_handler = CollectionHandler(
-        collections_prefix=CONFIG["mongo"]["collections_prefix"],
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
         chunk_size=int(CONFIG["handlers"]["chunk_size"]),
     )
@@ -90,7 +89,6 @@ async def init_handlers():
     )
     chats_upload_handler = ChatsUploadHandler(
         parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-        collections_handler=collection_handler,
     )
 
 
@@ -132,6 +130,9 @@ async def get_answer_collection_deprecated(
         collection=user_request.organization_id,
         subcollections=user_request.subcollections,
     )
+    print(answer)
+    print(context)
+    print(source)
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
 
 
@@ -207,11 +208,11 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
 )
 @catch_errors
 async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
-    processed_chats = chats_upload_handler.handle_request(chats=user_request.chats,
+    processed_chats = await chats_upload_handler.handle_request(chats=user_request.chats,
                                                           vendor=user_request.vendor,
                                                           org_id=user_request.organization_id,
                                                           api_version=api_version.value)
-    return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
+    return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))
 
 
 @app.post(
