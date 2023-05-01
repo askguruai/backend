@@ -119,7 +119,7 @@ async def get_answer_collection_deprecated(
     request: Request,
 ):
     logging.info("/get_answer/collection")
-    answer, context, source = (await collection_handler.get_answer(user_request, api_version.value))
+    answer, context, doc_titles, doc_ids = (await collection_handler.get_answer(user_request, api_version.value))
     request_id = log_get_answer(
         answer=answer,
         context=context,
@@ -130,7 +130,8 @@ async def get_answer_collection_deprecated(
         collection=user_request.organization_id,
         subcollections=user_request.subcollections,
     )
-    return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
+    return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
+                                       source=list(zip(doc_titles, doc_ids)))
 
 
 @app.post(

@@ -50,22 +50,25 @@ class CollectionsManager:
         all_chunks = []
         all_distances = []
         all_titles = []
+        all_ids = []
         for collection in search_collections:
             results = collection.search(
                 [vec],
                 f"emb_{api_version}",
                 search_params,
                 limit=n_top,
-                output_fields=["chunk", "doc_title"],
+                output_fields=["chunk", "doc_title", "doc_id"],
             )[0]
             all_distances.extend(results.distances)
             for hit in results:
                 all_chunks.append(hit.entity.get("chunk"))
                 all_titles.append(hit.entity.get("doc_title"))
+                all_ids.append(hit.entity.get("doc_id"))
         top_hits = np.argsort(all_distances)[-n_top:]
         return (
             np.array(all_chunks)[top_hits].tolist(),
             np.array(all_titles)[top_hits].tolist(),
+            np.array(all_ids)[top_hits].tolist()
         )  # todo
 
     def get_or_create_collection(self, collection_name: str) -> Collection:

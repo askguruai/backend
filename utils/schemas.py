@@ -166,10 +166,10 @@ class GetAnswerCollectionResponse(BaseModel):
         description="A request id which is used to /set_reaction.",
         example="63cbd74e8d31a62a1512eab1",
     )
-    source: List[str] | None = Field(
+    source: List[Tuple[str, str]] | None = Field(
         default=None,
         description="A list of pairs (title, url) with information about the source of the answer. Can contain description",
-        example=["Java Man", "https://en.wikipedia.org/wiki/Java_Man"],
+        example=["Java Man", "123456"],
     )
 
 
