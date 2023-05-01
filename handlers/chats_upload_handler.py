@@ -8,8 +8,7 @@ from bson.objectid import ObjectId
 
 from handlers.collection_handler import CollectionHandler
 from parsers import ChatParser
-from utils import DB
-from utils.ml_requests import get_embeddings
+from utils import DB, ml_requests
 
 
 class ChatsUploadHandler:
@@ -17,10 +16,12 @@ class ChatsUploadHandler:
         self.parser = parser
         self.collection_handler = collections_handler
 
-    def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
+    async def handle_request(
+        self, chats: List[dict], api_version: str, org_id: str, vendor: str
+    ) -> int:
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
-            embeddings = get_embeddings(chunks, api_version=api_version)
+            embeddings = await ml_requests.get_embeddings(chunks, api_version=api_version)
             for i, pair in enumerate(zip(chunks, embeddings)):
                 chunk, emb = pair
                 text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]

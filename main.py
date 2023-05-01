@@ -207,7 +207,7 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
 )
 @catch_errors
 async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
-    processed_chats = chats_upload_handler.handle_request(chats=user_request.chats,
+    processed_chats = await chats_upload_handler.handle_request(chats=user_request.chats,
                                                           vendor=user_request.vendor,
                                                           org_id=user_request.organization_id,
                                                           api_version=api_version.value)
