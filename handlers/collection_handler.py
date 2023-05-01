@@ -31,15 +31,12 @@ class CollectionHandler:
         subcollections = request.subcollections
         vendor = request.vendor
         org_id = request.organization_id
-        if org_id == "vivantio":
-            org_hash = "vivantio"
-        else:
-            org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
 
         search_collections = [
             f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
         ]
-        chunks, titles, doc_ids = MILVUS_DB.search_collections_set(
+        chunks, titles, doc_ids, doc_summaries = MILVUS_DB.search_collections_set(
             search_collections, query_embedding, self.top_k_chunks, api_version
         )
         context = "\n\n".join(chunks)
@@ -50,4 +47,4 @@ class CollectionHandler:
             )
         )["data"]
 
-        return answer, context, titles, doc_ids
+        return answer, context, titles, doc_ids, doc_summaries

@@ -61,7 +61,8 @@ def process_single_file(
         [meta_info["doc_id"]] * len(new_chunks),
         new_chunks,
         embeddings,
-        [meta_info["doc_title"]] * len(new_chunks)
+        [meta_info["doc_title"]] * len(new_chunks),
+        [""] * len(new_chunks)
     ]
 
     collection.insert(data)
@@ -77,9 +78,10 @@ if __name__ == '__main__':
 
     subcollection_name = "internal"
     vendor = "vivantio"
-    organization_id = "vivantio"
+    organization_id = hashlib.sha256("vivantio".encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
 
     collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{organization_id}_{subcollection_name}")
+    print(f"Currently {collection.num_entities} entities")
     h_parser = VivantioHTMLParser(2000)
     with open(args.source, "rt") as f:
         data = json.load(f)

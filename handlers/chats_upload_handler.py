@@ -24,7 +24,7 @@ class ChatsUploadHandler:
             chunks, meta_info = self.parser.process_document(chat)
             chat_id = meta_info["doc_id"]
             existing_chunks = collection.query(
-                expr=f"doc_id==\"{chat_id}\"",
+                expr=f'doc_id=="{chat_id}"',
                 offset=0,
                 limit=10000,
                 output_fields=["chunk_hash"],
