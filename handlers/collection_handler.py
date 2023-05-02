@@ -26,12 +26,32 @@ class CollectionHandler:
         request: CollectionRequest,
         api_version: str,
     ) -> Tuple[str, str, List[str], List[str]]:
-        query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
-
         subcollections = request.subcollections
         vendor = request.vendor
         org_id = request.organization_id
         org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+
+        if request.query is not None:
+            if request.document_id is not None:
+                raise RequestDataModelMismatchError(
+                    "Either query or document_id should be present, not both"
+                )
+            query = request.query
+        else:
+            if request.document_id is None:
+                raise RequestDataModelMismatchError(
+                    "Either query or document_id should be present, both found None"
+                )
+            if request.doc_subcollection is None:
+                raise RequestDataModelMismatchError(
+                    "doc_subcollection is required when document_id is presented"
+                )
+            query = self.get_query_from_id(
+                doc_id=request.document_id,
+                full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}",
+            )
+
+        query_embedding = (await ml_requests.get_embeddings(query, api_version))[0]
 
         search_collections = [
             f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
@@ -42,9 +62,25 @@ class CollectionHandler:
         context = "\n\n".join(chunks)
 
         answer = (
-            await ml_requests.get_answer(
-                context, request.query, api_version, "support", chat=request.chat
-            )
+            await ml_requests.get_answer(context, query, api_version, "support", chat=request.chat)
         )["data"]
 
         return answer, context, titles, doc_ids, doc_summaries
+
+    def get_query_from_id(self, doc_id: str, full_collection_name: str) -> str:
+        collection = MILVUS_DB[full_collection_name]
+        res = collection.query(
+            expr=f'doc_id=="{doc_id}"',
+            offset=0,
+            limit=1,
+            output_fields=["chunk"],
+            consistency_level="Strong",
+        )
+        if len(res) == 0:
+            raise InvalidDocumentIdError(f"Requested document with id {doc_id} was not found")
+        chunk = res[0]["chunk"]
+        # removing solution so not to mislead model
+        start, end = chunk.rsplit("\n", maxsplit=1)
+        if end.startswith("Solution:"):
+            chunk = start
+        return chunk

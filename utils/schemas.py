@@ -53,6 +53,10 @@ class CollectionRequest(VendorCollectionRequest):
     document_id: str | None = Field(
         description="Doc id. Use only if you know what this is.", default=None
     )
+    doc_subcollection: str | None = Field(
+        description="Subcollection where to look for document id. Required if document_id is presented.",
+        default=None,
+    )
     subcollections: List[str] | None = Field(
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
         example=["chatbot", "livechat"],
@@ -169,7 +173,11 @@ class GetAnswerCollectionResponse(BaseModel):
     source: List[Tuple[str, str, str]] | None = Field(
         default=None,
         description="A list of tuples (title, id, summary) with information about the source of the answer",
-        example=["Payment", "123456", "Payment methods and informaton summary. How to pay for subscription"],
+        example=[
+            "Payment",
+            "123456",
+            "Payment methods and informaton summary. How to pay for subscription",
+        ],
     )
 
 

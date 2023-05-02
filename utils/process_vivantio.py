@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(1, os.getcwd())
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -11,13 +12,12 @@ from argparse import ArgumentParser
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
+from pymilvus import Collection
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import DB, MILVUS_DB, CONFIG, ml_requests
+from utils import CONFIG, DB, MILVUS_DB, ml_requests
 from utils.errors import CoreMLError
-from pymilvus import Collection
-import asyncio
 
 
 def process_single_file(
@@ -38,9 +38,7 @@ def process_single_file(
     new_chunks_hashes = []
     new_chunks = []
     for chunk in chunks:
-        text_hash = hashlib.sha256(chunk.encode()).hexdigest()[
-            : int(CONFIG["misc"]["hash_size"])
-        ]
+        text_hash = hashlib.sha256(chunk.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
         if text_hash in existing_chunks:
             existing_chunks.remove(text_hash)
         else:
@@ -53,7 +51,7 @@ def process_single_file(
     if len(new_chunks) == 0:
         # everyting is already in the database
         return True
-    
+
     embeddings = ml_requests.get_embeddings_sync(new_chunks, api_version=api_version)
 
     data = [
@@ -62,7 +60,7 @@ def process_single_file(
         new_chunks,
         embeddings,
         [meta_info["doc_title"]] * len(new_chunks),
-        [""] * len(new_chunks)
+        [""] * len(new_chunks),
     ]
 
     collection.insert(data)
@@ -78,9 +76,13 @@ if __name__ == '__main__':
 
     subcollection_name = "internal"
     vendor = "vivantio"
-    organization_id = hashlib.sha256("vivantio".encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+    organization_id = hashlib.sha256("vivantio".encode()).hexdigest()[
+        : int(CONFIG["misc"]["hash_size"])
+    ]
 
-    collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{organization_id}_{subcollection_name}")
+    collection = MILVUS_DB.get_or_create_collection(
+        f"{vendor}_{organization_id}_{subcollection_name}"
+    )
     print(f"Currently {collection.num_entities} entities")
     h_parser = VivantioHTMLParser(2000)
     with open(args.source, "rt") as f:

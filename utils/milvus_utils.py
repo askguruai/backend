@@ -2,10 +2,9 @@ import os
 from typing import List, Tuple
 
 import numpy as np
-from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
-from pymilvus import utility
-from utils import CONFIG
+from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
 
+from utils import CONFIG
 from utils.errors import DatabaseError
 
 connections.connect(
@@ -71,7 +70,7 @@ class CollectionsManager:
             np.array(all_chunks)[top_hits].tolist(),
             np.array(all_titles)[top_hits].tolist(),
             np.array(all_ids)[top_hits].tolist(),
-            np.array(all_summaries)[top_hits].tolist()
+            np.array(all_summaries)[top_hits].tolist(),
         )  # todo
 
     def get_or_create_collection(self, collection_name: str) -> Collection:
@@ -89,7 +88,7 @@ class CollectionsManager:
             FieldSchema(name="chunk", dtype=DataType.VARCHAR, max_length=3000),
             FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
             FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
-            FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=1024)
+            FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
