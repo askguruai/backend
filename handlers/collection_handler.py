@@ -36,7 +36,7 @@ class CollectionHandler:
                 raise RequestDataModelMismatchError(
                     "Either query or document_id should be present, not both"
                 )
-            query = request.query
+            query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
         else:
             if request.document_id is None:
                 raise RequestDataModelMismatchError(
@@ -46,12 +46,10 @@ class CollectionHandler:
                 raise RequestDataModelMismatchError(
                     "doc_subcollection is required when document_id is presented"
                 )
-            query = self.get_query_from_id(
+            query_embedding = self.get_embedding_from_id(
                 doc_id=request.document_id,
                 full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}",
-            )
-
-        query_embedding = (await ml_requests.get_embeddings(query, api_version))[0]
+            )      
 
         search_collections = [
             f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
@@ -62,25 +60,21 @@ class CollectionHandler:
         context = "\n\n".join(chunks)
 
         answer = (
-            await ml_requests.get_answer(context, query, api_version, "support", chat=request.chat)
+            await ml_requests.get_answer(context, request.query, api_version, "support", chat=request.chat)
         )["data"]
 
         return answer, context, titles, doc_ids, doc_summaries
 
-    def get_query_from_id(self, doc_id: str, full_collection_name: str) -> str:
+    def get_embedding_from_id(self, doc_id: str, full_collection_name: str) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
         res = collection.query(
             expr=f'doc_id=="{doc_id}"',
             offset=0,
-            limit=1,
-            output_fields=["chunk"],
+            limit=30,
+            output_fields=["emb_v1"],
             consistency_level="Strong",
         )
         if len(res) == 0:
             raise InvalidDocumentIdError(f"Requested document with id {doc_id} was not found")
-        chunk = res[0]["chunk"]
-        # removing solution so not to mislead model
-        start, end = chunk.rsplit("\n", maxsplit=1)
-        if end.startswith("Solution:"):
-            chunk = start
-        return chunk
+        embs = [hit["emb_v1"] for hit in res]
+        return np.mean(embs, axis=0)
