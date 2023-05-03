@@ -27,6 +27,7 @@ def load_tickets(folder):
                 # print(ticket["hdcDescription"])
                 if (
                     ticket["hdccallername"] != "Loggly"
+                    and "Internal Only" not in (ticket["hdcatLineage"] or "")
                     and "Alert" not in ticket["hdccallername"]
                     and "Rackspace" not in ticket["hdccallername"]
                     and ticket["hdcDescription"]
