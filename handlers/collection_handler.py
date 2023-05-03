@@ -87,7 +87,7 @@ class CollectionHandler:
                 text = f"Unable to retrieve document with id {doc_id} in collection {col_name}"
             else:
                 text = f"Ambiguous documents with id {doc_id} in collection {col_name}"
-            raise InvalidDocumentIdError()
+            raise InvalidDocumentIdError(text)
         emb = res[0]["emb_v1"]
         query = res[0]["chunk"]
         query += "\n\nAdress the problem stated above"
