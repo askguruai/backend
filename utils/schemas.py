@@ -46,6 +46,28 @@ class VendorCollectionTokenRequest(VendorCollectionRequest):
     password: str = Field(description="This is for staff use")
 
 
+class CollectionQueryRequest(VendorCollectionRequest):
+    query: str = Field(
+        description="Query to generate answer for.", example="What is your name?"
+    )
+    subcollections: List[str] | None = Field(
+        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
+        example=["chatbot", "livechat"],
+    )
+    chat: List[dict] | None = Field(
+        description="Optional: ongoing chat with the client",
+        example=[
+            {"role": "user", "content": "hi"},
+            {"role": "user", "content": "do you offer screen sharing chat"},
+            {"role": "assistant", "content": "Hello, I will check, thanks for waiting."},
+            {"role": "user", "content": "Sure."},
+        ],
+    )
+    n_top_ranking: int | None = Field(
+        description="Number of most relevant sources to be returned", default=3, example=3
+    )
+
+
 class CollectionRequest(VendorCollectionRequest):
     query: str | None = Field(
         description="Query to generate answer for.", example="What is your name?", default=None

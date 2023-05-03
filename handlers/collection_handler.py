@@ -13,7 +13,7 @@ from utils.errors import (
     RequestDataModelMismatchError,
     SubcollectionDoesNotExist,
 )
-from utils.schemas import CollectionRequest
+from utils.schemas import CollectionRequest, CollectionQueryRequest
 
 
 class CollectionHandler:
@@ -23,34 +23,14 @@ class CollectionHandler:
 
     async def get_answer(
         self,
-        request: CollectionRequest,
+        request: CollectionQueryRequest,
         api_version: str,
     ) -> Tuple[str, str, List[str], List[str]]:
         subcollections = request.subcollections
         vendor = request.vendor
         org_id = request.organization_id
         org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
-
-        if request.query is not None:
-            if request.document_id is not None:
-                raise RequestDataModelMismatchError(
-                    "Either query or document_id should be present, not both"
-                )
-            query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
-        else:
-            if request.document_id is None:
-                raise RequestDataModelMismatchError(
-                    "Either query or document_id should be present, both found None"
-                )
-            if request.doc_subcollection is None:
-                raise RequestDataModelMismatchError(
-                    "doc_subcollection is required when document_id is presented"
-                )
-            query_embedding = self.get_embedding_from_id(
-                doc_id=request.document_id,
-                full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}",
-            )      
-
+        query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
         search_collections = [
             f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
         ]
@@ -63,7 +43,7 @@ class CollectionHandler:
             await ml_requests.get_answer(context, request.query, api_version, "support", chat=request.chat)
         )["data"]
 
-        return answer, context, titles, doc_ids, doc_summaries
+        return answer, context, doc_ids, titles, doc_summaries
 
     def get_embedding_from_id(self, doc_id: str, full_collection_name: str) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
