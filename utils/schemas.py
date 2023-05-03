@@ -68,14 +68,11 @@ class CollectionQueryRequest(VendorCollectionRequest):
     )
 
 
-class CollectionRequest(VendorCollectionRequest):
-    query: str | None = Field(
-        description="Query to generate answer for.", example="What is your name?", default=None
-    )
-    document_id: str | None = Field(
+class CollectionSolutionRequest(VendorCollectionRequest):
+    document_id: str = Field(
         description="Doc id. Use only if you know what this is.", default=None
     )
-    doc_subcollection: str | None = Field(
+    doc_subcollection: str = Field(
         description="Subcollection where to look for document id. Required if document_id is presented.",
         default=None,
     )
@@ -83,25 +80,10 @@ class CollectionRequest(VendorCollectionRequest):
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
         example=["chatbot", "livechat"],
     )
-    chat: List[dict] | None = Field(
-        description="Optional: ongoing chat with the client",
-        example=[
-            {"role": "user", "content": "hi"},
-            {"role": "user", "content": "do you offer screen sharing chat"},
-            {"role": "assistant", "content": "Hello, I will check, thanks for waiting."},
-            {"role": "user", "content": "Sure."},
-        ],
-    )
     n_top_ranking: int | None = Field(
         description="Number of most relevant sources to be returned", default=3, example=3
     )
 
-    # check that only query or document_id is provided
-    @root_validator
-    def check_query_or_document_id(cls, values):
-        if not (bool(values.get("query")) ^ bool(values.get("document_id"))):
-            raise ValueError("Provide either query or document_id")
-        return values
 
 
 class LivechatLoginRequest(BaseModel):

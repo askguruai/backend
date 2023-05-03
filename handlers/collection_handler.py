@@ -13,7 +13,7 @@ from utils.errors import (
     RequestDataModelMismatchError,
     SubcollectionDoesNotExist,
 )
-from utils.schemas import CollectionRequest, CollectionQueryRequest
+from utils.schemas import CollectionQueryRequest, CollectionSolutionRequest
 
 
 class CollectionHandler:
@@ -44,17 +44,53 @@ class CollectionHandler:
         )["data"]
 
         return answer, context, doc_ids, titles, doc_summaries
+    
+    async def get_solution(
+            self,
+            request: CollectionSolutionRequest,
+            api_version: str
+    ) -> Tuple[str, str, List[str], List[str]]:
+        subcollections = request.subcollections
+        vendor = request.vendor
+        org_id = request.organization_id
+        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        
+        embedding, query = self.get_data_from_id(doc_id=request.document_id,
+                full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}")
+        
+        search_collections = [
+            f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
+        ]
+        chunks, titles, doc_ids, doc_summaries = MILVUS_DB.search_collections_set(
+            search_collections, embedding, self.top_k_chunks, api_version
+        )
+        context = "\n\n".join(chunks)
 
-    def get_embedding_from_id(self, doc_id: str, full_collection_name: str) -> np.ndarray:
+        answer = (
+            await ml_requests.get_answer(context, query, api_version)
+        )["data"]
+
+        return answer, context, doc_ids, titles, doc_summaries
+
+    def get_data_from_id(self, doc_id: str, full_collection_name: str) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
         res = collection.query(
             expr=f'doc_id=="{doc_id}"',
             offset=0,
             limit=30,
-            output_fields=["emb_v1"],
+            output_fields=["chunk", "emb_v1"],
             consistency_level="Strong",
         )
         if len(res) == 0:
             raise InvalidDocumentIdError(f"Requested document with id {doc_id} was not found")
-        embs = [hit["emb_v1"] for hit in res]
-        return np.mean(embs, axis=0)
+        if len(res) == 1:
+            emb = res[0]["emb_v1"]
+            query = res[0]["chunk"]
+            query += "\n\nPlease adress the problem stated above"
+        else:
+            # maybe should throw an error: unclear what the query is
+            embs = [hit["emb_v1"] for hit in res]
+            emb = np.mean(embs, axis=0)
+            query = " Please write the summary"
+
+        return emb, query

@@ -40,6 +40,7 @@ from utils.schemas import (
     ApiVersion,
     Collection,
     CollectionQueryRequest,
+    CollectionSolutionRequest,
     DocumentRequest,
     GetAnswerCollectionResponse,
     GetAnswerResponse,
@@ -125,6 +126,38 @@ async def get_answer_collection(
         context=context,
         document_ids=None,
         query=user_request.query,
+        request=request,
+        api_version=api_version.value,
+        collection=user_request.organization_id,
+        subcollections=user_request.subcollections,
+    )
+    return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
+                                       source=list(zip(doc_ids, doc_titles, doc_summaries)))
+
+
+
+@app.post(
+    "/{api_version}/get_solution/collection",
+    response_model=GetAnswerCollectionResponse,
+    responses={
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    },
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_solution_collection(
+    user_request: CollectionSolutionRequest,
+    api_version: ApiVersion,
+    request: Request,
+):
+    logging.info("/get_solution/collection")
+    answer, context, doc_ids, doc_titles, doc_summaries = (await collection_handler.get_solution(user_request, api_version.value))
+    request_id = log_get_answer(
+        answer=answer,
+        context=context,
+        document_ids=None,
+        query="",
         request=request,
         api_version=api_version.value,
         collection=user_request.organization_id,

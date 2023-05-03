@@ -8,7 +8,7 @@ from jose import JWTError, jwt
 from utils.schemas import (
     AuthenticatedRequest,
     Collection,
-    CollectionRequest,
+    VendorCollectionRequest,
     LivechatLoginRequest,
     UploadChatsRequest,
     VendorCollectionTokenRequest,
@@ -87,7 +87,7 @@ async def validate_auth_default(token: str = Depends(oauth2_scheme)):
 
 
 async def validate_auth_org_scope(
-    user_request: CollectionRequest | UploadChatsRequest, token: str = Depends(oauth2_scheme)
+    user_request: VendorCollectionRequest, token: str = Depends(oauth2_scheme)
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
