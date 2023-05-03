@@ -82,7 +82,12 @@ class CollectionHandler:
             consistency_level="Strong",
         )
         if len(res) != 1:
-            raise InvalidDocumentIdError(f"Unable to retrieve document with id {doc_id}")
+            col_name = full_collection_name.rsplit('_', maxsplit=1)[-1]
+            if len(res) == 0:
+                text = f"Unable to retrieve document with id {doc_id} in collection {col_name}"
+            else:
+                text = f"Ambiguous documents with id {doc_id} in collection {col_name}"
+            raise InvalidDocumentIdError()
         emb = res[0]["emb_v1"]
         query = res[0]["chunk"]
         query += "\n\nAdress the problem stated above"
