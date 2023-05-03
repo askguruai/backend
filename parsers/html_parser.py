@@ -78,7 +78,7 @@ class ChunksManager:
 
     def opt_split_into_smaller_chunks(self, chunk: dict) -> list[dict]:
         # todo: index throw
-        if len(chunk["text"]) < 3000:
+        if len(chunk["text"]) < 2000:
             return [chunk]
         txt = chunk["text"]
         n_ids = []
@@ -87,8 +87,8 @@ class ChunksManager:
                 n_ids.append(i)
         if len(n_ids) == 0:
             # no breaks at all
-            part = {"title": chunk["title"], "text": chunk["text"][:3000]}
-            remaining = {"title": chunk["title"], "text": chunk["text"][3000:]}
+            part = {"title": chunk["title"], "text": chunk["text"][:2000]}
+            remaining = {"title": chunk["title"], "text": chunk["text"][2000:]}
             print(f"Hard split!")
             return [part] + self.opt_split_into_smaller_chunks(remaining)
         split_id = n_ids[len(n_ids) // 2]
@@ -423,8 +423,8 @@ class VivantioHTMLParser(HTMLParser):
         meta = "\n".join(meta)
 
         meta_info = {
-            "title": article["Title"],
-            "id": article["Id"],
+            "doc_title": article["Title"],
+            "doc_id": str(article["Id"]),
             "link": f"https://{self.companyname}.flex.vivantio.com/item/Article/{article['Id']}",
         }
 

@@ -46,12 +46,9 @@ class VendorCollectionTokenRequest(VendorCollectionRequest):
     password: str = Field(description="This is for staff use")
 
 
-class CollectionRequest(VendorCollectionRequest):
-    query: str | None = Field(
-        description="Query to generate answer for.", example="What is your name?", default=None
-    )
-    document_id: str | None = Field(
-        description="Doc id. Use only if you know what this is.", default=None
+class CollectionQueryRequest(VendorCollectionRequest):
+    query: str = Field(
+        description="Query to generate answer for.", example="What is your name?"
     )
     subcollections: List[str] | None = Field(
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
@@ -70,12 +67,23 @@ class CollectionRequest(VendorCollectionRequest):
         description="Number of most relevant sources to be returned", default=3, example=3
     )
 
-    # check that only query or document_id is provided
-    @root_validator
-    def check_query_or_document_id(cls, values):
-        if not (bool(values.get("query")) ^ bool(values.get("document_id"))):
-            raise ValueError("Provide either query or document_id")
-        return values
+
+class CollectionSolutionRequest(VendorCollectionRequest):
+    document_id: str = Field(
+        description="Doc id. Use only if you know what this is.", default=None
+    )
+    doc_subcollection: str = Field(
+        description="Subcollection where to look for document id. Required if document_id is presented.",
+        default=None,
+    )
+    subcollections: List[str] | None = Field(
+        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
+        example=["chatbot", "livechat"],
+    )
+    n_top_ranking: int | None = Field(
+        description="Number of most relevant sources to be returned", default=3, example=3
+    )
+
 
 
 class LivechatLoginRequest(BaseModel):
@@ -166,10 +174,14 @@ class GetAnswerCollectionResponse(BaseModel):
         description="A request id which is used to /set_reaction.",
         example="63cbd74e8d31a62a1512eab1",
     )
-    source: List[List[str]] | None = Field(
+    source: List[Tuple[str, str, str]] | None = Field(
         default=None,
-        description="A list of pairs (title, url) with information about the source of the answer. Can contain description",
-        example=["Java Man", "https://en.wikipedia.org/wiki/Java_Man"],
+        description="A list of tuples (title, id, summary) with information about the source of the answer",
+        example=[
+            "Payment",
+            "123456",
+            "Payment methods and informaton summary. How to pay for subscription",
+        ],
     )
 
 
@@ -180,8 +192,8 @@ class UploadDocumentResponse(BaseModel):
 
 
 class UploadChatsResponse(BaseModel):
-    uploaded_chats_number: str = Field(
-        description="Number of chats successfully uploaded", example="5"
+    uploaded_chunks_number: str = Field(
+        description="Number of chunks successfully uploaded", example="5"
     )
 
 

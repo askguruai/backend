@@ -39,7 +39,8 @@ from utils.ml_requests import client_session_wrapper
 from utils.schemas import (
     ApiVersion,
     Collection,
-    CollectionRequest,
+    CollectionQueryRequest,
+    CollectionSolutionRequest,
     DocumentRequest,
     GetAnswerCollectionResponse,
     GetAnswerResponse,
@@ -81,7 +82,6 @@ async def init_handlers():
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
     )
     collection_handler = CollectionHandler(
-        collections_prefix=CONFIG["mongo"]["collections_prefix"],
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
         chunk_size=int(CONFIG["handlers"]["chunk_size"]),
     )
@@ -90,7 +90,6 @@ async def init_handlers():
     )
     chats_upload_handler = ChatsUploadHandler(
         parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
-        collections_handler=collection_handler,
     )
 
 
@@ -115,13 +114,13 @@ async def docs_redirect():
     dependencies=[Depends(validate_auth_org_scope)],
 )
 @catch_errors
-async def get_answer_collection_deprecated(
-    user_request: CollectionRequest,
+async def get_answer_collection(
+    user_request: CollectionQueryRequest,
     api_version: ApiVersion,
     request: Request,
 ):
     logging.info("/get_answer/collection")
-    answer, context, source = (await collection_handler.get_answer(user_request, api_version.value))
+    answer, context, doc_ids, doc_titles, doc_summaries = (await collection_handler.get_answer(user_request, api_version.value))
     request_id = log_get_answer(
         answer=answer,
         context=context,
@@ -132,7 +131,40 @@ async def get_answer_collection_deprecated(
         collection=user_request.organization_id,
         subcollections=user_request.subcollections,
     )
-    return GetAnswerCollectionResponse(answer=answer, request_id=request_id, source=source)
+    return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
+                                       source=list(zip(doc_ids, doc_titles, doc_summaries)))
+
+
+
+@app.post(
+    "/{api_version}/get_solution/collection",
+    response_model=GetAnswerCollectionResponse,
+    responses={
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    },
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_solution_collection(
+    user_request: CollectionSolutionRequest,
+    api_version: ApiVersion,
+    request: Request,
+):
+    logging.info("/get_solution/collection")
+    answer, context, doc_ids, doc_titles, doc_summaries = (await collection_handler.get_solution(user_request, api_version.value))
+    request_id = log_get_answer(
+        answer=answer,
+        context=context,
+        document_ids=None,
+        query="",
+        request=request,
+        api_version=api_version.value,
+        collection=user_request.organization_id,
+        subcollections=user_request.subcollections,
+    )
+    return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
+                                       source=list(zip(doc_ids, doc_titles, doc_summaries)))
 
 
 @app.post(
@@ -211,7 +243,7 @@ async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest
                                                           vendor=user_request.vendor,
                                                           org_id=user_request.organization_id,
                                                           api_version=api_version.value)
-    return UploadChatsResponse(uploaded_chats_number=str(processed_chats))
+    return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))
 
 
 @app.post(

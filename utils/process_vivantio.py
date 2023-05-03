@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(1, os.getcwd())
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -11,43 +12,59 @@ from argparse import ArgumentParser
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
+from pymilvus import Collection
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import DB
+from utils import CONFIG, DB, MILVUS_DB, ml_requests
 from utils.errors import CoreMLError
-from utils.ml_requests import get_embeddings
 
 
 def process_single_file(
-    document: dict, collection: str, parser: VivantioHTMLParser, api_version: str
+    document: dict, collection: Collection, parser: VivantioHTMLParser, api_version: str
 ) -> bool:
     chunks, meta_info = parser.process_document(document)
     if len(chunks) == 0:
         return True  # nothing to do
-    try:
-        embeddings = get_embeddings(chunks, api_version=api_version)
-    except CoreMLError:
-        print("Failed")
-        return False
-    assert len(embeddings) == len(chunks)
-    for i, pair in enumerate(zip(chunks, embeddings)):
-        chunk, emb = pair
-        text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
-        document = DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].find_one(
-            {"_id": ObjectId(text_hash)}
-        )
-        if not document:
-            document = {
-                "_id": ObjectId(text_hash),
-                "doc_title": meta_info["title"],
-                "link": meta_info["link"],
-                "doc_id": meta_info["id"],
-                "chunk": chunk,
-                "embedding": Binary(pickle.dumps(emb)),
-            }
-            DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].insert_one(document)
-            logging.info(f"Document {meta_info['title']} chunk {i} inserted in the database")
+    doc_id = meta_info["doc_id"]
+    existing_chunks = collection.query(
+        expr=f'doc_id=="{doc_id}"',
+        offset=0,
+        limit=10000,
+        output_fields=["chunk_hash"],
+        consistency_level="Strong",
+    )
+    existing_chunks = set((hit["chunk_hash"] for hit in existing_chunks))
+    new_chunks_hashes = []
+    new_chunks = []
+    for chunk in chunks:
+        text_hash = hashlib.sha256(chunk.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        if text_hash in existing_chunks:
+            existing_chunks.remove(text_hash)
+        else:
+            new_chunks.append(chunk)
+            new_chunks_hashes.append(text_hash)
+    # dropping outdated chunks
+    existing_chunks = [f'"{ch}"' for ch in existing_chunks]
+    collection.delete(f"chunk_hash in [{','.join(existing_chunks)}]")
+
+    if len(new_chunks) == 0:
+        # everyting is already in the database
+        return True
+
+    embeddings = ml_requests.get_embeddings_sync(new_chunks, api_version=api_version)
+
+    data = [
+        new_chunks_hashes,
+        [meta_info["doc_id"]] * len(new_chunks),
+        new_chunks,
+        embeddings,
+        [meta_info["doc_title"]] * len(new_chunks),
+        [""] * len(new_chunks),
+    ]
+
+    collection.insert(data)
+    logging.info(f"Document {meta_info['doc_title']} updated in {len(new_chunks)} chunks")
     return True
 
 
@@ -55,11 +72,18 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-s", "--source", type=str, help="path to a processed .json file")
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
-    parser.add_argument(
-        "--cname", type=str, help="collection name (will be cnnected with api version"
-    )
     args = parser.parse_args()
 
+    subcollection_name = "internal"
+    vendor = "vivantio"
+    organization_id = hashlib.sha256("vivantio".encode()).hexdigest()[
+        : int(CONFIG["misc"]["hash_size"])
+    ]
+
+    collection = MILVUS_DB.get_or_create_collection(
+        f"{vendor}_{organization_id}_{subcollection_name}"
+    )
+    print(f"Currently {collection.num_entities} entities")
     h_parser = VivantioHTMLParser(2000)
     with open(args.source, "rt") as f:
         data = json.load(f)
@@ -70,7 +94,7 @@ if __name__ == '__main__':
         while not process_ok:
             process_ok = process_single_file(
                 doc,
-                args.cname,
+                collection,
                 h_parser,
                 api_version=args.api_version,
             )
