@@ -81,16 +81,10 @@ class CollectionHandler:
             output_fields=["chunk", "emb_v1"],
             consistency_level="Strong",
         )
-        if len(res) == 0:
-            raise InvalidDocumentIdError(f"Requested document with id {doc_id} was not found")
-        if len(res) == 1:
-            emb = res[0]["emb_v1"]
-            query = res[0]["chunk"]
-            query += "\n\nPlease adress the problem stated above"
-        else:
-            # maybe should throw an error: unclear what the query is
-            embs = [hit["emb_v1"] for hit in res]
-            emb = np.mean(embs, axis=0)
-            query = " Please write the summary"
+        if len(res) != 1:
+            raise InvalidDocumentIdError(f"Unable to retrieve document with id {doc_id}")
+        emb = res[0]["emb_v1"]
+        query = res[0]["chunk"]
+        query += "\n\nAdress the problem stated above"
 
         return emb, query
