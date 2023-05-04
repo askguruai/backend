@@ -10,6 +10,8 @@ from fastapi import (
     FastAPI,
     File,
     HTTPException,
+    Path,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -39,6 +41,8 @@ from utils.schemas import (
     DocumentRequest,
     GetAnswerCollectionResponse,
     GetAnswerResponse,
+    GetCollectionRankingResponse,
+    GetCollectionResponse,
     HTTPExceptionResponse,
     LinkRequest,
     SetReactionRequest,
@@ -46,8 +50,9 @@ from utils.schemas import (
     UploadChatsRequest,
     UploadChatsResponse,
     UploadDocumentResponse,
+    collection_responses,
 )
-from utils.uvicorn_logging import run_uvicorn_loguru
+from utils.uvicorn_logging import RequestLoggerMiddleware, run_uvicorn_loguru
 
 app = FastAPI()
 
@@ -59,11 +64,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(RequestLoggerMiddleware)
+
 
 @app.on_event("startup")
 async def init_handlers():
     global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, client_session_wrapper
-    client_session_wrapper.session = ClientSession(CONFIG['coreml']['route'])
+    client_session_wrapper.session = ClientSession(CONFIG["coreml"]["route"])
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
@@ -113,11 +120,10 @@ async def get_answer_collection(
     api_version: ApiVersion,
     request: Request,
 ):
-    logging.info("/get_answer/collection")
-    answer, context, doc_ids, doc_titles, doc_summaries = (await collection_handler.get_answer(user_request, api_version.value))
+    response = await collection_handler.get_answer(user_request, api_version.value)
     request_id = log_get_answer(
-        answer=answer,
-        context=context,
+        answer=response.answer,
+        context="",
         document_ids=None,
         query=user_request.query,
         request=request,
@@ -126,9 +132,8 @@ async def get_answer_collection(
         organization_id=user_request.organization_id,
         collections=user_request.collections,
     )
-    return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
-                                       source=list(zip(doc_ids, doc_titles, doc_summaries)))
-
+    response.request_id = request_id
+    return response
 
 
 @app.post(
@@ -146,11 +151,10 @@ async def get_solution_collection(
     api_version: ApiVersion,
     request: Request,
 ):
-    logging.info("/get_solution/collection")
-    answer, context, doc_ids, doc_titles, doc_summaries = (await collection_handler.get_solution(user_request, api_version.value))
+    response = await collection_handler.get_solution(user_request, api_version.value)
     request_id = log_get_answer(
-        answer=answer,
-        context=context,
+        answer=response.answer,
+        context="",
         document_ids=None,
         query="",
         request=request,
@@ -159,8 +163,132 @@ async def get_solution_collection(
         organization_id=user_request.organization_id,
         collections=user_request.collections,
     )
-    return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
-                                       source=list(zip(doc_ids, doc_titles, doc_summaries)))
+    response.request_id = request_id
+    return response
+
+
+@app.get(
+    "/{api_version}/{vendor}/{organization}/ranking",
+    response_model=GetCollectionRankingResponse,
+    responses=collection_responses,
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_collection_ranking_query(
+    request: Request,
+    api_version: ApiVersion,
+    query: str = Query(
+        default=None, description="Query string", example="How to change my password?"
+    ),
+    document: str = Query(default=None, description="Document ID", example="1234567890"),
+    document_collection: str = Query(
+        default=None, description="Document collection", example="chats"
+    ),
+    # TODO make not mandatory collections
+    collections: List[str] = Query(description="List of collections to search"),
+    top_k: int = Query(default=10, description="Number of top documents to return", example=10),
+    vendor: str = Path(description="Vendor name", example="livechat"),
+    organization: str = Path(
+        description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
+    ),
+):
+    if not (bool(query) ^ bool(document)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either query or document must be provided",
+        )
+    if bool(document) ^ bool(document_collection):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Both document and document_collection must be provided",
+        )
+    return await collection_handler.get_ranking(
+        vendor=vendor,
+        organization=organization,
+        collections=collections,
+        top_k=top_k,
+        api_version=api_version,
+        query=query,
+        document=document,
+        document_collection=document_collection,
+    )
+
+
+@app.get(
+    "/{api_version}/{vendor}/{organization}/{collection}",
+    response_model=GetCollectionResponse,
+    responses=collection_responses,
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_collection(
+    request: Request,
+    api_version: ApiVersion,
+    vendor: str = Path(description="Vendor name", example="livechat"),
+    organization: str = Path(
+        description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
+    ),
+    collection: str = Path(description="Collection within organization", example="chats"),
+):
+    return collection_handler.get_collection(vendor, organization, collection, api_version)
+
+
+@app.get(
+    "/{api_version}/{vendor}/{organization}/{collection}/ranking",
+    response_model=GetCollectionRankingResponse,
+    responses=collection_responses,
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_collection_ranking_query(
+    request: Request,
+    api_version: ApiVersion,
+    query: str = Query(description="Query string", example="How to change my password?"),
+    top_k: int = Query(default=10, description="Number of top documents to return", example=10),
+    vendor: str = Path(description="Vendor name", example="livechat"),
+    organization: str = Path(
+        description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
+    ),
+    collection: str = Path(description="Collection within organization", example="chats"),
+):
+    return await collection_handler.get_ranking(
+        vendor=vendor,
+        organization=organization,
+        collections=[collection],
+        top_k=top_k,
+        api_version=api_version,
+        query=query,
+    )
+
+
+@app.get(
+    "/{api_version}/{vendor}/{organization}/{collection}/{document}/ranking",
+    response_model=GetCollectionRankingResponse,
+    responses=collection_responses,
+    dependencies=[Depends(validate_auth_org_scope)],
+)
+@catch_errors
+async def get_collection_ranking_document(
+    request: Request,
+    api_version: ApiVersion,
+    top_k: int = Query(default=10, description="Number of top documents to return", example=10),
+    document: str = Path(description="Document ID", example="1234567890"),
+    vendor: str = Path(description="Vendor name", example="livechat"),
+    organization: str = Path(
+        description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
+    ),
+    collection: str = Path(description="Collection within organization", example="chats"),
+):
+    return await collection_handler.get_ranking(
+        vendor=vendor,
+        organization=organization,
+        collections=[collection],
+        document=document,
+        document_collection=collection,
+        top_k=top_k,
+        api_version=api_version,
+        query=query,
+    )
 
 
 @app.post(
@@ -228,17 +356,20 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
 @app.post(
     "/{api_version}/upload/chats/",
     response_model=UploadChatsResponse,
-    responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
-               status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
+    responses={
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+        status.HTTP_401_UNAUTHORIZED: {"model": HTTPExceptionResponse},
     },
     dependencies=[Depends(validate_auth_org_scope)],
 )
 @catch_errors
 async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
-    processed_chats = await chats_upload_handler.handle_request(chats=user_request.chats,
-                                                          vendor=user_request.vendor,
-                                                          org_id=user_request.organization_id,
-                                                          api_version=api_version.value)
+    processed_chats = await chats_upload_handler.handle_request(
+        chats=user_request.chats,
+        vendor=user_request.vendor,
+        org_id=user_request.organization_id,
+        api_version=api_version.value,
+    )
     return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))
 
 
