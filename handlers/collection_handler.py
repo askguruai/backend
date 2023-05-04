@@ -118,9 +118,7 @@ class CollectionHandler:
     def get_collection(
         self, vendor: str, organization: str, collection: str, api_version: ApiVersion
     ) -> GetCollectionResponse:
-        organization_hash = hashlib.sha256(organization.encode()).hexdigest()[
-            : int(CONFIG["misc"]["hash_size"])
-        ]
+        organization_hash = hash_string(organization)
         full_collection_name = f"{vendor}_{organization_hash}_{collection}"
         milvus_collection = MILVUS_DB[full_collection_name]
         chunks = milvus_collection.query(
@@ -140,10 +138,7 @@ class CollectionHandler:
         document_collection: str = None,
         collections: List[str] = None,
     ) -> GetCollectionRankingResponse:
-        organization_hash = hashlib.sha256(organization.encode()).hexdigest()[
-            : int(CONFIG["misc"]["hash_size"])
-        ]
-
+        organization_hash = hash_string(organization)
         if query:
             embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         elif document:
