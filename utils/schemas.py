@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Dict, List, Tuple
 
+from fastapi import status
 from pydantic import BaseModel, Field
 
 
@@ -10,7 +11,27 @@ class ApiVersion(str, Enum):
     v3 = "v3"
 
 
+class HTTPExceptionResponse(BaseModel):
+    detail: str = Field(example="Internal Server Error")
+
+
+class AuthExceptionResponse(BaseModel):
+    detail: str = Field(example="Could not validate credentials")
+
+
+collection_responses = {
+    status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
+    status.HTTP_401_UNAUTHORIZED: {"model": AuthExceptionResponse},
+}
+
 AUTH_METHODS = ["org_scope", "default"]
+
+
+class GetCollectionResponse(BaseModel):
+    doc_ids: List[str] = Field(
+        description="List of doc ids from given collection",
+        example=["7af8c3e548e40aeb984c42dd", "7af8c3e548e40aeb984c42de"],
+    )
 
 
 class AuthenticatedRequest(BaseModel):
@@ -32,6 +53,30 @@ class VendorCollectionTokenRequest(VendorCollectionRequest):
     password: str = Field(description="This is for staff use")
 
 
+class Source(BaseModel):
+    id: str = Field(description="Id of the source", example="123456")
+    title: str = Field(description="Title of the source", example="Payment")
+    collection: str = Field(description="Collection of the source", example="internal")
+    summary: str | None = Field(
+        description="Summary of the source",
+        example="Payment methods and informaton summary. How to pay for subscription",
+    )
+
+
+class GetCollectionRankingResponse(BaseModel):
+    sources: List[Source] = Field(
+        description="List of sources from given collection",
+        example=[
+            Source(
+                id="123456",
+                title="Payment",
+                collection="internal",
+                summary="Payment methods and informaton summary. How to pay for subscription",
+            )
+        ],
+    )
+
+
 class CollectionQueryRequest(VendorCollectionRequest):
     query: str = Field(description="Query to generate answer for.", example="What is your name?")
     collections: List[str] = Field(
@@ -43,12 +88,17 @@ class CollectionQueryRequest(VendorCollectionRequest):
         example=[
             {"role": "user", "content": "hi"},
             {"role": "user", "content": "do you offer screen sharing chat"},
-            {"role": "assistant", "content": "Hello, I will check, thanks for waiting."},
+            {
+                "role": "assistant",
+                "content": "Hello, I will check, thanks for waiting.",
+            },
             {"role": "user", "content": "Sure."},
         ],
     )
     n_top_ranking: int | None = Field(
-        description="Number of most relevant sources to be returned", default=3, example=3
+        description="Number of most relevant sources to be returned",
+        default=3,
+        example=3,
     )
 
 
@@ -65,7 +115,9 @@ class CollectionSolutionRequest(VendorCollectionRequest):
         example=["chats", "tickets"],
     )
     n_top_ranking: int | None = Field(
-        description="Number of most relevant sources to be returned", default=3, example=3
+        description="Number of most relevant sources to be returned",
+        default=3,
+        example=3,
     )
 
 
@@ -142,7 +194,7 @@ class GetAnswerResponse(BaseModel):
         description="A request id which is used to /set_reaction.",
         example="63cbd74e8d31a62a1512eab1",
     )
-    info_source: List[Dict] | None = Field(
+    sources: List[Source] | None = Field(
         default=None,
         description="A list of dictionaries with information about the source of the answer.",
     )
@@ -153,18 +205,13 @@ class GetAnswerCollectionResponse(BaseModel):
         description="Answer to the query",
         example="I used to play drums.",
     )
-    request_id: str = Field(
+    request_id: str | None = Field(
         description="A request id which is used to /set_reaction.",
         example="63cbd74e8d31a62a1512eab1",
     )
-    source: List[Tuple[str, str, str]] | None = Field(
+    sources: List[Source] | None = Field(
         default=None,
-        description="A list of tuples (title, id, summary) with information about the source of the answer",
-        example=[
-            "Payment",
-            "123456",
-            "Payment methods and informaton summary. How to pay for subscription",
-        ],
+        description="A list of dictionaries with information about the source of the answer.",
     )
 
 
@@ -199,7 +246,3 @@ class SetReactionRequest(BaseModel):
 
     class Config:
         use_enum_values = True
-
-
-class HTTPExceptionResponse(BaseModel):
-    detail: str = Field(example="Internal Server Error")
