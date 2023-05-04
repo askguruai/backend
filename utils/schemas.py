@@ -106,7 +106,7 @@ class CollectionSolutionRequest(VendorCollectionRequest):
     document_id: str = Field(
         description="Doc id. Use only if you know what this is.", default=None
     )
-    doc_collection: str = Field(
+    document_collection: str = Field(
         description="Collection where to look for document id",
         default=None,
     )

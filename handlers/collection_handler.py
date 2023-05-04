@@ -67,7 +67,7 @@ class CollectionHandler:
 
         embedding, query = self.get_data_from_id(
             doc_id=request.document_id,
-            full_collection_name=f"{vendor}_{org_hash}_{request.doc_collection}",
+            full_collection_name=f"{vendor}_{org_hash}_{request.document_collection}",
         )
 
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
