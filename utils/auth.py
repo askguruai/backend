@@ -8,9 +8,9 @@ from jose import JWTError, jwt
 from utils.schemas import (
     AuthenticatedRequest,
     Collection,
-    VendorCollectionRequest,
     LivechatLoginRequest,
     UploadChatsRequest,
+    VendorCollectionRequest,
     VendorCollectionTokenRequest,
 )
 

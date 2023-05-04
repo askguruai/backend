@@ -47,9 +47,7 @@ class VendorCollectionTokenRequest(VendorCollectionRequest):
 
 
 class CollectionQueryRequest(VendorCollectionRequest):
-    query: str = Field(
-        description="Query to generate answer for.", example="What is your name?"
-    )
+    query: str = Field(description="Query to generate answer for.", example="What is your name?")
     subcollections: List[str] | None = Field(
         description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
         example=["chatbot", "livechat"],
@@ -83,7 +81,6 @@ class CollectionSolutionRequest(VendorCollectionRequest):
     n_top_ranking: int | None = Field(
         description="Number of most relevant sources to be returned", default=3, example=3
     )
-
 
 
 class LivechatLoginRequest(BaseModel):

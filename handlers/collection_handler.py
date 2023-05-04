@@ -40,24 +40,26 @@ class CollectionHandler:
         context = "\n\n".join(chunks)
 
         answer = (
-            await ml_requests.get_answer(context, request.query, api_version, "support", chat=request.chat)
+            await ml_requests.get_answer(
+                context, request.query, api_version, "support", chat=request.chat
+            )
         )["data"]
 
         return answer, context, doc_ids, titles, doc_summaries
-    
+
     async def get_solution(
-            self,
-            request: CollectionSolutionRequest,
-            api_version: str
+        self, request: CollectionSolutionRequest, api_version: str
     ) -> Tuple[str, str, List[str], List[str]]:
         subcollections = request.subcollections
         vendor = request.vendor
         org_id = request.organization_id
         org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
-        
-        embedding, query = self.get_data_from_id(doc_id=request.document_id,
-                full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}")
-        
+
+        embedding, query = self.get_data_from_id(
+            doc_id=request.document_id,
+            full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}",
+        )
+
         search_collections = [
             f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
         ]
@@ -66,9 +68,7 @@ class CollectionHandler:
         )
         context = "\n\n".join(chunks)
 
-        answer = (
-            await ml_requests.get_answer(context, query, api_version)
-        )["data"]
+        answer = (await ml_requests.get_answer(context, query, api_version))["data"]
 
         return answer, context, doc_ids, titles, doc_summaries
 
