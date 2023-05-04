@@ -8,7 +8,7 @@ from bson.binary import Binary
 from bson.objectid import ObjectId
 
 from parsers import DocumentParser, LinkParser, TextParser
-from utils import CONFIG, DB, ml_requests
+from utils import CONFIG, DB, ml_requests, hash_string
 from utils.schemas import DocumentRequest, LinkRequest, TextRequest
 
 
@@ -26,7 +26,7 @@ class GeneralHandler:
         if not text:
             return ml_requests.get_answer("", request.query, api_version), "", ""
 
-        text_hash = GeneralHandler.get_hash(text)
+        text_hash = hash_string(text)
 
         document = DB[api_version + CONFIG["mongo"]["requests_inputs_collection"]].find_one(
             {"_id": ObjectId(text_hash)}
@@ -64,10 +64,6 @@ class GeneralHandler:
         indices = np.argsort(similarities)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
         return context, indices
-
-    @staticmethod
-    def get_hash(text: str) -> str:
-        return hashlib.sha256(text.encode()).hexdigest()[:24]
 
     @abc.abstractmethod
     def get_additional_request_data(

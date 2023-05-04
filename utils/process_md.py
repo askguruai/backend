@@ -12,8 +12,7 @@ from tqdm import tqdm
 
 from parsers.markdown_parser import MarkdownParser
 from utils.errors import CoreMLError
-from utils import ml_requests
-from utils import MILVUS_DB
+from utils import MILVUS_DB, hash_string, ml_requests
 from pymilvus import utility, Collection
 
 def process_single_file(milvus_collection: Collection,
@@ -69,7 +68,7 @@ if __name__ == '__main__':
     collection = args.source_dir.split("_")[0].split("-")[1]
     vendor = "livechat"
     organization_id = "f1ac8408-27b2-465e-89c6-b8708bfc262c"
-    org_hash = hashlib.sha256(organization_id.encode()).hexdigest()[:24]
+    org_hash = hash_string(organization_id)
 
     collection_name = f"{vendor}_{org_hash}_{collection}"
     m_collection = MILVUS_DB.get_or_create_collection(collection_name)

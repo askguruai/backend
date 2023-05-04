@@ -16,7 +16,7 @@ from pymilvus import Collection
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import CONFIG, DB, MILVUS_DB, ml_requests
+from utils import CONFIG, DB, MILVUS_DB, ml_requests, hash_string
 from utils.errors import CoreMLError
 
 
@@ -38,7 +38,7 @@ def process_single_file(
     new_chunks_hashes = []
     new_chunks = []
     for chunk in chunks:
-        text_hash = hashlib.sha256(chunk.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        text_hash = hash_string(chunk)
         if text_hash in existing_chunks:
             existing_chunks.remove(text_hash)
         else:
@@ -76,9 +76,7 @@ if __name__ == '__main__':
 
     collection_name = "internal"
     vendor = "vivantio"
-    organization_id = hashlib.sha256("vivantio".encode()).hexdigest()[
-        : int(CONFIG["misc"]["hash_size"])
-    ]
+    organization_id = hash_string("vivantio")
 
     collection = MILVUS_DB.get_or_create_collection(
         f"{vendor}_{organization_id}_{collection_name}"
