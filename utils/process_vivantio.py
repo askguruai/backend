@@ -16,7 +16,7 @@ from pymilvus import Collection
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import CONFIG, DB, MILVUS_DB, ml_requests, hash_string
+from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import CoreMLError
 
 

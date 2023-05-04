@@ -12,19 +12,21 @@ from bson.objectid import ObjectId
 from fastapi import File, UploadFile
 
 from parsers import DocumentParser
-from utils import CONFIG, DB, ml_requests, hash_string
+from utils import CONFIG, DB, hash_string, ml_requests
 
 
 class PDFUploadHandler:
     def __init__(self, parser: DocumentParser):
         self.parser = parser
 
-    def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
-        embeddings = ml_requests.get_embeddings(chunks, api_version)
+    async def get_embeddings_from_chunks(
+        self, chunks: List[str], api_version: str
+    ) -> List[List[float]]:
+        embeddings = await ml_requests.get_embeddings(chunks, api_version)
         assert len(embeddings) == len(chunks)
         return embeddings
 
-    def process_file(self, file: UploadFile, api_version: str) -> str:
+    async def process_file(self, file: UploadFile, api_version: str) -> str:
         random_hash = str(hex(random.getrandbits(256)))[2:]
         with tempfile.TemporaryDirectory() as tmpdir:
             fpath = osp.join(tmpdir, f"{random_hash}.pdf")
@@ -43,7 +45,7 @@ class PDFUploadHandler:
         sentences = self.parser.text_to_sentences(text)
         sentences = [sent.replace("\n", " ") for sent in sentences]
         chunks = self.parser.chunkise_sentences(sentences, int(CONFIG["handlers"]["chunk_size"]))
-        embeddings = self.get_embeddings_from_chunks(chunks, api_version)
+        embeddings = await self.get_embeddings_from_chunks(chunks, api_version)
         document = {
             "_id": ObjectId(text_hash),
             "text": text,

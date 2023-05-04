@@ -298,7 +298,7 @@ async def get_collection_ranking_document(
 )
 @catch_errors
 async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, request: Request):
-    answer, context, document_id = text_handler.get_answer(text_request, api_version.value)
+    answer, context, document_id = await text_handler.get_answer(text_request, api_version.value)
     request_id = log_get_answer(
         answer, context, document_id, text_request.query, request, api_version.value
     )
@@ -312,7 +312,7 @@ async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, re
 )
 @catch_errors
 async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, request: Request):
-    answer, context, document_id = link_handler.get_answer(link_request, api_version.value)
+    answer, context, document_id = await link_handler.get_answer(link_request, api_version.value)
     request_id = log_get_answer(
         answer, context, document_id, link_request.query, request, api_version.value
     )
@@ -328,7 +328,7 @@ async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, re
 async def get_answer_document(
     api_version: ApiVersion, document_request: DocumentRequest, request: Request
 ):
-    answer, context, info_source, document_ids = document_handler.get_answer(
+    answer, context, info_source, document_ids = await document_handler.get_answer(
         document_request, api_version.value
     )
     request_id = log_get_answer(
@@ -349,7 +349,7 @@ async def get_answer_document(
 )
 @catch_errors
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
-    document_id = pdf_upload_handler.process_file(file, api_version.value)
+    document_id = await pdf_upload_handler.process_file(file, api_version.value)
     return UploadDocumentResponse(document_id=document_id)
 
 

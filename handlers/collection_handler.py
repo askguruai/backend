@@ -6,10 +6,8 @@ from typing import List, Tuple
 
 import numpy as np
 
-from utils import CONFIG, DB, MILVUS_DB, ml_requests, hash_string
-from utils.errors import (
-    InvalidDocumentIdError,
-)
+from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
+from utils.errors import InvalidDocumentIdError
 from utils.schemas import (
     ApiVersion,
     CollectionQueryRequest,
@@ -35,19 +33,15 @@ class CollectionHandler:
         vendor = request.vendor
         org_hash = hash_string(request.organization_id)
         query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
-        search_collections = [
-            f"{vendor}_{org_hash}_{collection}" for collection in collections
-        ]
+        search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections, query_embedding, self.top_k_chunks, api_version
         )
         context = "\n\n".join(chunks)
 
-        answer = (
-            await ml_requests.get_answer(
-                context, request.query, api_version, "support", chat=request.chat
-            )
-        )["data"]
+        answer = await ml_requests.get_answer(
+            context, request.query, api_version, "support", chat=request.chat
+        )
 
         return GetAnswerCollectionResponse(
             answer=answer,
@@ -76,15 +70,13 @@ class CollectionHandler:
             full_collection_name=f"{vendor}_{org_hash}_{request.doc_collection}",
         )
 
-        search_collections = [
-            f"{vendor}_{org_hash}_{collection}" for collection in collections
-        ]
+        search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections, embedding, self.top_k_chunks, api_version
         )
         context = "\n\n".join(chunks)
 
-        answer = (await ml_requests.get_answer(context, query, api_version))["data"]
+        answer = await ml_requests.get_answer(context, query, api_version)
 
         return GetAnswerCollectionResponse(
             answer=answer,

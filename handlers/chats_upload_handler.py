@@ -3,7 +3,7 @@ import logging
 from typing import List
 
 from parsers import ChatParser
-from utils import CONFIG, MILVUS_DB, ml_requests, hash_string
+from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
 
 
 class ChatsUploadHandler:

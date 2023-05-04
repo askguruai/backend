@@ -11,7 +11,7 @@ from utils.schemas import DocumentRequest
 
 
 class DocumentHandler(GeneralHandler):
-    def get_answer(
+    async def get_answer(
         self, request: DocumentRequest, api_version: str
     ) -> Tuple[str, str, List[Dict], List[str]]:
         if isinstance(request.document_id, str):
@@ -40,14 +40,14 @@ class DocumentHandler(GeneralHandler):
             all_embeddings.extend(embeddings)
             all_chunks.extend(chunks)
             doc_ids.extend([doc_id] * len(chunks))
-        context, indices = self.get_context_from_chunks_embeddings(
+        context, indices = await self.get_context_from_chunks_embeddings(
             all_chunks, all_embeddings, request.query, api_version
         )
         info_sources = [
             {"document": doc_ids[global_idx], "chunk": all_chunks[global_idx]}
             for global_idx in indices
         ]
-        answer = ml_requests.get_answer(context, request.query, api_version)
+        answer = await ml_requests.get_answer(context, request.query, api_version)
         return answer, context, info_sources, document_ids
 
     def get_additional_request_data(self, request: DocumentRequest) -> Dict[str, Any]:

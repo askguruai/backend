@@ -2,21 +2,22 @@ import os
 import sys
 
 sys.path.insert(1, os.getcwd())
-import traceback
-
 import hashlib
 import logging
+import traceback
 from argparse import ArgumentParser
 
+from pymilvus import Collection, utility
 from tqdm import tqdm
 
 from parsers.markdown_parser import MarkdownParser
-from utils.errors import CoreMLError
 from utils import MILVUS_DB, hash_string, ml_requests
-from pymilvus import utility, Collection
+from utils.errors import CoreMLError
 
-def process_single_file(milvus_collection: Collection,
-                        path: str, parser: MarkdownParser, api_version: str):
+
+def process_single_file(
+    milvus_collection: Collection, path: str, parser: MarkdownParser, api_version: str
+):
     chunks, title = parser.process_file(path)
     doc_id = title.lower().replace(' ', '-')
     new_chunks = []
@@ -28,7 +29,7 @@ def process_single_file(milvus_collection: Collection,
             offset=0,
             limit=1,
             output_fields=["chunk_hash"],
-            consistency_level="Strong"
+            consistency_level="Strong",
         )
         if len(res) == 0:
             # there is no such document yet, inserting
@@ -52,7 +53,7 @@ def process_single_file(milvus_collection: Collection,
         new_chunks,
         embeddings,
         [title] * len(id_hashes),
-        [""] * len(id_hashes)
+        [""] * len(id_hashes),
     ]
     milvus_collection.insert(data)
     logging.info(f"Document {title} in {len(id_hashes)} chunks inserted in the database")
@@ -83,7 +84,7 @@ if __name__ == "__main__":
                     path=os.path.join(args.source_dir, doc),
                     parser=md_parser,
                     api_version=args.api_version,
-                    milvus_collection=m_collection
+                    milvus_collection=m_collection,
                 )
     # todo: takes long -- investigate!
     utility.flush_all()
