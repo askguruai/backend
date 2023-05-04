@@ -153,7 +153,7 @@ class HTMLParser:
     def render_link(self, elem: Tag) -> str:
         if "href" not in elem.attrs:
             return self.render_text(elem)
-        link = elem.attrs['href']
+        link = elem.attrs["href"]
         if link.startswith("#"):
             return self.render_text(elem)
         else:
@@ -394,13 +394,17 @@ class GrooveHTMLParser(HTMLParser):
 
     def preprocess_document(self, article: dict) -> Tuple[str, str, dict]:
         meta = [article["title"]]
-        if len(article['tags']) > 0:
+        if len(article["tags"]) > 0:
             meta.append(f"tags: {','.join(article['tags'])}")
-        if len(article['related_titles']) > 0:
+        if len(article["related_titles"]) > 0:
             meta.append(f"related: {','.join(article['related_titles'])}")
         meta = "\n".join(meta)
 
-        meta_info = {"title": article["title"], "slug": article["slug"], "id": article["id"]}
+        meta_info = {
+            "title": article["title"],
+            "slug": article["slug"],
+            "id": article["id"],
+        }
 
         body = article["body"]
         return meta, body, meta_info

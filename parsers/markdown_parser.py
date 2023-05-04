@@ -91,7 +91,7 @@ class MarkdownParser(GeneralParser):
         # removing placeholder tags
         text = re.sub(r"{{% *ol *%}}", "1. ", text)
         for i in range(1, 20):
-            text = re.sub(f'{{{{% *ol *start="{i}" *%}}}}', f'{i}. ', text)
+            text = re.sub(f'{{{{% *ol *start="{i}" *%}}}}', f"{i}. ", text)
         text = re.sub(r"{{%.*?%}}", "", text)
         text = re.sub(r"{#.*?}", "", text)
         text = re.sub(r"{{<.*?>}}", "", text)
@@ -100,7 +100,7 @@ class MarkdownParser(GeneralParser):
         search = re.search(elem_meta_re, text)
         meta = ""
         if search:
-            matched = search.group(1).strip().split('\n')
+            matched = search.group(1).strip().split("\n")
             for line in matched:
                 key, val = line.split(":", maxsplit=1)
                 if key.strip() == "title":
@@ -139,7 +139,7 @@ class MarkdownParser(GeneralParser):
         return text.strip()
 
     def _render_inline_link(self, inline: str):
-        linksearch = re.search('href=\"(.*?)\"', inline)
+        linksearch = re.search('href="(.*?)"', inline)
         if linksearch:
             link = linksearch.group(1).strip()
             if link.startswith("#"):

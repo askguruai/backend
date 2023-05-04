@@ -63,7 +63,9 @@ async def validate_auth_org_scope(
     )
     try:
         payload = jwt.decode(
-            token, os.environ["JWT_SECRET_KEY"], algorithms=[os.environ["JWT_ALGORITHM"]]
+            token,
+            os.environ["JWT_SECRET_KEY"],
+            algorithms=[os.environ["JWT_ALGORITHM"]],
         )
         org_id: str = payload.get("organization_id")
         vendor: str = payload.get("vendor")

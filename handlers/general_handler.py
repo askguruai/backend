@@ -57,7 +57,11 @@ class GeneralHandler:
         return embeddings
 
     def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: List[List[float]], query: str, api_version: str
+        self,
+        chunks: List[str],
+        embeddings: List[List[float]],
+        query: str,
+        api_version: str,
     ) -> tuple[str, np.ndarray]:
         query_embedding = ml_requests.get_embeddings(query, api_version)[0]
         similarities = [np.dot(embedding, query_embedding) for embedding in embeddings]

@@ -50,7 +50,7 @@ def process_single_file(
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--source", type=str, help="path to a processed .json file")
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")

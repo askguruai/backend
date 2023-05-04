@@ -59,7 +59,7 @@ def process_single_file(milvus_collection: Collection,
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--source_dir", type=str)
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")

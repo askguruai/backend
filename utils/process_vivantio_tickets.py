@@ -51,9 +51,9 @@ def process_single_file(document: dict, collection: str, api_version: str) -> bo
             return False
         db_document = {
             "_id": ObjectId(text_hash),
-            "doc_title": document['hdctitle'],
+            "doc_title": document["hdctitle"],
             "link": f"https://vivantio.flex.vivantio.com/item/Ticket/{document['idhdcall']}",
-            "doc_id": str(document['idhdcall']),
+            "doc_id": str(document["idhdcall"]),
             "chunk": chunk,
             "description": short_description,
             "embedding": Binary(pickle.dumps(embedding)),
@@ -63,7 +63,7 @@ def process_single_file(document: dict, collection: str, api_version: str) -> bo
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--source", type=str, help="path to a processed .json file")
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
