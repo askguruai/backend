@@ -14,7 +14,7 @@ from bson.objectid import ObjectId
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import DB
+from utils import DB, hash_string
 from utils.errors import CoreMLError
 from utils.ml_requests import get_embeddings
 
@@ -39,7 +39,7 @@ def process_single_file(document: dict, collection: str, api_version: str) -> bo
         chunk = f"{document['hdctitle']}\n{chunk}"
     if "hdcatLineage" in document:
         chunk = f"{document['hdcatLineage']}\n{chunk}"
-    text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
+    text_hash = hash_string(chunk)
     db_document = DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].find_one(
         {"_id": ObjectId(text_hash)}
     )

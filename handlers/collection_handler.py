@@ -6,7 +6,7 @@ from typing import List, Tuple
 
 import numpy as np
 
-from utils import CONFIG, DB, MILVUS_DB, ml_requests
+from utils import CONFIG, DB, MILVUS_DB, ml_requests, hash_string
 from utils.errors import (
     InvalidDocumentIdError,
 )
@@ -25,8 +25,7 @@ class CollectionHandler:
     ) -> Tuple[str, str, List[str], List[str]]:
         collections = request.collections
         vendor = request.vendor
-        org_id = request.organization_id
-        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        org_hash = hash_string(request.organization_id)
         query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
         search_collections = [
             f"{vendor}_{org_hash}_{collection}" for collection in collections
@@ -49,8 +48,7 @@ class CollectionHandler:
     ) -> Tuple[str, str, List[str], List[str]]:
         collections = request.collections
         vendor = request.vendor
-        org_id = request.organization_id
-        org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
+        org_hash = hash_string(request.organization_id)
 
         embedding, query = self.get_data_from_id(
             doc_id=request.document_id,

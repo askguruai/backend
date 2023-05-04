@@ -12,7 +12,7 @@ from bson.objectid import ObjectId
 from fastapi import File, UploadFile
 
 from parsers import DocumentParser
-from utils import CONFIG, DB, ml_requests
+from utils import CONFIG, DB, ml_requests, hash_string
 
 
 class PDFUploadHandler:
@@ -31,7 +31,7 @@ class PDFUploadHandler:
             with open(fpath, "wb") as buffer:
                 shutil.copyfileobj(file.file, buffer)
             text = self.parser.get_text(fpath)
-        text_hash = hashlib.sha256(text.encode()).hexdigest()[:24]
+        text_hash = hash_string(text)
         # todo: switch to "exists" method or whatever
         document = DB[api_version + CONFIG["mongo"]["requests_inputs_collection"]].find_one(
             {"_id": ObjectId(text_hash)}
