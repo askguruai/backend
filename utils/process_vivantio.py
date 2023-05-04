@@ -76,10 +76,10 @@ if __name__ == "__main__":
 
     collection_name = "internal"
     vendor = "vivantio"
-    organization_id = hash_string("vivantio")
+    organization = hash_string("vivantio")
 
     collection = MILVUS_DB.get_or_create_collection(
-        f"{vendor}_{organization_id}_{collection_name}"
+        f"{vendor}_{organization}_{collection_name}"
     )
     print(f"Currently {collection.num_entities} entities")
     h_parser = VivantioHTMLParser(2000)

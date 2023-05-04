@@ -17,7 +17,7 @@ def log_get_answer(
     request: Request,
     api_version: str,
     vendor: str = None,
-    organization_id: str = None,
+    organization: str = None,
     collections: List[str] = None,
 ) -> str:
     if isinstance(document_ids, str) == str:
@@ -31,7 +31,7 @@ def log_get_answer(
         "answer": answer,
         "api_version": api_version,
         "vendor": vendor,
-        "organization_id": organization_id,
+        "organization": organization,
         "collections": collections,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id

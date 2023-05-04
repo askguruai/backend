@@ -24,7 +24,7 @@ async def get_org_collection_token(request: VendorCollectionTokenRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(
-        {"organization_id": request.organization_id, "vendor": request.vendor}
+        {"organization": request.organization, "vendor": request.vendor}
     )
     return {"access_token": access_token}
 
@@ -48,7 +48,7 @@ async def login_livechat(request: LivechatLoginRequest):
         )
     resp_data = response.json()
     access_token = create_access_token(
-        data={"organization_id": resp_data["organization_id"], "vendor": "livechat"}
+        data={"organization": resp_data["organization"], "vendor": "livechat"}
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -67,11 +67,11 @@ async def validate_auth_org_scope(
             os.environ["JWT_SECRET_KEY"],
             algorithms=[os.environ["JWT_ALGORITHM"]],
         )
-        org_id: str = payload.get("organization_id")
+        org_id: str = payload.get("organization")
         vendor: str = payload.get("vendor")
         if (
             org_id is None
-            or org_id != user_request.organization_id
+            or org_id != user_request.organization
             or vendor != user_request.vendor
         ):
             raise credentials_exception

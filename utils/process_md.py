@@ -68,8 +68,8 @@ if __name__ == "__main__":
 
     collection = args.source_dir.split("_")[0].split("-")[1]
     vendor = "livechat"
-    organization_id = "f1ac8408-27b2-465e-89c6-b8708bfc262c"
-    org_hash = hash_string(organization_id)
+    organization = "f1ac8408-27b2-465e-89c6-b8708bfc262c"
+    org_hash = hash_string(organization)
 
     collection_name = f"{vendor}_{org_hash}_{collection}"
     m_collection = MILVUS_DB.get_or_create_collection(collection_name)

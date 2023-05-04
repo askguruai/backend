@@ -129,7 +129,7 @@ async def get_answer_collection(
         request=request,
         api_version=api_version.value,
         vendor=user_request.vendor,
-        organization_id=user_request.organization_id,
+        organization=user_request.organization,
         collections=user_request.collections,
     )
     response.request_id = request_id
@@ -160,7 +160,7 @@ async def get_solution_collection(
         request=request,
         api_version=api_version.value,
         vendor=user_request.vendor,
-        organization_id=user_request.organization_id,
+        organization=user_request.organization,
         collections=user_request.collections,
     )
     response.request_id = request_id
@@ -366,7 +366,7 @@ async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest
     processed_chats = await chats_upload_handler.handle_request(
         chats=user_request.chats,
         vendor=user_request.vendor,
-        org_id=user_request.organization_id,
+        org_id=user_request.organization,
         api_version=api_version.value,
     )
     return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))

@@ -31,7 +31,7 @@ class CollectionHandler:
     ) -> Tuple[str, str, List[str], List[str]]:
         collections = request.collections
         vendor = request.vendor
-        org_hash = hash_string(request.organization_id)
+        org_hash = hash_string(request.organization)
         query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
@@ -63,7 +63,7 @@ class CollectionHandler:
     ) -> GetAnswerCollectionResponse:
         collections = request.collections
         vendor = request.vendor
-        org_hash = hash_string(request.organization_id)
+        org_hash = hash_string(request.organization)
 
         embedding, query = self.get_data_from_id(
             doc_id=request.document_id,
