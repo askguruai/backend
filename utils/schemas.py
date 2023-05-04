@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple
 
-from pydantic import BaseModel, Field, root_validator
+from pydantic import BaseModel, Field
 
 
 class ApiVersion(str, Enum):
@@ -9,20 +9,6 @@ class ApiVersion(str, Enum):
     v2 = "v2"
     v3 = "v3"
 
-
-class Collection(str, Enum):
-    livechat = "livechat"
-    groovehq = "groovehq"
-    vivantio = "vivantio"
-    askguru = "askguru"
-
-
-SubCollections = {
-    "livechat": ["chatbot", "helpdesk", "livechat", "knowledgebase", "internal"],
-    "groovehq": ["public"],
-    "vivantio": ["internal"],
-    "askguru": ["chats"],
-}
 
 AUTH_METHODS = ["org_scope", "default"]
 
@@ -48,9 +34,9 @@ class VendorCollectionTokenRequest(VendorCollectionRequest):
 
 class CollectionQueryRequest(VendorCollectionRequest):
     query: str = Field(description="Query to generate answer for.", example="What is your name?")
-    subcollections: List[str] | None = Field(
-        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
-        example=["chatbot", "livechat"],
+    collections: List[str] = Field(
+        description=f"Collections to use.",
+        example=["chats", "tickets"],
     )
     chat: List[dict] | None = Field(
         description="Optional: ongoing chat with the client",
@@ -70,13 +56,13 @@ class CollectionSolutionRequest(VendorCollectionRequest):
     document_id: str = Field(
         description="Doc id. Use only if you know what this is.", default=None
     )
-    doc_subcollection: str = Field(
-        description="Subcollection where to look for document id. Required if document_id is presented.",
+    doc_collection: str = Field(
+        description="Collection where to look for document id",
         default=None,
     )
-    subcollections: List[str] | None = Field(
-        description=f"Subcollections to use. Possible values: {', '.join(SubCollections['livechat'])}. Leave empty to use all subcollections.",
-        example=["chatbot", "livechat"],
+    collections: List[str] = Field(
+        description=f"Collections to use.",
+        example=["chats", "tickets"],
     )
     n_top_ranking: int | None = Field(
         description="Number of most relevant sources to be returned", default=3, example=3

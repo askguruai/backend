@@ -5,13 +5,10 @@ from collections import defaultdict
 from typing import List, Tuple
 
 import numpy as np
-from numpy.typing import NDArray
 
 from utils import CONFIG, DB, MILVUS_DB, ml_requests
 from utils.errors import (
     InvalidDocumentIdError,
-    RequestDataModelMismatchError,
-    SubcollectionDoesNotExist,
 )
 from utils.schemas import CollectionQueryRequest, CollectionSolutionRequest
 
@@ -26,13 +23,13 @@ class CollectionHandler:
         request: CollectionQueryRequest,
         api_version: str,
     ) -> Tuple[str, str, List[str], List[str]]:
-        subcollections = request.subcollections
+        collections = request.collections
         vendor = request.vendor
         org_id = request.organization_id
         org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
         query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
         search_collections = [
-            f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
+            f"{vendor}_{org_hash}_{collection}" for collection in collections
         ]
         chunks, titles, doc_ids, doc_summaries = MILVUS_DB.search_collections_set(
             search_collections, query_embedding, self.top_k_chunks, api_version
@@ -50,18 +47,18 @@ class CollectionHandler:
     async def get_solution(
         self, request: CollectionSolutionRequest, api_version: str
     ) -> Tuple[str, str, List[str], List[str]]:
-        subcollections = request.subcollections
+        collections = request.collections
         vendor = request.vendor
         org_id = request.organization_id
         org_hash = hashlib.sha256(org_id.encode()).hexdigest()[: int(CONFIG["misc"]["hash_size"])]
 
         embedding, query = self.get_data_from_id(
             doc_id=request.document_id,
-            full_collection_name=f"{vendor}_{org_hash}_{request.doc_subcollection}",
+            full_collection_name=f"{vendor}_{org_hash}_{request.doc_collection}",
         )
 
         search_collections = [
-            f"{vendor}_{org_hash}_{subcollection}" for subcollection in subcollections
+            f"{vendor}_{org_hash}_{collection}" for collection in collections
         ]
         chunks, titles, doc_ids, doc_summaries = MILVUS_DB.search_collections_set(
             search_collections, embedding, self.top_k_chunks, api_version
