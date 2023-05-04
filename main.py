@@ -287,7 +287,6 @@ async def get_collection_ranking_document(
         document_collection=collection,
         top_k=top_k,
         api_version=api_version,
-        query=query,
     )
 
 
