@@ -1,9 +1,7 @@
 import logging
-import shutil
-from typing import List, Union
+from typing import List
 
 import bson
-import requests
 import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
@@ -11,7 +9,6 @@ from fastapi import (
     Depends,
     FastAPI,
     File,
-    Header,
     HTTPException,
     Request,
     Response,
@@ -19,7 +16,7 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from pymongo.collection import ReturnDocument
 
 from handlers import (
@@ -33,12 +30,10 @@ from handlers import (
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import get_org_collection_token, login, login_livechat, validate_auth_org_scope
-from utils.errors import CoreMLError, InvalidDocumentIdError, RequestDataModelMismatchError
+from utils.auth import get_org_collection_token, login_livechat, validate_auth_org_scope
 from utils.ml_requests import client_session_wrapper
 from utils.schemas import (
     ApiVersion,
-    Collection,
     CollectionQueryRequest,
     CollectionSolutionRequest,
     DocumentRequest,
@@ -99,7 +94,6 @@ async def docs_redirect():
 
 
 # fmt: off
-@app.post("/token")(login)
 @app.post("/token_livechat")(login_livechat)
 @app.post("/godmode_token")(get_org_collection_token)
 # fmt: on
@@ -128,8 +122,9 @@ async def get_answer_collection(
         query=user_request.query,
         request=request,
         api_version=api_version.value,
-        collection=user_request.organization_id,
-        subcollections=user_request.subcollections,
+        vendor=user_request.vendor,
+        organization_id=user_request.organization_id,
+        collections=user_request.collections,
     )
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
                                        source=list(zip(doc_ids, doc_titles, doc_summaries)))
@@ -160,8 +155,9 @@ async def get_solution_collection(
         query="",
         request=request,
         api_version=api_version.value,
-        collection=user_request.organization_id,
-        subcollections=user_request.subcollections,
+        vendor=user_request.vendor,
+        organization_id=user_request.organization_id,
+        collections=user_request.collections,
     )
     return GetAnswerCollectionResponse(answer=answer, request_id=request_id,
                                        source=list(zip(doc_ids, doc_titles, doc_summaries)))

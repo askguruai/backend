@@ -74,14 +74,14 @@ if __name__ == '__main__':
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
     args = parser.parse_args()
 
-    subcollection_name = "internal"
+    collection_name = "internal"
     vendor = "vivantio"
     organization_id = hashlib.sha256("vivantio".encode()).hexdigest()[
         : int(CONFIG["misc"]["hash_size"])
     ]
 
     collection = MILVUS_DB.get_or_create_collection(
-        f"{vendor}_{organization_id}_{subcollection_name}"
+        f"{vendor}_{organization_id}_{collection_name}"
     )
     print(f"Currently {collection.num_entities} entities")
     h_parser = VivantioHTMLParser(2000)

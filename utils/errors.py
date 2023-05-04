@@ -21,7 +21,7 @@ class CoreMLError(BasicError):
         self.message = message
 
 
-class SubcollectionDoesNotExist(BasicError):
+class CollectionDoesNotExist(BasicError):
     def __init__(self, message: str = "Requested collection does not exist!"):
         self.message = message
 
