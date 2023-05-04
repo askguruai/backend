@@ -121,9 +121,11 @@ class CollectionHandler:
         organization_hash = hash_string(organization)
         full_collection_name = f"{vendor}_{organization_hash}_{collection}"
         milvus_collection = MILVUS_DB[full_collection_name]
+        # TODO this might not retrive all docs
+        # if will have int pk then retrieve by it
         chunks = milvus_collection.query(
             expr='doc_id >= "0"',
-            output_fields=["doc_id"],  # add ts later as well
+            output_fields=["doc_id"],  # TODO add ts later as well
         )
         return GetCollectionResponse(doc_ids=list(set([chunk["doc_id"] for chunk in chunks])))
 
