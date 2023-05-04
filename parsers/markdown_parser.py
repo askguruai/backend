@@ -39,7 +39,7 @@ class MarkdownParser(GeneralParser):
                             else accumulated_text
                         )
                         accumulated_text = ""
-                        chunks.append({"title": meta, "text": chunk_text})
+                        chunks.extend(self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text}))
                     current_heading = heading_text
                 else:
                     accumulated_text += f"\n{self.render_text(child)}\n"
@@ -47,8 +47,8 @@ class MarkdownParser(GeneralParser):
                 cur_text = self.render_text(child)
                 if len(accumulated_text) + len(cur_text) > 2000:
                     if accumulated_text != "":
-                        chunks.append(
-                            {"title": meta, "text": f"{current_heading}\n{accumulated_text}"}
+                        chunks.extend(
+                            self.opt_split_into_smaller_chunks({"title": meta, "text": f"{current_heading}\n{accumulated_text}"})
                         )
                     accumulated_text = cur_text
                 else:
@@ -60,10 +60,32 @@ class MarkdownParser(GeneralParser):
                 if current_heading != ""
                 else accumulated_text
             )
-            chunks.append({"title": meta, "text": chunk_text})
+            chunks.extend(self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text}))
 
         chunks = self.compress_chunks(chunks)
         return ["\n".join([ch["title"], ch["text"]]) for ch in chunks], meta
+    
+    def opt_split_into_smaller_chunks(self, chunk: dict) -> list[dict]:
+        # todo: index throw
+        if len(chunk["text"]) < 2000:
+            return [chunk]
+        txt = chunk["text"]
+        n_ids = []
+        for i in range(len(txt)):
+            if txt[i] == "\n":
+                n_ids.append(i)
+        if len(n_ids) == 0:
+            # no breaks at all
+            part = {"title": chunk["title"], "text": chunk["text"][:2000]}
+            remaining = {"title": chunk["title"], "text": chunk["text"][2000:]}
+            print(f"Hard split!")
+            return [part] + self.opt_split_into_smaller_chunks(remaining)
+        split_id = n_ids[len(n_ids) // 2]
+        part = {"title": chunk["title"], "text": chunk["text"][:split_id]}
+        remaining = {"title": chunk["title"], "text": chunk["text"][split_id + 1 :]}
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(
+            remaining
+        )
 
     def preprocess_text(self, text: str):
         # removing placeholder tags
