@@ -115,14 +115,14 @@ class CollectionHandler:
             output_fields=["doc_id", "timestamp"],
         )
 
-        documents, seen = [], set()
+        documents = defaultdict(int)
         for chunk in chunks:
-            doc_id = chunk["doc_id"]
-            if doc_id not in seen:
-                seen.add(doc_id)
-                documents.append(Document(id=doc_id, timestamp=chunk["timestamp"]))
+            doc_id, timestamp = chunk["doc_id"], chunk["timestamp"]
+            documents[doc_id] = max(documents[doc_id], timestamp)
 
-        return GetCollectionResponse(documents=documents)
+        return GetCollectionResponse(
+            documents=[Document(id=doc_id, timestamp=timestamp) for doc_id, timestamp in documents.items()]
+        )
 
     async def get_ranking(
         self,
