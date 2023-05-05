@@ -138,14 +138,24 @@ class CollectionHandler:
                 full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
             )
 
+        # extracting more than top_k chunks because each
+        # document might be represented by several chunks
         collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
         _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            collections_search, embedding, top_k, api_version.value
+            collections_search, embedding, top_k * 5, api_version.value
         )
 
-        return GetCollectionRankingResponse(
-            sources=[
-                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
-                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
-            ]
-        )
+        sources, seen, i = [], set(), 0
+        while len(sources) < top_k and i < len(titles):
+            if doc_ids[i] not in seen:
+                sources.append(
+                    Source(
+                        id=doc_ids[i],
+                        title=titles[i],
+                        collection=doc_collections[i].split("_")[-1],
+                        summary=doc_summaries[i],
+                    )
+                )
+                seen.add(doc_ids[i])
+            i += 1
+        return GetCollectionRankingResponse(sources=sources)
