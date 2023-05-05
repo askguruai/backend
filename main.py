@@ -109,61 +109,6 @@ async def docs_redirect():
 #                   COLLECTIONS                      #
 ######################################################
 
-# @app.post(
-#     "/{api_version}/get_answer/collection",
-#     response_model=GetAnswerCollectionResponse,
-#     responses=CollectionResponces,
-#     dependencies=[Depends(validate_organization_scope)],
-# )
-# @catch_errors
-# async def get_answer_collection(
-#     user_request: CollectionQueryRequest,
-#     api_version: ApiVersion,
-#     request: Request,
-# ):
-#     response = await collection_handler.get_answer(user_request, api_version.value)
-#     request_id = log_get_answer(
-#         answer=response.answer,
-#         context="",
-#         document_ids=None,
-#         query=user_request.query,
-#         request=request,
-#         api_version=api_version.value,
-#         vendor=user_request.vendor,
-#         organization=user_request.organization,
-#         collections=user_request.collections,
-#     )
-#     response.request_id = request_id
-#     return response
-
-
-# @app.post(
-#     "/{api_version}/get_solution/collection",
-#     response_model=GetCollectionAnswerResponse,
-#     responses=CollectionResponces,
-#     dependencies=[Depends(validate_organization_scope)],
-# )
-# @catch_errors
-# async def get_solution_collection(
-#     user_request: CollectionSolutionRequest,
-#     api_version: ApiVersion,
-#     request: Request,
-# ):
-#     response = await collection_handler.get_solution(user_request, api_version.value)
-#     request_id = log_get_answer(
-#         answer=response.answer,
-#         context="",
-#         document_ids=None,
-#         query="",
-#         request=request,
-#         api_version=api_version.value,
-#         vendor=user_request.vendor,
-#         organization=user_request.organization,
-#         collections=user_request.collections,
-#     )
-#     response.request_id = request_id
-#     return response
-
 
 @app.get(
     "/{api_version}/{vendor}/{organization}/answer",
@@ -231,6 +176,10 @@ async def get_collection_answer(
 async def get_collection_ranking_query(
     request: Request,
     api_version: ApiVersion,
+    vendor: str,
+    organization: str,
+    # TODO make not mandatory collections
+    collections: List[str] = Query(description="List of collections to search"),
     query: str = Query(
         default=None, description="Query string", example="How to change my password?"
     ),
@@ -238,13 +187,7 @@ async def get_collection_ranking_query(
     document_collection: str = Query(
         default=None, description="Document collection", example="chats"
     ),
-    # TODO make not mandatory collections
-    collections: List[str] = Query(description="List of collections to search"),
     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
-    # vendor: str = Path(description="Vendor name", example="livechat"),
-    # organization: str = Path(
-    #     description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
-    # ),
 ):
     logging.info(vendor)
     if not (bool(query) ^ bool(document)):
@@ -303,63 +246,6 @@ async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest
         api_version=api_version.value,
     )
     return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))
-
-
-# @app.get(
-#     "/{api_version}/{vendor}/{organization}/{collection}/ranking",
-#     response_model=GetCollectionRankingResponse,
-#     responses=CollectionResponses,
-#     dependencies=[Depends(validate_organization_scope)],
-# )
-# @catch_errors
-# async def get_collection_ranking_query(
-#     request: Request,
-#     api_version: ApiVersion,
-#     query: str = Query(description="Query string", example="How to change my password?"),
-#     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
-#     vendor: str = Path(description="Vendor name", example="livechat"),
-#     organization: str = Path(
-#         description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
-#     ),
-#     collection: str = Path(description="Collection within organization", example="chats"),
-# ):
-#     return await collection_handler.get_ranking(
-#         vendor=vendor,
-#         organization=organization,
-#         collections=[collection],
-#         top_k=top_k,
-#         api_version=api_version,
-#         query=query,
-#     )
-
-
-# @app.get(
-#     "/{api_version}/{vendor}/{organization}/{collection}/{document}/ranking",
-#     response_model=GetCollectionRankingResponse,
-#     responses=CollectionResponses,
-#     dependencies=[Depends(validate_organization_scope)],
-# )
-# @catch_errors
-# async def get_collection_ranking_document(
-#     request: Request,
-#     api_version: ApiVersion,
-#     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
-#     document: str = Path(description="Document ID", example="1234567890"),
-#     vendor: str = Path(description="Vendor name", example="livechat"),
-#     organization: str = Path(
-#         description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
-#     ),
-#     collection: str = Path(description="Collection within organization", example="chats"),
-# ):
-#     return await collection_handler.get_ranking(
-#         vendor=vendor,
-#         organization=organization,
-#         collections=[collection],
-#         document=document,
-#         document_collection=collection,
-#         top_k=top_k,
-#         api_version=api_version,
-#     )
 
 
 ######################################################
