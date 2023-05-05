@@ -80,11 +80,10 @@ class CollectionsManager:
         if collection_name in self.cache:
             return self.cache[collection_name]
         fields = [
+            FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
             FieldSchema(
                 name="chunk_hash",
                 dtype=DataType.VARCHAR,
-                is_primary=True,
-                auto_id=False,
                 max_length=24,
             ),
             FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=256),
@@ -92,6 +91,7 @@ class CollectionsManager:
             FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
             FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
             FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
+            FieldSchema(name="timestamp", dtype=DataType.INT64)
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
@@ -101,6 +101,10 @@ class CollectionsManager:
             "params": {"nlist": 1024},
         }
         m_collection.create_index(field_name="emb_v1", index_params=index_params)
+        m_collection.create_index(
+            field_name="doc_id", 
+            index_name="scalar_index",
+        )
         # todo: do we need an index on primary key? we do if it is not auto, need to check
         m_collection.load()
         self.cache[collection_name] = m_collection
