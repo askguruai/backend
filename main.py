@@ -1,11 +1,11 @@
 import logging
-from typing import List
+from typing import Dict, List
 
 import bson
 import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
-from fastapi import Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pymongo.collection import ReturnDocument
@@ -19,7 +19,6 @@ from utils.ml_requests import client_session_wrapper
 from utils.schemas import (
     ApiVersion,
     CollectionResponses,
-    CollectionSolutionRequest,
     DocumentRequest,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
@@ -29,8 +28,7 @@ from utils.schemas import (
     LinkRequest,
     SetReactionRequest,
     TextRequest,
-    UploadChatsRequest,
-    UploadChatsResponse,
+    UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
 )
 from utils.uvicorn_logging import RequestLoggerMiddleware, run_uvicorn_loguru
@@ -202,20 +200,33 @@ async def get_collection(
 
 
 @app.post(
-    "/{api_version}/upload/chats/",
-    response_model=UploadChatsResponse,
+    "/{api_version}/{vendor}/{organization}/{collection}",
+    response_model=UploadCollectionDocumentsResponse,
     responses=CollectionResponses,
     dependencies=[Depends(validate_organization_scope)],
 )
 @catch_errors
-async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest):
-    processed_chats = await chats_upload_handler.handle_request(
-        chats=user_request.chats,
-        vendor=user_request.vendor,
-        org_id=user_request.organization,
-        api_version=api_version.value,
+async def upload_collection_documents(
+    request: Request,
+    api_version: ApiVersion,
+    vendor: str = Path(description="Vendor name", example="livechat"),
+    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    documents: List[Dict] = Body(None, description="List of documents to upload"),
+    chats: List[Dict] = Body(None, description="List of chats to upload"),
+):
+    if documents:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Documents are not supported yet",
+        )
+    return await chats_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=vendor,
+        organization=organization,
+        collection=collection,
+        chats=chats,
     )
-    return UploadChatsResponse(uploaded_chunks_number=str(processed_chats))
 
 
 ######################################################

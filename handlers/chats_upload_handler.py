@@ -1,18 +1,21 @@
 import hashlib
 import logging
-from typing import List
+from typing import Dict, List
 
 from parsers import ChatParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils.schemas import ApiVersion, UploadCollectionDocumentsResponse
 
 
 class ChatsUploadHandler:
     def __init__(self, parser: ChatParser):
         self.parser = parser
 
-    async def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
-        org_hash = hash_string(org_id)
-        collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_chats")
+    async def handle_request(
+        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Dict]
+    ) -> UploadCollectionDocumentsResponse:
+        org_hash = hash_string(organization)
+        collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
 
         all_chunks = []
         all_chunk_hashes = []
@@ -66,4 +69,4 @@ class ChatsUploadHandler:
             collection.insert(data)
             logging.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
 
-        return len(all_chunks)
+        return UploadCollectionDocumentsResponse(n_chunks=len(all_chunks))
