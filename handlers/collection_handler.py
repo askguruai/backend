@@ -44,12 +44,7 @@ class CollectionHandler:
         return GetCollectionAnswerResponse(
             answer=answer,
             sources=[
-                Source(
-                    id=doc_id,
-                    title=title,
-                    collection=collection.split("_")[-1],
-                    summary=doc_summary,
-                )
+                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
             ],
         )
@@ -81,12 +76,7 @@ class CollectionHandler:
         return GetCollectionAnswerResponse(
             answer=answer,
             sources=[
-                Source(
-                    id=doc_id,
-                    title=title,
-                    collection=collection.split("_")[-1],
-                    summary=doc_summary,
-                )
+                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
             ],
         )
@@ -155,12 +145,7 @@ class CollectionHandler:
 
         return GetCollectionRankingResponse(
             sources=[
-                Source(
-                    id=doc_id,
-                    title=title,
-                    collection=collection.split("_")[-1],
-                    summary=doc_summary,
-                )
+                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
             ]
         )
