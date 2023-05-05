@@ -10,9 +10,8 @@ from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import InvalidDocumentIdError
 from utils.schemas import (
     ApiVersion,
-    CollectionQueryRequest,
     CollectionSolutionRequest,
-    GetAnswerCollectionResponse,
+    GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
     GetCollectionResponse,
     Source,
@@ -26,24 +25,23 @@ class CollectionHandler:
 
     async def get_answer(
         self,
-        request: CollectionQueryRequest,
-        api_version: str,
-    ) -> Tuple[str, str, List[str], List[str]]:
-        collections = request.collections
-        vendor = request.vendor
-        org_hash = hash_string(request.organization)
-        query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
+        vendor: str,
+        organization: str,
+        collections: List[str],
+        query: str,
+        api_version: ApiVersion,
+    ) -> GetCollectionAnswerResponse:
+        org_hash = hash_string(organization)
+        query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections, query_embedding, self.top_k_chunks, api_version
         )
         context = "\n\n".join(chunks)
 
-        answer = await ml_requests.get_answer(
-            context, request.query, api_version, "support", chat=request.chat
-        )
+        answer = await ml_requests.get_answer(context, query, api_version.value, "support")
 
-        return GetAnswerCollectionResponse(
+        return GetCollectionAnswerResponse(
             answer=answer,
             sources=[
                 Source(
@@ -59,15 +57,19 @@ class CollectionHandler:
         )
 
     async def get_solution(
-        self, request: CollectionSolutionRequest, api_version: str
-    ) -> GetAnswerCollectionResponse:
-        collections = request.collections
-        vendor = request.vendor
-        org_hash = hash_string(request.organization)
+        self,
+        vendor: str,
+        organization: str,
+        collections: List[str],
+        document: str,
+        document_collection: str,
+        api_version: ApiVersion,
+    ) -> GetCollectionAnswerResponse:
+        org_hash = hash_string(organization)
 
         embedding, query = self.get_data_from_id(
-            doc_id=request.document_id,
-            full_collection_name=f"{vendor}_{org_hash}_{request.document_collection}",
+            document=document,
+            full_collection_name=f"{vendor}_{org_hash}_{document_collection}",
         )
 
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
@@ -78,7 +80,7 @@ class CollectionHandler:
 
         answer = await ml_requests.get_answer(context, query, api_version)
 
-        return GetAnswerCollectionResponse(
+        return GetCollectionAnswerResponse(
             answer=answer,
             sources=[
                 Source(
@@ -93,10 +95,10 @@ class CollectionHandler:
             ],
         )
 
-    def get_data_from_id(self, doc_id: str, full_collection_name: str) -> np.ndarray:
+    def get_data_from_id(self, document: str, full_collection_name: str) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
         res = collection.query(
-            expr=f'doc_id=="{doc_id}"',
+            expr=f'doc_id=="{document}"',
             offset=0,
             limit=30,
             output_fields=["chunk", "emb_v1"],
@@ -105,9 +107,9 @@ class CollectionHandler:
         if len(res) != 1:
             col_name = full_collection_name.rsplit("_", maxsplit=1)[-1]
             if len(res) == 0:
-                text = f"Unable to retrieve document with id {doc_id} in collection {col_name}"
+                text = f"Unable to retrieve document {document} in collection {col_name}"
             else:
-                text = f"Ambiguous documents with id {doc_id} in collection {col_name}"
+                text = f"Ambiguous documents {document} in collection {col_name}"
             raise InvalidDocumentIdError(text)
         emb = res[0]["emb_v1"]
         query = res[0]["chunk"]
@@ -146,7 +148,7 @@ class CollectionHandler:
         elif document:
             document_collection = document_collection or "faq"
             embedding, _ = self.get_data_from_id(
-                doc_id=document,
+                document=document,
                 full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
             )
 

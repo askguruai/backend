@@ -19,7 +19,7 @@ class AuthExceptionResponse(BaseModel):
     detail: str = Field(example="Could not validate credentials")
 
 
-collection_responses = {
+CollectionResponses = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
     status.HTTP_401_UNAUTHORIZED: {"model": AuthExceptionResponse},
 }
@@ -77,7 +77,7 @@ class GetCollectionRankingResponse(BaseModel):
     )
 
 
-class CollectionQueryRequest(VendorCollectionRequest):
+class GetCollectionAnswerRequest(VendorCollectionRequest):
     query: str = Field(description="Query to generate answer for.", example="What is your name?")
     collections: List[str] = Field(
         description=f"Collections to use.",
@@ -88,17 +88,9 @@ class CollectionQueryRequest(VendorCollectionRequest):
         example=[
             {"role": "user", "content": "hi"},
             {"role": "user", "content": "do you offer screen sharing chat"},
-            {
-                "role": "assistant",
-                "content": "Hello, I will check, thanks for waiting.",
-            },
+            {"role": "assistant", "content": "Hello, I will check, thanks for waiting."},
             {"role": "user", "content": "Sure."},
         ],
-    )
-    n_top_ranking: int | None = Field(
-        description="Number of most relevant sources to be returned",
-        default=3,
-        example=3,
     )
 
 
@@ -200,7 +192,7 @@ class GetAnswerResponse(BaseModel):
     )
 
 
-class GetAnswerCollectionResponse(BaseModel):
+class GetCollectionAnswerResponse(BaseModel):
     answer: str = Field(
         description="Answer to the query",
         example="I used to play drums.",
