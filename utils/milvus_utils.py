@@ -67,7 +67,7 @@ class CollectionsManager:
                 all_ids.append(hit.entity.get("doc_id"))
                 all_summaries.append(hit.entity.get("doc_summary"))
                 all_collections.append(collection.name)
-        top_hits = np.argsort(all_distances)[-n_top:]
+        top_hits = np.argsort(all_distances)[-n_top:][::-1]
         return (
             np.array(all_chunks)[top_hits].tolist(),
             np.array(all_titles)[top_hits].tolist(),
