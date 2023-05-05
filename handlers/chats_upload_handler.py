@@ -30,23 +30,23 @@ class ChatsUploadHandler:
                 expr=f'doc_id=="{chat_id}"',
                 offset=0,
                 limit=10000,
-                output_fields=["chunk_hash"],
+                output_fields=["pk", "chunk_hash"],
                 consistency_level="Strong",
             )
-            existing_chunks = set((hit["chunk_hash"] for hit in existing_chunks))
+            existing_chunks = {hit["chunk_hash"]: hit["pk"] for hit in existing_chunks}
             # determining which chunks are new
             new_chunks_hashes = []
             new_chunks = []
             for chunk in chunks:
                 text_hash = hash_string(chunk)
                 if text_hash in existing_chunks:
-                    existing_chunks.remove(text_hash)
+                    del existing_chunks[text_hash]
                 else:
                     new_chunks.append(chunk)
                     new_chunks_hashes.append(text_hash)
             # dropping outdated chunks
-            existing_chunks = [f'"{ch}"' for ch in existing_chunks]
-            collection.delete(f"chunk_hash in [{','.join(existing_chunks)}]")
+            existing_chunks_pks = list(existing_chunks.values())
+            collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
 
             if len(new_chunks) == 0:
                 # everyting is already in the database
@@ -56,9 +56,11 @@ class ChatsUploadHandler:
             all_doc_titles.extend([meta_info["doc_title"]] * len(new_chunks))
             all_summaries.extend([""] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
-            all_timestamps.extend([meta_info["timestamp"] * len(new_chunks)])
+            all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
+            for l in [all_chunk_hashes, all_doc_ids, all_chunks, all_embeddings, all_doc_titles, all_summaries, all_timestamps]:
+                print(len(l))
             data = [
                 all_chunk_hashes,
                 all_doc_ids,
