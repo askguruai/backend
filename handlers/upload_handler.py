@@ -19,9 +19,7 @@ class PDFUploadHandler:
     def __init__(self, parser: DocumentParser):
         self.parser = parser
 
-    async def get_embeddings_from_chunks(
-        self, chunks: List[str], api_version: str
-    ) -> List[List[float]]:
+    async def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
         embeddings = await ml_requests.get_embeddings(chunks, api_version)
         assert len(embeddings) == len(chunks)
         return embeddings

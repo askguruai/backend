@@ -34,14 +34,10 @@ class MarkdownParser(GeneralParser):
                     # creating text chunk from level-1/2 section
                     if len(accumulated_text) > 0:
                         chunk_text = (
-                            f"{current_heading}\n{accumulated_text}"
-                            if current_heading != ""
-                            else accumulated_text
+                            f"{current_heading}\n{accumulated_text}" if current_heading != "" else accumulated_text
                         )
                         accumulated_text = ""
-                        chunks.extend(
-                            self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text})
-                        )
+                        chunks.extend(self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text}))
                     current_heading = heading_text
                 else:
                     accumulated_text += f"\n{self.render_text(child)}\n"
@@ -59,11 +55,7 @@ class MarkdownParser(GeneralParser):
                     accumulated_text += cur_text
 
         if len(accumulated_text) > 0:
-            chunk_text = (
-                f"{current_heading}\n{accumulated_text}"
-                if current_heading != ""
-                else accumulated_text
-            )
+            chunk_text = f"{current_heading}\n{accumulated_text}" if current_heading != "" else accumulated_text
             chunks.extend(self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text}))
 
         chunks = self.compress_chunks(chunks)
@@ -87,9 +79,7 @@ class MarkdownParser(GeneralParser):
         split_id = n_ids[len(n_ids) // 2]
         part = {"title": chunk["title"], "text": chunk["text"][:split_id]}
         remaining = {"title": chunk["title"], "text": chunk["text"][split_id + 1 :]}
-        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(
-            remaining
-        )
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(remaining)
 
     def preprocess_text(self, text: str):
         # removing placeholder tags
@@ -115,9 +105,7 @@ class MarkdownParser(GeneralParser):
         return text, meta
 
     def preprocess_document(self, document: Document):
-        new_children = [
-            ch for ch in document.children if not isinstance(ch, (ThematicBreak, HTMLBlock))
-        ]
+        new_children = [ch for ch in document.children if not isinstance(ch, (ThematicBreak, HTMLBlock))]
         document.children = new_children
         return document
 

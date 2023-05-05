@@ -11,17 +11,14 @@ from utils.schemas import DocumentRequest
 
 
 class DocumentHandler(GeneralHandler):
-    async def get_answer(
-        self, request: DocumentRequest, api_version: str
-    ) -> Tuple[str, str, List[Dict], List[str]]:
+    async def get_answer(self, request: DocumentRequest, api_version: str) -> Tuple[str, str, List[Dict], List[str]]:
         if isinstance(request.document_id, str):
             document_ids = [request.document_id]
         elif isinstance(request.document_id, list):
             document_ids = request.document_id
         else:
             raise RequestDataModelMismatchError(
-                f"document_id param should be either str or list, "
-                f"but is {type(request.document_id)}"
+                f"document_id param should be either str or list, " f"but is {type(request.document_id)}"
             )
         all_chunks, all_embeddings, doc_ids = (
             [],
@@ -43,10 +40,7 @@ class DocumentHandler(GeneralHandler):
         context, indices = await self.get_context_from_chunks_embeddings(
             all_chunks, all_embeddings, request.query, api_version
         )
-        info_sources = [
-            {"document": doc_ids[global_idx], "chunk": all_chunks[global_idx]}
-            for global_idx in indices
-        ]
+        info_sources = [{"document": doc_ids[global_idx], "chunk": all_chunks[global_idx]} for global_idx in indices]
         answer = await ml_requests.get_answer(context, request.query, api_version)
         return answer, context, info_sources, document_ids
 

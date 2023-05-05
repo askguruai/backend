@@ -50,9 +50,7 @@ class CollectionHandler:
                     collection=collection.split("_")[-1],
                     summary=doc_summary,
                 )
-                for title, doc_id, doc_summary, collection in zip(
-                    titles, doc_ids, doc_summaries, doc_collections
-                )
+                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
             ],
         )
 
@@ -89,9 +87,7 @@ class CollectionHandler:
                     collection=collection.split("_")[-1],
                     summary=doc_summary,
                 )
-                for title, doc_id, doc_summary, collection in zip(
-                    titles, doc_ids, doc_summaries, doc_collections
-                )
+                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
             ],
         )
 
@@ -152,9 +148,7 @@ class CollectionHandler:
                 full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
             )
 
-        collections_search = [
-            f"{vendor}_{organization_hash}_{collection}" for collection in collections
-        ]
+        collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
         _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             collections_search, embedding, top_k, api_version.value
         )
@@ -167,8 +161,6 @@ class CollectionHandler:
                     collection=collection.split("_")[-1],
                     summary=doc_summary,
                 )
-                for title, doc_id, doc_summary, collection in zip(
-                    titles, doc_ids, doc_summaries, doc_collections
-                )
+                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
             ]
         )

@@ -5,30 +5,12 @@ import bson
 import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
-from fastapi import (
-    Depends,
-    FastAPI,
-    File,
-    HTTPException,
-    Path,
-    Query,
-    Request,
-    Response,
-    UploadFile,
-    status,
-)
+from fastapi import Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import (
-    ChatsUploadHandler,
-    CollectionHandler,
-    DocumentHandler,
-    LinkHandler,
-    PDFUploadHandler,
-    TextHandler,
-)
+from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CONFIG, DB
 from utils.api import catch_errors, log_get_answer
@@ -100,9 +82,7 @@ async def docs_redirect():
 
 
 @app.post("/{api_version}/livechat/token", responses=CollectionResponses)(get_livechat_token)
-@app.post("/{api_version}/{vendor}/{organization}/token", responses=CollectionResponses)(
-    get_organization_token
-)
+@app.post("/{api_version}/{vendor}/{organization}/token", responses=CollectionResponses)(get_organization_token)
 
 
 ######################################################
@@ -124,13 +104,9 @@ async def get_collection_answer(
     organization: str,
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search", example=["chats"]),
-    query: str = Query(
-        default=None, description="Query string", example="How to change my password?"
-    ),
+    query: str = Query(default=None, description="Query string", example="How to change my password?"),
     document: str = Query(default=None, description="Document ID", example="1234567890"),
-    document_collection: str = Query(
-        default=None, description="Document collection", example="chats"
-    ),
+    document_collection: str = Query(default=None, description="Document collection", example="chats"),
 ):
     if not query and not document:
         raise HTTPException(
@@ -180,13 +156,9 @@ async def get_collection_ranking_query(
     organization: str,
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search"),
-    query: str = Query(
-        default=None, description="Query string", example="How to change my password?"
-    ),
+    query: str = Query(default=None, description="Query string", example="How to change my password?"),
     document: str = Query(default=None, description="Document ID", example="1234567890"),
-    document_collection: str = Query(
-        default=None, description="Document collection", example="chats"
-    ),
+    document_collection: str = Query(default=None, description="Document collection", example="chats"),
     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
 ):
     logging.info(vendor)
@@ -223,9 +195,7 @@ async def get_collection(
     request: Request,
     api_version: ApiVersion,
     vendor: str = Path(description="Vendor name", example="livechat"),
-    organization: str = Path(
-        description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"
-    ),
+    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     collection: str = Path(description="Collection within organization", example="chats"),
 ):
     return collection_handler.get_collection(vendor, organization, collection, api_version)
@@ -261,9 +231,7 @@ async def upload_chats(api_version: ApiVersion, user_request: UploadChatsRequest
 @catch_errors
 async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, request: Request):
     answer, context, document_id = await text_handler.get_answer(text_request, api_version.value)
-    request_id = log_get_answer(
-        answer, context, document_id, text_request.query, request, api_version.value
-    )
+    request_id = log_get_answer(answer, context, document_id, text_request.query, request, api_version.value)
     return GetAnswerResponse(answer=answer, request_id=request_id)
 
 
@@ -275,9 +243,7 @@ async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, re
 @catch_errors
 async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, request: Request):
     answer, context, document_id = await link_handler.get_answer(link_request, api_version.value)
-    request_id = log_get_answer(
-        answer, context, document_id, link_request.query, request, api_version.value
-    )
+    request_id = log_get_answer(answer, context, document_id, link_request.query, request, api_version.value)
     return GetAnswerResponse(answer=answer, request_id=request_id)
 
 
@@ -287,12 +253,8 @@ async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, re
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
 )
 @catch_errors
-async def get_answer_document(
-    api_version: ApiVersion, document_request: DocumentRequest, request: Request
-):
-    answer, context, info_source, document_ids = await document_handler.get_answer(
-        document_request, api_version.value
-    )
+async def get_answer_document(api_version: ApiVersion, document_request: DocumentRequest, request: Request):
+    answer, context, info_source, document_ids = await document_handler.get_answer(document_request, api_version.value)
     request_id = log_get_answer(
         answer,
         context,

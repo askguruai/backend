@@ -10,9 +10,7 @@ class ChatsUploadHandler:
     def __init__(self, parser: ChatParser):
         self.parser = parser
 
-    async def handle_request(
-        self, chats: List[dict], api_version: str, org_id: str, vendor: str
-    ) -> int:
+    async def handle_request(self, chats: List[dict], api_version: str, org_id: str, vendor: str) -> int:
         org_hash = hash_string(org_id)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_chats")
 
@@ -66,8 +64,6 @@ class ChatsUploadHandler:
                 all_summaries,
             ]
             collection.insert(data)
-            logging.info(
-                f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks"
-            )
+            logging.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
 
         return len(all_chunks)

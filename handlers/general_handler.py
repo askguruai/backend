@@ -44,16 +44,12 @@ class GeneralHandler:
         else:
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
-        context, indices = await self.get_context_from_chunks_embeddings(
-            chunks, embeddings, request.query, api_version
-        )
+        context, indices = await self.get_context_from_chunks_embeddings(chunks, embeddings, request.query, api_version)
         answer = await ml_requests.get_answer(context, request.query, api_version)
 
         return answer, context, text_hash
 
-    async def get_embeddings_from_chunks(
-        self, chunks: List[str], api_version: str
-    ) -> List[List[float]]:
+    async def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
         embeddings = await ml_requests.get_embeddings(chunks, api_version)
         assert len(embeddings) == len(chunks)
         return embeddings
@@ -72,13 +68,9 @@ class GeneralHandler:
         return context, indices
 
     @abc.abstractmethod
-    def get_additional_request_data(
-        self, request: Union[TextRequest, LinkRequest, DocumentRequest]
-    ) -> Dict[str, Any]:
+    def get_additional_request_data(self, request: Union[TextRequest, LinkRequest, DocumentRequest]) -> Dict[str, Any]:
         return
 
     @abc.abstractmethod
-    def get_text_from_request(
-        self, request: Union[TextRequest, LinkRequest, DocumentRequest]
-    ) -> str:
+    def get_text_from_request(self, request: Union[TextRequest, LinkRequest, DocumentRequest]) -> str:
         return

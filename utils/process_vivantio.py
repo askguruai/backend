@@ -20,9 +20,7 @@ from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import CoreMLError
 
 
-def process_single_file(
-    document: dict, collection: Collection, parser: VivantioHTMLParser, api_version: str
-) -> bool:
+def process_single_file(document: dict, collection: Collection, parser: VivantioHTMLParser, api_version: str) -> bool:
     chunks, meta_info = parser.process_document(document)
     if len(chunks) == 0:
         return True  # nothing to do

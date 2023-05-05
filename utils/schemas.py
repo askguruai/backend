@@ -95,9 +95,7 @@ class GetCollectionAnswerRequest(VendorCollectionRequest):
 
 
 class CollectionSolutionRequest(VendorCollectionRequest):
-    document_id: str = Field(
-        description="Doc id. Use only if you know what this is.", default=None
-    )
+    document_id: str = Field(description="Doc id. Use only if you know what this is.", default=None)
     document_collection: str = Field(
         description="Collection where to look for document id",
         default=None,
@@ -208,15 +206,11 @@ class GetCollectionAnswerResponse(BaseModel):
 
 
 class UploadDocumentResponse(BaseModel):
-    document_id: str = Field(
-        description="ID of an uploaded document.", example="7af8c3e548e40aeb984c42dd"
-    )
+    document_id: str = Field(description="ID of an uploaded document.", example="7af8c3e548e40aeb984c42dd")
 
 
 class UploadChatsResponse(BaseModel):
-    uploaded_chunks_number: str = Field(
-        description="Number of chunks successfully uploaded", example="5"
-    )
+    uploaded_chunks_number: str = Field(description="Number of chunks successfully uploaded", example="5")
 
 
 class LikeStatus(str, Enum):
@@ -232,9 +226,7 @@ class SetReactionRequest(BaseModel):
         example="63cbd74e8d31a62a1512eab1",
     )
     like_status: LikeStatus = Field(description="Reaction to set.", example=LikeStatus.good_answer)
-    comment: str | None = Field(
-        default=None, description="Comment to set.", example="Very accurate!"
-    )
+    comment: str | None = Field(default=None, description="Comment to set.", example="Very accurate!")
 
     class Config:
         use_enum_values = True

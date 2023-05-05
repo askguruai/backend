@@ -15,9 +15,7 @@ from utils import MILVUS_DB, hash_string, ml_requests
 from utils.errors import CoreMLError
 
 
-def process_single_file(
-    milvus_collection: Collection, path: str, parser: MarkdownParser, api_version: str
-):
+def process_single_file(milvus_collection: Collection, path: str, parser: MarkdownParser, api_version: str):
     chunks, title = parser.process_file(path)
     doc_id = title.lower().replace(' ', '-')
     new_chunks = []

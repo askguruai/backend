@@ -94,9 +94,7 @@ class ChunksManager:
         split_id = n_ids[len(n_ids) // 2]
         part = {"title": chunk["title"], "text": chunk["text"][:split_id]}
         remaining = {"title": chunk["title"], "text": chunk["text"][split_id + 1 :]}
-        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(
-            remaining
-        )
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(remaining)
 
     def digest(self):
         if self.accumulated_text != "":
@@ -196,9 +194,7 @@ class HTMLParser:
             ]:
                 rendered = self.render_text(ch)
             elif (
-                ch.name.startswith("st1:")
-                or ch.name.startswith("mailto")
-                or ch.name.startswith("http")
+                ch.name.startswith("st1:") or ch.name.startswith("mailto") or ch.name.startswith("http")
             ):  # vivantio specificity
                 rendered = self.render_text(ch)
             elif ch.name in ["br", "hr"]:
