@@ -11,6 +11,7 @@ from utils.errors import InvalidDocumentIdError
 from utils.schemas import (
     ApiVersion,
     CollectionSolutionRequest,
+    Document,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
     GetCollectionResponse,
@@ -109,13 +110,19 @@ class CollectionHandler:
         organization_hash = hash_string(organization)
         full_collection_name = f"{vendor}_{organization_hash}_{collection}"
         milvus_collection = MILVUS_DB[full_collection_name]
-        # TODO this might not retrive all docs
-        # if will have int pk then retrieve by it
         chunks = milvus_collection.query(
-            expr='doc_id >= "0"',
-            output_fields=["doc_id"],  # TODO add ts later as well
+            expr='pk >= 0',
+            output_fields=["doc_id", "timestamp"],
         )
-        return GetCollectionResponse(doc_ids=list(set([chunk["doc_id"] for chunk in chunks])))
+
+        documents, seen = [], set()
+        for chunk in chunks:
+            doc_id = chunk["doc_id"]
+            if doc_id not in seen:
+                seen.add(doc_id)
+                documents.append(Document(id=doc_id, timestamp=chunk["timestamp"]))
+
+        return GetCollectionResponse(documents=documents)
 
     async def get_ranking(
         self,
