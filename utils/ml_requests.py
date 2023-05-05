@@ -64,4 +64,4 @@ async def get_answer(
         response_json = await response.json()
         if response_status == status.HTTP_500_INTERNAL_SERVER_ERROR:
             raise CoreMLError(response_json["detail"])
-        return response_json
+        return response_json["data"]

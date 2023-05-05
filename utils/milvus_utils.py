@@ -51,6 +51,7 @@ class CollectionsManager:
         all_titles = []
         all_ids = []
         all_summaries = []
+        all_collections = []
         for collection in search_collections:
             results = collection.search(
                 [vec],
@@ -65,12 +66,14 @@ class CollectionsManager:
                 all_titles.append(hit.entity.get("doc_title"))
                 all_ids.append(hit.entity.get("doc_id"))
                 all_summaries.append(hit.entity.get("doc_summary"))
-        top_hits = np.argsort(all_distances)[-n_top:]
+                all_collections.append(collection.name)
+        top_hits = np.argsort(all_distances)[-n_top:][::-1]
         return (
             np.array(all_chunks)[top_hits].tolist(),
             np.array(all_titles)[top_hits].tolist(),
             np.array(all_ids)[top_hits].tolist(),
             np.array(all_summaries)[top_hits].tolist(),
+            np.array(all_collections)[top_hits].tolist(),
         )  # todo
 
     def get_or_create_collection(self, collection_name: str) -> Collection:
@@ -92,7 +95,11 @@ class CollectionsManager:
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
-        index_params = {"metric_type": "IP", "index_type": "IVF_FLAT", "params": {"nlist": 1024}}
+        index_params = {
+            "metric_type": "IP",
+            "index_type": "IVF_FLAT",
+            "params": {"nlist": 1024},
+        }
         m_collection.create_index(field_name="emb_v1", index_params=index_params)
         # todo: do we need an index on primary key? we do if it is not auto, need to check
         m_collection.load()

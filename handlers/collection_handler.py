@@ -6,11 +6,17 @@ from typing import List, Tuple
 
 import numpy as np
 
-from utils import CONFIG, DB, MILVUS_DB, ml_requests, hash_string
-from utils.errors import (
-    InvalidDocumentIdError,
+from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
+from utils.errors import InvalidDocumentIdError
+from utils.schemas import (
+    ApiVersion,
+    CollectionSolutionRequest,
+    Document,
+    GetCollectionAnswerResponse,
+    GetCollectionRankingResponse,
+    GetCollectionResponse,
+    Source,
 )
-from utils.schemas import CollectionQueryRequest, CollectionSolutionRequest
 
 
 class CollectionHandler:
@@ -20,71 +26,143 @@ class CollectionHandler:
 
     async def get_answer(
         self,
-        request: CollectionQueryRequest,
-        api_version: str,
-    ) -> Tuple[str, str, List[str], List[str]]:
-        collections = request.collections
-        vendor = request.vendor
-        org_hash = hash_string(request.organization_id)
-        query_embedding = (await ml_requests.get_embeddings(request.query, api_version))[0]
-        search_collections = [
-            f"{vendor}_{org_hash}_{collection}" for collection in collections
-        ]
-        chunks, titles, doc_ids, doc_summaries = MILVUS_DB.search_collections_set(
+        vendor: str,
+        organization: str,
+        collections: List[str],
+        query: str,
+        api_version: ApiVersion,
+    ) -> GetCollectionAnswerResponse:
+        org_hash = hash_string(organization)
+        query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
+        search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+        chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections, query_embedding, self.top_k_chunks, api_version
         )
         context = "\n\n".join(chunks)
 
-        answer = (
-            await ml_requests.get_answer(
-                context, request.query, api_version, "support", chat=request.chat
-            )
-        )["data"]
+        answer = await ml_requests.get_answer(context, query, api_version.value, "support")
 
-        return answer, context, doc_ids, titles, doc_summaries
-
-    async def get_solution(
-        self, request: CollectionSolutionRequest, api_version: str
-    ) -> Tuple[str, str, List[str], List[str]]:
-        collections = request.collections
-        vendor = request.vendor
-        org_hash = hash_string(request.organization_id)
-
-        embedding, query = self.get_data_from_id(
-            doc_id=request.document_id,
-            full_collection_name=f"{vendor}_{org_hash}_{request.doc_collection}",
+        return GetCollectionAnswerResponse(
+            answer=answer,
+            sources=[
+                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
+                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
+            ],
         )
 
-        search_collections = [
-            f"{vendor}_{org_hash}_{collection}" for collection in collections
-        ]
-        chunks, titles, doc_ids, doc_summaries = MILVUS_DB.search_collections_set(
+    async def get_solution(
+        self,
+        vendor: str,
+        organization: str,
+        collections: List[str],
+        document: str,
+        document_collection: str,
+        api_version: ApiVersion,
+    ) -> GetCollectionAnswerResponse:
+        org_hash = hash_string(organization)
+
+        embedding, query = self.get_data_from_id(
+            document=document,
+            full_collection_name=f"{vendor}_{org_hash}_{document_collection}",
+        )
+
+        search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+        chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections, embedding, self.top_k_chunks, api_version
         )
         context = "\n\n".join(chunks)
 
-        answer = (await ml_requests.get_answer(context, query, api_version))["data"]
+        answer = await ml_requests.get_answer(context, query, api_version)
 
-        return answer, context, doc_ids, titles, doc_summaries
+        return GetCollectionAnswerResponse(
+            answer=answer,
+            sources=[
+                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
+                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
+            ],
+        )
 
-    def get_data_from_id(self, doc_id: str, full_collection_name: str) -> np.ndarray:
+    def get_data_from_id(self, document: str, full_collection_name: str) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
         res = collection.query(
-            expr=f'doc_id=="{doc_id}"',
+            expr=f'doc_id=="{document}"',
             offset=0,
             limit=30,
             output_fields=["chunk", "emb_v1"],
             consistency_level="Strong",
         )
         if len(res) != 1:
-            col_name = full_collection_name.rsplit('_', maxsplit=1)[-1]
+            col_name = full_collection_name.rsplit("_", maxsplit=1)[-1]
             if len(res) == 0:
-                text = f"Unable to retrieve document with id {doc_id} in collection {col_name}"
+                text = f"Unable to retrieve document {document} in collection {col_name}"
             else:
-                text = f"Ambiguous documents with id {doc_id} in collection {col_name}"
+                text = f"Ambiguous documents {document} in collection {col_name}"
             raise InvalidDocumentIdError(text)
         emb = res[0]["emb_v1"]
         query = res[0]["chunk"]
         query += "\n\nAdress the problem stated above"
 
         return emb, query
+
+    def get_collection(
+        self, vendor: str, organization: str, collection: str, api_version: ApiVersion
+    ) -> GetCollectionResponse:
+        organization_hash = hash_string(organization)
+        full_collection_name = f"{vendor}_{organization_hash}_{collection}"
+        milvus_collection = MILVUS_DB[full_collection_name]
+        chunks = milvus_collection.query(
+            expr='pk >= 0',
+            output_fields=["doc_id", "timestamp"],
+        )
+
+        documents, seen = [], set()
+        for chunk in chunks:
+            doc_id = chunk["doc_id"]
+            if doc_id not in seen:
+                seen.add(doc_id)
+                documents.append(Document(id=doc_id, timestamp=chunk["timestamp"]))
+
+        return GetCollectionResponse(documents=documents)
+
+    async def get_ranking(
+        self,
+        vendor: str,
+        organization: str,
+        top_k: int,
+        api_version: ApiVersion,
+        query: str = None,
+        document: str = None,
+        document_collection: str = None,
+        collections: List[str] = None,
+    ) -> GetCollectionRankingResponse:
+        organization_hash = hash_string(organization)
+        if query:
+            embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
+        elif document:
+            document_collection = document_collection or "faq"
+            embedding, _ = self.get_data_from_id(
+                document=document,
+                full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
+            )
+
+        # extracting more than top_k chunks because each
+        # document might be represented by several chunks
+        collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
+        _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
+            collections_search, embedding, top_k * 5, api_version.value
+        )
+
+        sources, seen, i = [], set(), 0
+        while len(sources) < top_k and i < len(titles):
+            if doc_ids[i] not in seen:
+                sources.append(
+                    Source(
+                        id=doc_ids[i],
+                        title=titles[i],
+                        collection=doc_collections[i].split("_")[-1],
+                        summary=doc_summaries[i],
+                    )
+                )
+                seen.add(doc_ids[i])
+            i += 1
+        return GetCollectionRankingResponse(sources=sources)
