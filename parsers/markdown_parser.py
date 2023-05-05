@@ -34,9 +34,7 @@ class MarkdownParser(GeneralParser):
                     # creating text chunk from level-1/2 section
                     if len(accumulated_text) > 0:
                         chunk_text = (
-                            f"{current_heading}\n{accumulated_text}"
-                            if current_heading != ""
-                            else accumulated_text
+                            f"{current_heading}\n{accumulated_text}" if current_heading != "" else accumulated_text
                         )
                         accumulated_text = ""
                         chunks.extend(self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text}))
@@ -48,23 +46,21 @@ class MarkdownParser(GeneralParser):
                 if len(accumulated_text) + len(cur_text) > 2000:
                     if accumulated_text != "":
                         chunks.extend(
-                            self.opt_split_into_smaller_chunks({"title": meta, "text": f"{current_heading}\n{accumulated_text}"})
+                            self.opt_split_into_smaller_chunks(
+                                {"title": meta, "text": f"{current_heading}\n{accumulated_text}"}
+                            )
                         )
                     accumulated_text = cur_text
                 else:
                     accumulated_text += cur_text
 
         if len(accumulated_text) > 0:
-            chunk_text = (
-                f"{current_heading}\n{accumulated_text}"
-                if current_heading != ""
-                else accumulated_text
-            )
+            chunk_text = f"{current_heading}\n{accumulated_text}" if current_heading != "" else accumulated_text
             chunks.extend(self.opt_split_into_smaller_chunks({"title": meta, "text": chunk_text}))
 
         chunks = self.compress_chunks(chunks)
         return ["\n".join([ch["title"], ch["text"]]) for ch in chunks], meta
-    
+
     def opt_split_into_smaller_chunks(self, chunk: dict) -> list[dict]:
         # todo: index throw
         if len(chunk["text"]) < 2000:
@@ -83,15 +79,13 @@ class MarkdownParser(GeneralParser):
         split_id = n_ids[len(n_ids) // 2]
         part = {"title": chunk["title"], "text": chunk["text"][:split_id]}
         remaining = {"title": chunk["title"], "text": chunk["text"][split_id + 1 :]}
-        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(
-            remaining
-        )
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(remaining)
 
     def preprocess_text(self, text: str):
         # removing placeholder tags
         text = re.sub(r"{{% *ol *%}}", "1. ", text)
         for i in range(1, 20):
-            text = re.sub(f'{{{{% *ol *start="{i}" *%}}}}', f'{i}. ', text)
+            text = re.sub(f'{{{{% *ol *start="{i}" *%}}}}', f"{i}. ", text)
         text = re.sub(r"{{%.*?%}}", "", text)
         text = re.sub(r"{#.*?}", "", text)
         text = re.sub(r"{{<.*?>}}", "", text)
@@ -100,7 +94,7 @@ class MarkdownParser(GeneralParser):
         search = re.search(elem_meta_re, text)
         meta = ""
         if search:
-            matched = search.group(1).strip().split('\n')
+            matched = search.group(1).strip().split("\n")
             for line in matched:
                 key, val = line.split(":", maxsplit=1)
                 if key.strip() == "title":
@@ -111,9 +105,7 @@ class MarkdownParser(GeneralParser):
         return text, meta
 
     def preprocess_document(self, document: Document):
-        new_children = [
-            ch for ch in document.children if not isinstance(ch, (ThematicBreak, HTMLBlock))
-        ]
+        new_children = [ch for ch in document.children if not isinstance(ch, (ThematicBreak, HTMLBlock))]
         document.children = new_children
         return document
 
@@ -139,7 +131,7 @@ class MarkdownParser(GeneralParser):
         return text.strip()
 
     def _render_inline_link(self, inline: str):
-        linksearch = re.search('href=\"(.*?)\"', inline)
+        linksearch = re.search('href="(.*?)"', inline)
         if linksearch:
             link = linksearch.group(1).strip()
             if link.startswith("#"):

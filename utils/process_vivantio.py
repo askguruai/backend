@@ -16,13 +16,11 @@ from pymilvus import Collection
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import CONFIG, DB, MILVUS_DB, ml_requests, hash_string
+from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import CoreMLError
 
 
-def process_single_file(
-    document: dict, collection: Collection, parser: VivantioHTMLParser, api_version: str
-) -> bool:
+def process_single_file(document: dict, collection: Collection, parser: VivantioHTMLParser, api_version: str) -> bool:
     chunks, meta_info = parser.process_document(document)
     if len(chunks) == 0:
         return True  # nothing to do
@@ -68,7 +66,7 @@ def process_single_file(
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--source", type=str, help="path to a processed .json file")
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
@@ -76,11 +74,9 @@ if __name__ == '__main__':
 
     collection_name = "internal"
     vendor = "vivantio"
-    organization_id = hash_string("vivantio")
+    organization = hash_string("vivantio")
 
-    collection = MILVUS_DB.get_or_create_collection(
-        f"{vendor}_{organization_id}_{collection_name}"
-    )
+    collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{organization}_{collection_name}")
     print(f"Currently {collection.num_entities} entities")
     h_parser = VivantioHTMLParser(2000)
     with open(args.source, "rt") as f:

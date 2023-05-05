@@ -2,21 +2,20 @@ import os
 import sys
 
 sys.path.insert(1, os.getcwd())
-import traceback
-
 import hashlib
 import logging
+import traceback
 from argparse import ArgumentParser
 
+from pymilvus import Collection, utility
 from tqdm import tqdm
 
 from parsers.markdown_parser import MarkdownParser
-from utils.errors import CoreMLError
 from utils import MILVUS_DB, hash_string, ml_requests
-from pymilvus import utility, Collection
+from utils.errors import CoreMLError
 
-def process_single_file(milvus_collection: Collection,
-                        path: str, parser: MarkdownParser, api_version: str):
+
+def process_single_file(milvus_collection: Collection, path: str, parser: MarkdownParser, api_version: str):
     chunks, title = parser.process_file(path)
     doc_id = title.lower().replace(' ', '-')
     new_chunks = []
@@ -28,7 +27,7 @@ def process_single_file(milvus_collection: Collection,
             offset=0,
             limit=1,
             output_fields=["chunk_hash"],
-            consistency_level="Strong"
+            consistency_level="Strong",
         )
         if len(res) == 0:
             # there is no such document yet, inserting
@@ -52,14 +51,14 @@ def process_single_file(milvus_collection: Collection,
         new_chunks,
         embeddings,
         [title] * len(id_hashes),
-        [""] * len(id_hashes)
+        [""] * len(id_hashes),
     ]
     milvus_collection.insert(data)
     logging.info(f"Document {title} in {len(id_hashes)} chunks inserted in the database")
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--source_dir", type=str)
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
@@ -67,8 +66,8 @@ if __name__ == '__main__':
 
     collection = args.source_dir.split("_")[0].split("-")[1]
     vendor = "livechat"
-    organization_id = "f1ac8408-27b2-465e-89c6-b8708bfc262c"
-    org_hash = hash_string(organization_id)
+    organization = "f1ac8408-27b2-465e-89c6-b8708bfc262c"
+    org_hash = hash_string(organization)
 
     collection_name = f"{vendor}_{org_hash}_{collection}"
     m_collection = MILVUS_DB.get_or_create_collection(collection_name)
@@ -83,7 +82,7 @@ if __name__ == '__main__':
                     path=os.path.join(args.source_dir, doc),
                     parser=md_parser,
                     api_version=args.api_version,
-                    milvus_collection=m_collection
+                    milvus_collection=m_collection,
                 )
     # todo: takes long -- investigate!
     utility.flush_all()

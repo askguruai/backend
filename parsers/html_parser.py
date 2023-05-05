@@ -94,9 +94,7 @@ class ChunksManager:
         split_id = n_ids[len(n_ids) // 2]
         part = {"title": chunk["title"], "text": chunk["text"][:split_id]}
         remaining = {"title": chunk["title"], "text": chunk["text"][split_id + 1 :]}
-        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(
-            remaining
-        )
+        return self.opt_split_into_smaller_chunks(part) + self.opt_split_into_smaller_chunks(remaining)
 
     def digest(self):
         if self.accumulated_text != "":
@@ -153,7 +151,7 @@ class HTMLParser:
     def render_link(self, elem: Tag) -> str:
         if "href" not in elem.attrs:
             return self.render_text(elem)
-        link = elem.attrs['href']
+        link = elem.attrs["href"]
         if link.startswith("#"):
             return self.render_text(elem)
         else:
@@ -196,9 +194,7 @@ class HTMLParser:
             ]:
                 rendered = self.render_text(ch)
             elif (
-                ch.name.startswith("st1:")
-                or ch.name.startswith("mailto")
-                or ch.name.startswith("http")
+                ch.name.startswith("st1:") or ch.name.startswith("mailto") or ch.name.startswith("http")
             ):  # vivantio specificity
                 rendered = self.render_text(ch)
             elif ch.name in ["br", "hr"]:
@@ -394,13 +390,17 @@ class GrooveHTMLParser(HTMLParser):
 
     def preprocess_document(self, article: dict) -> Tuple[str, str, dict]:
         meta = [article["title"]]
-        if len(article['tags']) > 0:
+        if len(article["tags"]) > 0:
             meta.append(f"tags: {','.join(article['tags'])}")
-        if len(article['related_titles']) > 0:
+        if len(article["related_titles"]) > 0:
             meta.append(f"related: {','.join(article['related_titles'])}")
         meta = "\n".join(meta)
 
-        meta_info = {"title": article["title"], "slug": article["slug"], "id": article["id"]}
+        meta_info = {
+            "title": article["title"],
+            "slug": article["slug"],
+            "id": article["id"],
+        }
 
         body = article["body"]
         return meta, body, meta_info

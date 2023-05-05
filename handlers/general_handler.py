@@ -8,7 +8,7 @@ from bson.binary import Binary
 from bson.objectid import ObjectId
 
 from parsers import DocumentParser, LinkParser, TextParser
-from utils import CONFIG, DB, ml_requests, hash_string
+from utils import CONFIG, DB, hash_string, ml_requests
 from utils.schemas import DocumentRequest, LinkRequest, TextRequest
 
 
@@ -17,14 +17,14 @@ class GeneralHandler:
         self.parser = parser
         self.top_k_chunks = top_k_chunks
 
-    def get_answer(
+    async def get_answer(
         self,
         request: Union[TextRequest, LinkRequest, DocumentRequest],
         api_version: str,
     ) -> Tuple[str, str, str]:
         text = self.get_text_from_request(request)
         if not text:
-            return ml_requests.get_answer("", request.query, api_version), "", ""
+            return await ml_requests.get_answer("", request.query, api_version), "", ""
 
         text_hash = hash_string(text)
 
@@ -33,7 +33,7 @@ class GeneralHandler:
         )
         if not document:
             chunks = self.parser.get_chunks_from_text(text)
-            embeddings = self.get_embeddings_from_chunks(chunks, api_version)
+            embeddings = await self.get_embeddings_from_chunks(chunks, api_version)
             document = {
                 "_id": ObjectId(text_hash),
                 "text": text,
@@ -44,35 +44,33 @@ class GeneralHandler:
         else:
             chunks, embeddings = document["chunks"], pickle.loads(document["embeddings"])
 
-        context, indices = self.get_context_from_chunks_embeddings(
-            chunks, embeddings, request.query, api_version
-        )
-        answer = ml_requests.get_answer(context, request.query, api_version)
+        context, indices = await self.get_context_from_chunks_embeddings(chunks, embeddings, request.query, api_version)
+        answer = await ml_requests.get_answer(context, request.query, api_version)
 
         return answer, context, text_hash
 
-    def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
-        embeddings = ml_requests.get_embeddings(chunks, api_version)
+    async def get_embeddings_from_chunks(self, chunks: List[str], api_version: str) -> List[List[float]]:
+        embeddings = await ml_requests.get_embeddings(chunks, api_version)
         assert len(embeddings) == len(chunks)
         return embeddings
 
-    def get_context_from_chunks_embeddings(
-        self, chunks: List[str], embeddings: List[List[float]], query: str, api_version: str
+    async def get_context_from_chunks_embeddings(
+        self,
+        chunks: List[str],
+        embeddings: List[List[float]],
+        query: str,
+        api_version: str,
     ) -> tuple[str, np.ndarray]:
-        query_embedding = ml_requests.get_embeddings(query, api_version)[0]
+        query_embedding = (await ml_requests.get_embeddings(query, api_version))[0]
         similarities = [np.dot(embedding, query_embedding) for embedding in embeddings]
         indices = np.argsort(similarities)[-int(self.top_k_chunks) :][::-1]
         context = "\n\n".join([chunks[i] for i in indices])
         return context, indices
 
     @abc.abstractmethod
-    def get_additional_request_data(
-        self, request: Union[TextRequest, LinkRequest, DocumentRequest]
-    ) -> Dict[str, Any]:
+    def get_additional_request_data(self, request: Union[TextRequest, LinkRequest, DocumentRequest]) -> Dict[str, Any]:
         return
 
     @abc.abstractmethod
-    def get_text_from_request(
-        self, request: Union[TextRequest, LinkRequest, DocumentRequest]
-    ) -> str:
+    def get_text_from_request(self, request: Union[TextRequest, LinkRequest, DocumentRequest]) -> str:
         return

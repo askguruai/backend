@@ -40,9 +40,7 @@ def process_single_file(document: dict, collection: str, api_version: str) -> bo
     if "hdcatLineage" in document:
         chunk = f"{document['hdcatLineage']}\n{chunk}"
     text_hash = hash_string(chunk)
-    db_document = DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].find_one(
-        {"_id": ObjectId(text_hash)}
-    )
+    db_document = DB[f"{api_version}.collections.vivantio.vivantio.{collection}"].find_one({"_id": ObjectId(text_hash)})
     if not db_document:
         try:
             embedding = get_embeddings(chunk, api_version=api_version)[0]
@@ -51,9 +49,9 @@ def process_single_file(document: dict, collection: str, api_version: str) -> bo
             return False
         db_document = {
             "_id": ObjectId(text_hash),
-            "doc_title": document['hdctitle'],
+            "doc_title": document["hdctitle"],
             "link": f"https://vivantio.flex.vivantio.com/item/Ticket/{document['idhdcall']}",
-            "doc_id": str(document['idhdcall']),
+            "doc_id": str(document["idhdcall"]),
             "chunk": chunk,
             "description": short_description,
             "embedding": Binary(pickle.dumps(embedding)),
@@ -63,13 +61,11 @@ def process_single_file(document: dict, collection: str, api_version: str) -> bo
     return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-s", "--source", type=str, help="path to a processed .json file")
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
-    parser.add_argument(
-        "--cname", type=str, help="collection name (will be cnnected with api version"
-    )
+    parser.add_argument("--cname", type=str, help="collection name (will be cnnected with api version")
     args = parser.parse_args()
 
     with open(args.source, "rt") as f:
