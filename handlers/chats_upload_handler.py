@@ -21,6 +21,7 @@ class ChatsUploadHandler:
         all_doc_ids = []
         all_doc_titles = []
         all_summaries = []
+        all_timestamps = []
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
             chat_id = meta_info["doc_id"]
@@ -54,7 +55,7 @@ class ChatsUploadHandler:
             all_doc_titles.extend([meta_info["doc_title"]] * len(new_chunks))
             all_summaries.extend([""] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
-
+            all_timestamps.extend([meta_info["timestamp"] * len(new_chunks)])
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
             data = [
@@ -64,6 +65,7 @@ class ChatsUploadHandler:
                 all_embeddings,
                 all_doc_titles,
                 all_summaries,
+                all_timestamps
             ]
             collection.insert(data)
             logging.info(
