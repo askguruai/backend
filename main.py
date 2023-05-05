@@ -117,7 +117,7 @@ async def get_collection_answer(
             detail="Both document and document_collection must be provided",
         )
     if query and not document:
-        return await collection_handler.get_answer(
+        response = await collection_handler.get_answer(
             vendor=vendor,
             organization=organization,
             collections=collections,
@@ -125,7 +125,7 @@ async def get_collection_answer(
             api_version=api_version,
         )
     elif document and not query:
-        return await collection_handler.get_solution(
+        response = await collection_handler.get_solution(
             vendor=vendor,
             organization=organization,
             collections=collections,
@@ -138,6 +138,19 @@ async def get_collection_answer(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Only one of query or document must be provided",
         )
+    request_id = log_get_answer(
+        response.answer,
+        "",
+        [source.id for source in response.sources],
+        query,
+        request,
+        api_version,
+        vendor,
+        organization,
+        collections,
+    )
+    response.request_id = request_id
+    return response
 
 
 @app.get(
@@ -159,7 +172,7 @@ async def get_collection_ranking_query(
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
 ):
-    logging.info(vendor)
+    # TODO add logging
     if not (bool(query) ^ bool(document)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -266,14 +279,7 @@ async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, re
 @catch_errors
 async def get_answer_document(api_version: ApiVersion, document_request: DocumentRequest, request: Request):
     answer, context, info_source, document_ids = await document_handler.get_answer(document_request, api_version.value)
-    request_id = log_get_answer(
-        answer,
-        context,
-        document_ids,
-        document_request.query,
-        request,
-        api_version.value,
-    )
+    request_id = log_get_answer(answer, context, document_ids, document_request.query, request, api_version.value)
     return GetAnswerResponse(answer=answer, request_id=request_id, info_source=info_source)
 
 
