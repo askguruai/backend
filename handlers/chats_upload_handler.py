@@ -59,8 +59,6 @@ class ChatsUploadHandler:
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
-            for l in [all_chunk_hashes, all_doc_ids, all_chunks, all_embeddings, all_doc_titles, all_summaries, all_timestamps]:
-                print(len(l))
             data = [
                 all_chunk_hashes,
                 all_doc_ids,
