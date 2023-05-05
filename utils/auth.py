@@ -52,7 +52,7 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
             headers={"WWW-Authenticate": "Bearer"},
         )
     resp_data = response.json()
-    access_token = create_access_token(data={"organization": resp_data["organization"], "vendor": "livechat"})
+    access_token = create_access_token(data={"organization": resp_data["organization_id"], "vendor": "livechat"})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
