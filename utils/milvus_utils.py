@@ -91,7 +91,7 @@ class CollectionsManager:
             FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
             FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
             FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
-            FieldSchema(name="timestamp", dtype=DataType.INT64)
+            FieldSchema(name="timestamp", dtype=DataType.INT64),
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
@@ -102,7 +102,7 @@ class CollectionsManager:
         }
         m_collection.create_index(field_name="emb_v1", index_params=index_params)
         m_collection.create_index(
-            field_name="doc_id", 
+            field_name="doc_id",
             index_name="scalar_index",
         )
         # todo: do we need an index on primary key? we do if it is not auto, need to check

@@ -66,7 +66,7 @@ class ChatsUploadHandler:
                 all_embeddings,
                 all_doc_titles,
                 all_summaries,
-                all_timestamps
+                all_timestamps,
             ]
             collection.insert(data)
             logging.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
