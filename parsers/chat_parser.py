@@ -9,7 +9,7 @@ class ChatParser:
         meta = {
             "doc_id": chat["id"],
             "doc_title": f"{chat['user']['name']}::{chat['user']['id']}",
-            "timestamp": chat["timestamp"]
+            "timestamp": int(chat["timestamp"]),
         }
         history = chat["history"]
         text = [f"{line['role']}: {line['content']}" for line in history]

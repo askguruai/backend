@@ -45,7 +45,7 @@ class ChatsUploadHandler:
                     new_chunks.append(chunk)
                     new_chunks_hashes.append(text_hash)
             # dropping outdated chunks
-            existing_chunks_pks = list(existing_chunks.values())
+            existing_chunks_pks = list(map(str, existing_chunks.values()))
             collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
 
             if len(new_chunks) == 0:
