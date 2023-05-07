@@ -100,6 +100,7 @@ async def get_collection_answer(
     api_version: ApiVersion,
     vendor: str,
     organization: str,
+    token: str = Depends(oauth2_scheme),
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search", example=["chats"]),
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
@@ -116,6 +117,7 @@ async def get_collection_answer(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Both document and document_collection must be provided",
         )
+    token_data = decode_token(token)
     if query and not document:
         response = await collection_handler.get_answer(
             vendor=vendor,
@@ -123,6 +125,7 @@ async def get_collection_answer(
             collections=collections,
             query=query,
             api_version=api_version,
+            user_security_groups=token_data["security_groups"]
         )
     elif document and not query:
         response = await collection_handler.get_solution(
