@@ -34,22 +34,22 @@ class ChatsUploadHandler:
                 expr=f'doc_id=="{chat_id}"',
                 offset=0,
                 limit=10000,
-                output_fields=["pk", "chunk_hash"],
+                output_fields=["pk", "chunk_hash", "security_groups"],
                 consistency_level="Strong",
             )
-            existing_chunks = {hit["chunk_hash"]: hit["pk"] for hit in existing_chunks}
+            existing_chunks = {hit["chunk_hash"]: (hit["pk"], hit["security_groups"]) for hit in existing_chunks}
             # determining which chunks are new
             new_chunks_hashes = []
             new_chunks = []
             for chunk in chunks:
                 text_hash = hash_string(chunk)
-                if text_hash in existing_chunks:
+                if text_hash in existing_chunks and existing_chunks[text_hash][1] == security_groups_code:
                     del existing_chunks[text_hash]
                 else:
                     new_chunks.append(chunk)
                     new_chunks_hashes.append(text_hash)
             # dropping outdated chunks
-            existing_chunks_pks = list(map(str, existing_chunks.values()))
+            existing_chunks_pks = list(map(lambda val: str(val[0]), existing_chunks.values()))
             collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
 
             if len(new_chunks) == 0:
