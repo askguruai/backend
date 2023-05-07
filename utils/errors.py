@@ -26,6 +26,11 @@ class CollectionDoesNotExist(BasicError):
         self.message = message
 
 
+class SecurityGroupError(BasicError):
+    def __init__(self, message: str = "Security group error"):
+        self.message = message
+
+
 class DatabaseError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message

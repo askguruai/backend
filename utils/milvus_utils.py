@@ -92,6 +92,7 @@ class CollectionsManager:
             FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
             FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
             FieldSchema(name="timestamp", dtype=DataType.INT64),
+            FieldSchema(name="security_groups", dtype=DataType.INT64)
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)

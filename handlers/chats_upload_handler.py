@@ -4,6 +4,7 @@ from typing import Dict, List
 
 from parsers import ChatParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils.misc import int_list_encode
 from utils.schemas import ApiVersion, UploadCollectionDocumentsResponse
 
 
@@ -23,9 +24,11 @@ class ChatsUploadHandler:
         all_doc_titles = []
         all_summaries = []
         all_timestamps = []
+        all_security_groups = []
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
             chat_id = meta_info["doc_id"]
+            security_group_code = int_list_encode(meta_info["security_groups"])
             existing_chunks = collection.query(
                 expr=f'doc_id=="{chat_id}"',
                 offset=0,
@@ -57,6 +60,7 @@ class ChatsUploadHandler:
             all_summaries.extend([""] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
+            all_security_groups.extend([security_group_code] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
             data = [
@@ -67,6 +71,7 @@ class ChatsUploadHandler:
                 all_doc_titles,
                 all_summaries,
                 all_timestamps,
+                all_security_groups
             ]
             collection.insert(data)
             logging.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")

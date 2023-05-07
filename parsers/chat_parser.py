@@ -10,6 +10,7 @@ class ChatParser:
             "doc_id": chat["id"],
             "doc_title": f"{chat['user']['name']}::{chat['user']['id']}",
             "timestamp": int(chat["timestamp"]),
+            "security_groups": chat["security_groups"]
         }
         history = chat["history"]
         text = [f"{line['role']}: {line['content']}" for line in history]
