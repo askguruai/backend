@@ -222,7 +222,6 @@ async def get_collection(
 async def upload_collection_documents(
     request: Request,
     api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
     vendor: str = Path(description="Vendor name", example="livechat"),
     organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     collection: str = Path(description="Collection within organization", example="chats"),
@@ -234,14 +233,12 @@ async def upload_collection_documents(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Documents are not supported yet",
         )
-    token_data = decode_token(token)
     return await chats_upload_handler.handle_request(
         api_version=api_version,
         vendor=vendor,
         organization=organization,
         collection=collection,
         chats=chats,
-        user_security_groups=token_data["security_groups"]
     )
 
 

@@ -17,7 +17,6 @@ from utils.schemas import (
     UploadChatsRequest,
     VendorCollectionRequest,
     VendorCollectionTokenRequest,
-    TokenData
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -108,7 +107,7 @@ async def validate_organization_scope(
             raise credentials_exception
     
 
-def decode_token(token: str) -> TokenData:
+def decode_token(token: str) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials/token",
@@ -122,4 +121,4 @@ def decode_token(token: str) -> TokenData:
         )
     except JWTError:
         raise credentials_exception
-    return TokenData(payload)
+    return payload
