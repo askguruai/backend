@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 from fastapi import status
 from pydantic import BaseModel, Field
+from utils.errors import TokenMalformedError
 
 
 class ApiVersion(str, Enum):
@@ -240,3 +241,17 @@ class SetReactionRequest(BaseModel):
 
     class Config:
         use_enum_values = True
+
+
+class TokenData:
+    def __init__(self, token_dict: dict):
+        self.token_dict = token_dict
+    
+    def __getitem__(self, item):
+        if item not in self.token_dict:
+            raise TokenMalformedError(f"Requested field not present in token: `{item}`")
+        return self.token_dict[item]
+    
+    def get(self, item):
+        # just for interface compatibility
+        return self[item]

@@ -7,6 +7,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from loguru import logger
 from pydantic import Field
+from typing import List
 
 from utils import CLIENT_SESSION_WRAPPER
 from utils.schemas import (
@@ -16,6 +17,7 @@ from utils.schemas import (
     UploadChatsRequest,
     VendorCollectionRequest,
     VendorCollectionTokenRequest,
+    TokenData
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -30,6 +32,7 @@ async def get_organization_token(
     vendor: str = Path(description="Vendor name", example="livechat"),
     organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     password: str = Body(..., description="This is for staff use"),
+    security_groups: List[int] = Body(None, description="Security groups associated with token. Leave blank for full access")
 ):
     if password != os.environ["AUTH_COLLECTION_PASSWORD"]:
         raise HTTPException(
@@ -37,7 +40,8 @@ async def get_organization_token(
             detail="Incorrect password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token({"organization": organization, "vendor": vendor})
+    security_groups = [] if security_groups is None else security_groups
+    access_token = create_access_token({"organization": organization, "vendor": vendor, "security_groups": tuple(security_groups)})
     return {"access_token": access_token}
 
 
@@ -97,15 +101,25 @@ async def validate_organization_scope(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+    token_data = decode_token(token)
+    organization_token: str = token_data.get("organization")
+    vendor_token: str = token_data.get("vendor")
+    if organization_token is None or organization_token != organization or vendor_token != vendor:
+            raise credentials_exception
+    
+
+def decode_token(token: str) -> TokenData:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials/token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         payload = jwt.decode(
             token,
             os.environ["JWT_SECRET_KEY"],
             algorithms=[os.environ["JWT_ALGORITHM"]],
         )
-        organization_token: str = payload.get("organization")
-        vendor_token: str = payload.get("vendor")
-        if organization_token is None or organization_token != organization or vendor_token != vendor:
-            raise credentials_exception
     except JWTError:
         raise credentials_exception
+    return TokenData(payload)

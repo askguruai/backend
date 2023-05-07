@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from typing import Dict, List
+from loguru import logger
 
 from parsers import ChatParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
@@ -13,10 +14,11 @@ class ChatsUploadHandler:
         self.parser = parser
 
     async def handle_request(
-        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Dict]
+        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Dict], user_security_groups: List[int]
     ) -> UploadCollectionDocumentsResponse:
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
+        user_security_code = int_list_encode(user_security_groups)
 
         all_chunks = []
         all_chunk_hashes = []
@@ -28,7 +30,15 @@ class ChatsUploadHandler:
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
             chat_id = meta_info["doc_id"]
-            security_group_code = int_list_encode(meta_info["security_groups"])
+            security_groups_chat = int_list_encode(meta_info["security_groups"])
+            security_groups_code = security_groups_chat & user_security_code  # accounting for user permissions
+            if security_groups_chat != security_groups_code:
+                logger.info(f"Chat security settings changed due to user rights: {security_groups_chat} -> {security_groups_code}")
+                # should we report this maybe?
+            if security_groups_code == 0:
+                logger.info(f"User does not have access to the chat's security groups")
+                # should we raise an error?
+                continue
             existing_chunks = collection.query(
                 expr=f'doc_id=="{chat_id}"',
                 offset=0,
@@ -60,7 +70,7 @@ class ChatsUploadHandler:
             all_summaries.extend([""] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
-            all_security_groups.extend([security_group_code] * len(new_chunks))
+            all_security_groups.extend([security_groups_code] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
             data = [
@@ -74,6 +84,6 @@ class ChatsUploadHandler:
                 all_security_groups
             ]
             collection.insert(data)
-            logging.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
+            logger.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
 
         return UploadCollectionDocumentsResponse(n_chunks=len(all_chunks))

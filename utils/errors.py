@@ -34,3 +34,8 @@ class SecurityGroupError(BasicError):
 class DatabaseError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message
+
+
+class TokenMalformedError(BasicError):
+    def __init__(self, message: str = "Security group error"):
+        self.message = message 
