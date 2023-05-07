@@ -8,7 +8,7 @@ import numpy as np
 
 from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
 from utils.misc import int_list_encode
-from utils.errors import InvalidDocumentIdError
+from utils.errors import InvalidDocumentIdError, DocumentAccessRestricted
 from utils.schemas import (
     ApiVersion,
     CollectionSolutionRequest,
@@ -67,18 +67,27 @@ class CollectionHandler:
         document: str,
         document_collection: str,
         api_version: ApiVersion,
+        user_security_groups: List[int]
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
-
+        security_code = int_list_encode(user_security_groups)
         embedding, query = self.get_data_from_id(
             document=document,
             full_collection_name=f"{vendor}_{org_hash}_{document_collection}",
+            security_code=security_code
         )
 
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+        
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections, embedding, self.top_k_chunks, api_version
+            search_collections, embedding, self.top_k_chunks, api_version,
+            security_code=security_code
         )
+        if len(chunks) == 0:
+            return GetCollectionAnswerResponse(
+                answer="Unable to find an anser",
+                sources = []
+            )
         context = "\n\n".join(chunks)
 
         answer = await ml_requests.get_answer(context, query, api_version)
@@ -91,13 +100,13 @@ class CollectionHandler:
             ],
         )
 
-    def get_data_from_id(self, document: str, full_collection_name: str) -> np.ndarray:
+    def get_data_from_id(self, document: str, full_collection_name: str, security_code: int) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
         res = collection.query(
             expr=f'doc_id=="{document}"',
             offset=0,
             limit=30,
-            output_fields=["chunk", "emb_v1"],
+            output_fields=["chunk", "emb_v1", "security_groups"],
             consistency_level="Strong",
         )
         if len(res) != 1:
@@ -107,6 +116,8 @@ class CollectionHandler:
             else:
                 text = f"Ambiguous documents {document} in collection {col_name}"
             raise InvalidDocumentIdError(text)
+        if res[0]["security_groups"] & security_code == 0:
+            raise DocumentAccessRestricted(f"User has no access to document {document}")
         emb = res[0]["emb_v1"]
         query = res[0]["chunk"]
         query += "\n\nAdress the problem stated above"
@@ -114,20 +125,23 @@ class CollectionHandler:
         return emb, query
 
     def get_collection(
-        self, vendor: str, organization: str, collection: str, api_version: ApiVersion
+        self, vendor: str, organization: str, collection: str, api_version: ApiVersion,
+        user_security_groups: List[int]
     ) -> GetCollectionResponse:
         organization_hash = hash_string(organization)
+        security_code = int_list_encode(user_security_groups)
         full_collection_name = f"{vendor}_{organization_hash}_{collection}"
         milvus_collection = MILVUS_DB[full_collection_name]
         chunks = milvus_collection.query(
             expr='pk >= 0',
-            output_fields=["doc_id", "timestamp"],
+            output_fields=["doc_id", "timestamp", "security_groups"],
         )
 
         documents = defaultdict(int)
         for chunk in chunks:
-            doc_id, timestamp = chunk["doc_id"], chunk["timestamp"]
-            documents[doc_id] = max(documents[doc_id], timestamp)
+            if chunk["security_groups"] & security_code:
+                doc_id, timestamp = chunk["doc_id"], chunk["timestamp"]
+                documents[doc_id] = max(documents[doc_id], timestamp)
 
         return GetCollectionResponse(
             documents=[Document(id=doc_id, timestamp=timestamp) for doc_id, timestamp in documents.items()]
@@ -139,12 +153,14 @@ class CollectionHandler:
         organization: str,
         top_k: int,
         api_version: ApiVersion,
+        user_security_groups: List[int],
         query: str = None,
         document: str = None,
         document_collection: str = None,
         collections: List[str] = None,
     ) -> GetCollectionRankingResponse:
         organization_hash = hash_string(organization)
+        security_code = int_list_encode(user_security_groups)
         if query:
             embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         elif document:
@@ -152,6 +168,7 @@ class CollectionHandler:
             embedding, _ = self.get_data_from_id(
                 document=document,
                 full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
+                security_code=security_code
             )
 
         # extracting more than top_k chunks because each

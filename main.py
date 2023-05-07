@@ -135,6 +135,7 @@ async def get_collection_answer(
             document=document,
             document_collection=document_collection,
             api_version=api_version,
+            user_security_groups=token_data["security_groups"]
         )
     else:
         raise HTTPException(
@@ -168,6 +169,7 @@ async def get_collection_ranking_query(
     api_version: ApiVersion,
     vendor: str,
     organization: str,
+    token: str = Depends(oauth2_scheme),
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search"),
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
@@ -186,6 +188,7 @@ async def get_collection_ranking_query(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Both document and document_collection must be provided",
         )
+    token_data = decode_token(token)
     return await collection_handler.get_ranking(
         vendor=vendor,
         organization=organization,
@@ -195,6 +198,7 @@ async def get_collection_ranking_query(
         query=query,
         document=document,
         document_collection=document_collection,
+        user_security_groups=token_data["security_groups"]
     )
 
 
@@ -208,11 +212,14 @@ async def get_collection_ranking_query(
 async def get_collection(
     request: Request,
     api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
     vendor: str = Path(description="Vendor name", example="livechat"),
     organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     collection: str = Path(description="Collection within organization", example="chats"),
 ):
-    return collection_handler.get_collection(vendor, organization, collection, api_version)
+    token_data = decode_token(token)
+    return collection_handler.get_collection(vendor, organization, collection, api_version,
+                                             user_security_groups=token_data["security_groups"])
 
 
 @app.post(

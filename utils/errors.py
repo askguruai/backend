@@ -11,6 +11,11 @@ class InvalidDocumentIdError(BasicError):
         self.message = message
 
 
+class DocumentAccessRestricted(BasicError):
+    def __init__(self, message: str = ""):
+        self.message = message
+
+
 class RequestDataModelMismatchError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message
