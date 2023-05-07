@@ -1,14 +1,14 @@
-import os
 import asyncio
+import os
 
-from loguru import logger
 import requests
 from fastapi import Body, Depends, HTTPException, Path, Query, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
+from loguru import logger
 from pydantic import Field
-from utils import CLIENT_SESSION_WRAPPER
 
+from utils import CLIENT_SESSION_WRAPPER
 from utils.schemas import (
     ApiVersion,
     AuthenticatedRequest,
@@ -47,13 +47,19 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
         "Content-Type": "application/json",
         "accept": "application/json",
     }
-    async def fetch(method, url, json = None):
+
+    async def fetch(method, url, json=None):
         async with CLIENT_SESSION_WRAPPER.general_session.request(method, url, headers=headers, json=json) as response:
             return response.status, await response.json()
+
     tasks = [
         fetch("GET", "https://accounts.livechatinc.com/v2/info"),
         fetch("GET", "https://accounts.livechatinc.com/v2/accounts/me"),
-        fetch("POST", "https://api.livechatinc.com/v3.5/configuration/action/list_groups", {"fields": ["agent_priorities"]}),
+        fetch(
+            "POST",
+            "https://api.livechatinc.com/v3.5/configuration/action/list_groups",
+            {"fields": ["agent_priorities"]},
+        ),
     ]
     responses = await asyncio.gather(*tasks)
 
@@ -67,11 +73,17 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
 
     organization = responses[0][1]["organization_id"]
     agent_identifier = responses[1][1]["email"]
-    security_groups = tuple(group["id"] for group in responses[2][1] if group["agent_priorities"] is not None and agent_identifier in group["agent_priorities"])
+    security_groups = tuple(
+        group["id"]
+        for group in responses[2][1]
+        if group["agent_priorities"] is not None and agent_identifier in group["agent_priorities"]
+    )
 
     logger.info(f"Livechat user {agent_identifier} is in security groups {security_groups}")
 
-    access_token = create_access_token(data={"vendor": "livechat", "organization": organization, "security_groups": security_groups})
+    access_token = create_access_token(
+        data={"vendor": "livechat", "organization": organization, "security_groups": security_groups}
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
