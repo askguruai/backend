@@ -12,10 +12,9 @@ from pymongo.collection import ReturnDocument
 
 from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
-from utils import CONFIG, DB
+from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer
 from utils.auth import get_livechat_token, get_organization_token, validate_organization_scope
-from utils.ml_requests import client_session_wrapper
 from utils.schemas import (
     ApiVersion,
     CollectionResponses,
@@ -48,8 +47,9 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, client_session_wrapper
-    client_session_wrapper.session = ClientSession(CONFIG["coreml"]["route"])
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, CLIENT_SESSION_WRAPPER
+    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(CONFIG["coreml"]["route"])
+    CLIENT_SESSION_WRAPPER.general_session = ClientSession()
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),

@@ -2,27 +2,17 @@ from typing import List, Union
 
 import numpy as np
 import requests
-from aiohttp import ClientSession
 from fastapi import status
 
-from utils import CONFIG
+from utils import CLIENT_SESSION_WRAPPER, CONFIG
 from utils.errors import CoreMLError
-
-
-class ClientSessionWrapper:
-    # It has to be set in async function
-    # so we set in in main.py on startup
-    session: ClientSession = None
-
-
-client_session_wrapper = ClientSessionWrapper()
 
 
 async def get_embeddings(chunks: List[str] | str, api_version: str) -> List[np.ndarray]:
     if type(chunks) is not list:
         chunks = [chunks]
 
-    async with client_session_wrapper.session.post(
+    async with CLIENT_SESSION_WRAPPER.coreml_session.post(
         f"/{api_version}/embeddings/",
         json={"input": chunks},
     ) as response:
@@ -56,7 +46,7 @@ async def get_answer(
     mode: str = "general",
     chat: Union[list, None] = None,
 ) -> str:
-    async with client_session_wrapper.session.post(
+    async with CLIENT_SESSION_WRAPPER.coreml_session.post(
         f"/{api_version}/completions/",
         json={"info": context, "query": query, "mode": mode, "chat": chat},
     ) as response:
