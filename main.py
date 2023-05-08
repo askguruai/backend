@@ -12,10 +12,9 @@ from pymongo.collection import ReturnDocument
 
 from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
-from utils import CONFIG, DB
+from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import get_livechat_token, get_organization_token, validate_organization_scope
-from utils.ml_requests import client_session_wrapper
+from utils.auth import get_livechat_token, get_organization_token, validate_organization_scope, oauth2_scheme, decode_token
 from utils.schemas import (
     ApiVersion,
     CollectionResponses,
@@ -48,8 +47,9 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, client_session_wrapper
-    client_session_wrapper.session = ClientSession(CONFIG["coreml"]["route"])
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, CLIENT_SESSION_WRAPPER
+    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(CONFIG["coreml"]["route"])
+    CLIENT_SESSION_WRAPPER.general_session = ClientSession()
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
@@ -100,6 +100,7 @@ async def get_collection_answer(
     api_version: ApiVersion,
     vendor: str,
     organization: str,
+    token: str = Depends(oauth2_scheme),
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search", example=["chats"]),
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
@@ -116,6 +117,7 @@ async def get_collection_answer(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Both document and document_collection must be provided",
         )
+    token_data = decode_token(token)
     if query and not document:
         response = await collection_handler.get_answer(
             vendor=vendor,
@@ -123,6 +125,7 @@ async def get_collection_answer(
             collections=collections,
             query=query,
             api_version=api_version,
+            user_security_groups=token_data["security_groups"]
         )
     elif document and not query:
         response = await collection_handler.get_solution(
@@ -132,6 +135,7 @@ async def get_collection_answer(
             document=document,
             document_collection=document_collection,
             api_version=api_version,
+            user_security_groups=token_data["security_groups"]
         )
     else:
         raise HTTPException(
@@ -165,6 +169,7 @@ async def get_collection_ranking_query(
     api_version: ApiVersion,
     vendor: str,
     organization: str,
+    token: str = Depends(oauth2_scheme),
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search"),
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
@@ -183,6 +188,7 @@ async def get_collection_ranking_query(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Both document and document_collection must be provided",
         )
+    token_data = decode_token(token)
     return await collection_handler.get_ranking(
         vendor=vendor,
         organization=organization,
@@ -192,6 +198,7 @@ async def get_collection_ranking_query(
         query=query,
         document=document,
         document_collection=document_collection,
+        user_security_groups=token_data["security_groups"]
     )
 
 
@@ -205,11 +212,14 @@ async def get_collection_ranking_query(
 async def get_collection(
     request: Request,
     api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
     vendor: str = Path(description="Vendor name", example="livechat"),
     organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     collection: str = Path(description="Collection within organization", example="chats"),
 ):
-    return collection_handler.get_collection(vendor, organization, collection, api_version)
+    token_data = decode_token(token)
+    return collection_handler.get_collection(vendor, organization, collection, api_version,
+                                             user_security_groups=token_data["security_groups"])
 
 
 @app.post(

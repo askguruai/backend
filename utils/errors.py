@@ -11,6 +11,11 @@ class InvalidDocumentIdError(BasicError):
         self.message = message
 
 
+class DocumentAccessRestricted(BasicError):
+    def __init__(self, message: str = ""):
+        self.message = message
+
+
 class RequestDataModelMismatchError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message
@@ -26,6 +31,16 @@ class CollectionDoesNotExist(BasicError):
         self.message = message
 
 
+class SecurityGroupError(BasicError):
+    def __init__(self, message: str = "Security group error"):
+        self.message = message
+
+
 class DatabaseError(BasicError):
     def __init__(self, message: str = ""):
         self.message = message
+
+
+class TokenMalformedError(BasicError):
+    def __init__(self, message: str = "Security group error"):
+        self.message = message 

@@ -39,7 +39,7 @@ class CollectionsManager:
         return self.get_collection(name)
 
     def search_collections_set(
-        self, collections: List[str], vec: np.ndarray, n_top: int, api_version: str
+        self, collections: List[str], vec: np.ndarray, n_top: int, api_version: str, security_code: int = 2 ** 63 - 1  # full access by default
     ) -> Tuple[List[str]]:
         search_collections = [self[col] for col in collections]
         search_params = {
@@ -52,21 +52,27 @@ class CollectionsManager:
         all_ids = []
         all_summaries = []
         all_collections = []
-        for collection in search_collections:
-            results = collection.search(
-                [vec],
-                f"emb_{api_version}",
-                search_params,
-                limit=n_top,
-                output_fields=["chunk", "doc_title", "doc_id", "doc_summary"],
-            )[0]
-            all_distances.extend(results.distances)
-            for hit in results:
-                all_chunks.append(hit.entity.get("chunk"))
-                all_titles.append(hit.entity.get("doc_title"))
-                all_ids.append(hit.entity.get("doc_id"))
-                all_summaries.append(hit.entity.get("doc_summary"))
-                all_collections.append(collection.name)
+        for i in range(1 + int(CONFIG["misc"]["collections_search_retries"])):
+            for collection in search_collections:
+                results = collection.search(
+                    [vec],
+                    f"emb_{api_version}",
+                    search_params,
+                    offset=i * int(CONFIG["misc"]["collections_search_limit"]),
+                    limit=(i + 1) * int(CONFIG["misc"]["collections_search_limit"]),
+                    output_fields=["chunk", "doc_title", "doc_id", "doc_summary", "security_groups"],
+                )[0]
+                for dist, hit in zip(results.distances, results):
+                    if hit.entity.get("security_groups") & security_code:
+                        all_distances.append(dist)
+                        all_chunks.append(hit.entity.get("chunk"))
+                        all_titles.append(hit.entity.get("doc_title"))
+                        all_ids.append(hit.entity.get("doc_id"))
+                        all_summaries.append(hit.entity.get("doc_summary"))
+                        all_collections.append(collection.name)
+            if len(all_chunks) >= n_top:
+                # we found enough, can stop now
+                break
         top_hits = np.argsort(all_distances)[-n_top:][::-1]
         return (
             np.array(all_chunks)[top_hits].tolist(),
@@ -92,6 +98,7 @@ class CollectionsManager:
             FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
             FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
             FieldSchema(name="timestamp", dtype=DataType.INT64),
+            FieldSchema(name="security_groups", dtype=DataType.INT64)
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
