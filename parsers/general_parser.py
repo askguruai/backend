@@ -1,7 +1,12 @@
 import abc
 from typing import Any, List
 
-from nltk import tokenize
+import nltk
+
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt")
 
 
 class GeneralParser:
@@ -15,7 +20,7 @@ class GeneralParser:
 
     @staticmethod
     def text_to_sentences(text: str) -> List[str]:
-        return tokenize.sent_tokenize(text)
+        return nltk.tokenize.sent_tokenize(text)
 
     @staticmethod
     def chunkise_sentences(sentences: List[str], chunk_size: int) -> List[str]:
