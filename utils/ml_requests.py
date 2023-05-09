@@ -25,20 +25,6 @@ async def get_embeddings(chunks: List[str] | str, api_version: str) -> List[np.n
         return embeddings
 
 
-def get_embeddings_sync(chunks: List[str] | str, api_version: str) -> List[np.ndarray]:
-    if type(chunks) is not list:
-        chunks = [chunks]
-    response = requests.post(
-        f"{CONFIG['coreml']['route']}/{api_version}/embeddings/",
-        json={"input": chunks},
-        timeout=60.0,
-    )
-    if response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR:
-        raise CoreMLError(response.json()["detail"])
-    embeddings = [np.array(emb) for emb in response.json()["data"]]
-    return embeddings
-
-
 async def get_answer(
     context: str,
     query: str,
