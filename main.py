@@ -54,7 +54,7 @@ app.add_middleware(RequestLoggerMiddleware)
 @app.on_event("startup")
 async def init_handlers():
     global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, CLIENT_SESSION_WRAPPER
-    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(f"{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}")
+    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}")
     CLIENT_SESSION_WRAPPER.general_session = ClientSession()
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
