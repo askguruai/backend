@@ -17,8 +17,6 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     # env_file:
     #   - /etc/environment
-    volumes:
-      - /etc/certs:/etc/certs
 
   ########################################################
   #                       MONGO                          #
