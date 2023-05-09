@@ -15,6 +15,7 @@ services:
       MILVUS_PASSWORD: ${MILVUS_PASSWORD}
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    tty: true
     # env_file:
     #   - /etc/environment
 
