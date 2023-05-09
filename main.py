@@ -357,7 +357,5 @@ if __name__ == "__main__":
             host=CONFIG["app"]["host"],
             port=int(CONFIG["app"]["port"]),
             log_level=CONFIG["app"]["log_level"],
-            ssl_certfile="/etc/certs/fullchain_askguru.pem",
-            ssl_keyfile="/etc/certs/privkey_askguru.pem",
         )
     )
