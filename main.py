@@ -14,7 +14,13 @@ from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, Lin
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import get_livechat_token, get_organization_token, validate_organization_scope, oauth2_scheme, decode_token
+from utils.auth import (
+    decode_token,
+    get_livechat_token,
+    get_organization_token,
+    oauth2_scheme,
+    validate_organization_scope,
+)
 from utils.schemas import (
     ApiVersion,
     CollectionResponses,
@@ -125,7 +131,7 @@ async def get_collection_answer(
             collections=collections,
             query=query,
             api_version=api_version,
-            user_security_groups=token_data["security_groups"]
+            user_security_groups=token_data["security_groups"],
         )
     elif document and not query:
         response = await collection_handler.get_solution(
@@ -135,7 +141,7 @@ async def get_collection_answer(
             document=document,
             document_collection=document_collection,
             api_version=api_version,
-            user_security_groups=token_data["security_groups"]
+            user_security_groups=token_data["security_groups"],
         )
     else:
         raise HTTPException(
@@ -198,7 +204,7 @@ async def get_collection_ranking_query(
         query=query,
         document=document,
         document_collection=document_collection,
-        user_security_groups=token_data["security_groups"]
+        user_security_groups=token_data["security_groups"],
     )
 
 
@@ -218,8 +224,9 @@ async def get_collection(
     collection: str = Path(description="Collection within organization", example="chats"),
 ):
     token_data = decode_token(token)
-    return collection_handler.get_collection(vendor, organization, collection, api_version,
-                                             user_security_groups=token_data["security_groups"])
+    return collection_handler.get_collection(
+        vendor, organization, collection, api_version, user_security_groups=token_data["security_groups"]
+    )
 
 
 @app.post(

@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 from fastapi import status
 from pydantic import BaseModel, Field
+
 from utils.errors import TokenMalformedError
 
 
