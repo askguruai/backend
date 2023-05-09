@@ -7,8 +7,8 @@ from typing import List, Tuple
 import numpy as np
 
 from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
+from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import int_list_encode
-from utils.errors import InvalidDocumentIdError, DocumentAccessRestricted
 from utils.schemas import (
     ApiVersion,
     CollectionSolutionRequest,
@@ -32,21 +32,17 @@ class CollectionHandler:
         collections: List[str],
         query: str,
         api_version: ApiVersion,
-        user_security_groups: List[int]
+        user_security_groups: List[int],
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         security_code = int_list_encode(user_security_groups)
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections, query_embedding, self.top_k_chunks, api_version,
-            security_code=security_code
+            search_collections, query_embedding, self.top_k_chunks, api_version, security_code=security_code
         )
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(
-                answer="Unable to find an anser",
-                sources = []
-            )
+            return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
         context = "\n\n".join(chunks)
 
         answer = await ml_requests.get_answer(context, query, api_version.value, "support")
@@ -67,27 +63,23 @@ class CollectionHandler:
         document: str,
         document_collection: str,
         api_version: ApiVersion,
-        user_security_groups: List[int]
+        user_security_groups: List[int],
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
         embedding, query = self.get_data_from_id(
             document=document,
             full_collection_name=f"{vendor}_{org_hash}_{document_collection}",
-            security_code=security_code
+            security_code=security_code,
         )
 
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
-        
+
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections, embedding, self.top_k_chunks, api_version,
-            security_code=security_code
+            search_collections, embedding, self.top_k_chunks, api_version, security_code=security_code
         )
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(
-                answer="Unable to find an anser",
-                sources = []
-            )
+            return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
         context = "\n\n".join(chunks)
 
         answer = await ml_requests.get_answer(context, query, api_version)
@@ -125,8 +117,7 @@ class CollectionHandler:
         return emb, query
 
     def get_collection(
-        self, vendor: str, organization: str, collection: str, api_version: ApiVersion,
-        user_security_groups: List[int]
+        self, vendor: str, organization: str, collection: str, api_version: ApiVersion, user_security_groups: List[int]
     ) -> GetCollectionResponse:
         organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
@@ -168,7 +159,7 @@ class CollectionHandler:
             embedding, _ = self.get_data_from_id(
                 document=document,
                 full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
-                security_code=security_code
+                security_code=security_code,
             )
 
         # extracting more than top_k chunks because each

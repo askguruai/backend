@@ -1,6 +1,7 @@
 import hashlib
 import logging
 from typing import Dict, List
+
 from loguru import logger
 
 from parsers import ChatParser
@@ -72,7 +73,7 @@ class ChatsUploadHandler:
                 all_doc_titles,
                 all_summaries,
                 all_timestamps,
-                all_security_groups
+                all_security_groups,
             ]
             collection.insert(data)
             logger.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
