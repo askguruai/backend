@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import bson
 import uvicorn
@@ -92,6 +92,21 @@ async def docs_redirect():
 ######################################################
 #                   COLLECTIONS                      #
 ######################################################
+
+
+@app.get(
+    "/{api_version}/info",
+    response_model=Dict[str, Any],
+    responses=CollectionResponses,
+)
+@catch_errors
+async def get_info(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+):
+    token_data = decode_token(token)
+    return token_data
 
 
 @app.get(
