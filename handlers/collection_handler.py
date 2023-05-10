@@ -47,12 +47,17 @@ class CollectionHandler:
 
         answer = await ml_requests.get_answer(context, query, api_version.value, "support")
 
+        sources, seen = [], set()
+        for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
+            if doc_id not in seen:
+                sources.append(
+                    Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
+                )
+                seen.add(doc_id)
+
         return GetCollectionAnswerResponse(
             answer=answer,
-            sources=[
-                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
-                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
-            ],
+            sources=sources,
         )
 
     async def get_solution(
@@ -84,12 +89,17 @@ class CollectionHandler:
 
         answer = await ml_requests.get_answer(context, query, api_version)
 
+        sources, seen = [], set()
+        for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
+            if doc_id not in seen:
+                sources.append(
+                    Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
+                )
+                seen.add(doc_id)
+
         return GetCollectionAnswerResponse(
             answer=answer,
-            sources=[
-                Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
-                for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections)
-            ],
+            sources=sources,
         )
 
     def get_data_from_id(self, document: str, full_collection_name: str, security_code: int) -> np.ndarray:
