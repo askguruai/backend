@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import bson
 import uvicorn
@@ -14,7 +14,13 @@ from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, Lin
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import get_livechat_token, get_organization_token, validate_organization_scope, oauth2_scheme, decode_token
+from utils.auth import (
+    decode_token,
+    get_livechat_token,
+    get_organization_token,
+    oauth2_scheme,
+    validate_organization_scope,
+)
 from utils.schemas import (
     ApiVersion,
     CollectionResponses,
@@ -48,7 +54,9 @@ app.add_middleware(RequestLoggerMiddleware)
 @app.on_event("startup")
 async def init_handlers():
     global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, CLIENT_SESSION_WRAPPER
-    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(CONFIG["coreml"]["route"])
+    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
+        f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
+    )
     CLIENT_SESSION_WRAPPER.general_session = ClientSession()
     text_handler = TextHandler(
         parser=TextParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
@@ -89,6 +97,21 @@ async def docs_redirect():
 
 
 @app.get(
+    "/{api_version}/info",
+    response_model=Dict[str, Any],
+    responses=CollectionResponses,
+)
+@catch_errors
+async def get_info(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+):
+    token_data = decode_token(token)
+    return token_data
+
+
+@app.get(
     "/{api_version}/{vendor}/{organization}/answer",
     response_model=GetCollectionAnswerResponse,
     responses=CollectionResponses,
@@ -125,7 +148,7 @@ async def get_collection_answer(
             collections=collections,
             query=query,
             api_version=api_version,
-            user_security_groups=token_data["security_groups"]
+            user_security_groups=token_data["security_groups"],
         )
     elif document and not query:
         response = await collection_handler.get_solution(
@@ -135,7 +158,7 @@ async def get_collection_answer(
             document=document,
             document_collection=document_collection,
             api_version=api_version,
-            user_security_groups=token_data["security_groups"]
+            user_security_groups=token_data["security_groups"],
         )
     else:
         raise HTTPException(
@@ -198,7 +221,7 @@ async def get_collection_ranking_query(
         query=query,
         document=document,
         document_collection=document_collection,
-        user_security_groups=token_data["security_groups"]
+        user_security_groups=token_data["security_groups"],
     )
 
 
@@ -218,8 +241,9 @@ async def get_collection(
     collection: str = Path(description="Collection within organization", example="chats"),
 ):
     token_data = decode_token(token)
-    return collection_handler.get_collection(vendor, organization, collection, api_version,
-                                             user_security_groups=token_data["security_groups"])
+    return collection_handler.get_collection(
+        vendor, organization, collection, api_version, user_security_groups=token_data["security_groups"]
+    )
 
 
 @app.post(

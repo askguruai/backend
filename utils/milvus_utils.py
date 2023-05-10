@@ -39,7 +39,12 @@ class CollectionsManager:
         return self.get_collection(name)
 
     def search_collections_set(
-        self, collections: List[str], vec: np.ndarray, n_top: int, api_version: str, security_code: int = 2 ** 63 - 1  # full access by default
+        self,
+        collections: List[str],
+        vec: np.ndarray,
+        n_top: int,
+        api_version: str,
+        security_code: int = 2**63 - 1,  # full access by default
     ) -> Tuple[List[str]]:
         search_collections = [self[col] for col in collections]
         search_params = {
@@ -98,7 +103,7 @@ class CollectionsManager:
             FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
             FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
             FieldSchema(name="timestamp", dtype=DataType.INT64),
-            FieldSchema(name="security_groups", dtype=DataType.INT64)
+            FieldSchema(name="security_groups", dtype=DataType.INT64),
         ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)

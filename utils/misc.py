@@ -1,8 +1,9 @@
 from utils.errors import SecurityGroupError
 
+
 def int_list_encode(group_list: list) -> int:
     if len(group_list) == 0:
-        return 2**63 -1
+        return 2**63 - 1
     n = 0
     for gr in group_list:
         if gr < 0 or gr > 63:

@@ -1,5 +1,6 @@
 import asyncio
 import os
+from typing import List
 
 import requests
 from fastapi import Body, Depends, HTTPException, Path, Query, status
@@ -7,7 +8,6 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from loguru import logger
 from pydantic import Field
-from typing import List
 
 from utils import CLIENT_SESSION_WRAPPER
 from utils.schemas import (
@@ -31,7 +31,9 @@ async def get_organization_token(
     vendor: str = Path(description="Vendor name", example="livechat"),
     organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     password: str = Body(..., description="This is for staff use"),
-    security_groups: List[int] = Body(None, description="Security groups associated with token. Leave blank for full access")
+    security_groups: List[int] = Body(
+        None, description="Security groups associated with token. Leave blank for full access"
+    ),
 ):
     if password != os.environ["AUTH_COLLECTION_PASSWORD"]:
         raise HTTPException(
@@ -40,7 +42,9 @@ async def get_organization_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     security_groups = [] if security_groups is None else security_groups
-    access_token = create_access_token({"organization": organization, "vendor": vendor, "security_groups": tuple(security_groups)})
+    access_token = create_access_token(
+        {"organization": organization, "vendor": vendor, "security_groups": tuple(security_groups)}
+    )
     return {"access_token": access_token}
 
 
@@ -104,8 +108,8 @@ async def validate_organization_scope(
     organization_token: str = token_data.get("organization")
     vendor_token: str = token_data.get("vendor")
     if organization_token is None or organization_token != organization or vendor_token != vendor:
-            raise credentials_exception
-    
+        raise credentials_exception
+
 
 def decode_token(token: str) -> dict:
     credentials_exception = HTTPException(
