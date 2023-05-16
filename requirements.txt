@@ -16,3 +16,4 @@ tqdm
 python-jose[cryptography]
 aiohttp[speedups]
 pymilvus==2.2.8
+tiktoken
