@@ -6,7 +6,6 @@ from loguru import logger
 
 from parsers import ChatParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
-from utils.misc import int_list_encode
 from utils.schemas import ApiVersion, UploadCollectionDocumentsResponse
 
 
@@ -30,21 +29,26 @@ class ChatsUploadHandler:
         for chat in chats:
             chunks, meta_info = self.parser.process_document(chat)
             chat_id = meta_info["doc_id"]
-            security_groups_code = int_list_encode(meta_info["security_groups"])
             existing_chunks = collection.query(
                 expr=f'doc_id=="{chat_id}"',
                 offset=0,
                 limit=10000,
-                output_fields=["pk", "chunk_hash", "security_groups"],
+                output_fields=["pk", "chunk_hash", "security_groups", "timestamp"],
                 consistency_level="Strong",
             )
-            existing_chunks = {hit["chunk_hash"]: (hit["pk"], hit["security_groups"]) for hit in existing_chunks}
+            existing_chunks = {
+                hit["chunk_hash"]: (hit["pk"], hit["security_groups"], hit["timestamp"]) for hit in existing_chunks
+            }
             # determining which chunks are new
             new_chunks_hashes = []
             new_chunks = []
             for chunk in chunks:
                 text_hash = hash_string(chunk)
-                if text_hash in existing_chunks and existing_chunks[text_hash][1] == security_groups_code:
+                if (
+                    text_hash in existing_chunks
+                    and existing_chunks[text_hash][1] == meta_info["security_groups"]
+                    and existing_chunks[text_hash][2] == meta_info["timestamp"]
+                ):
                     del existing_chunks[text_hash]
                 else:
                     new_chunks.append(chunk)
@@ -62,7 +66,7 @@ class ChatsUploadHandler:
             all_summaries.extend([""] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
-            all_security_groups.extend([security_groups_code] * len(new_chunks))
+            all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
             data = [

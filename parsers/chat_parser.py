@@ -1,5 +1,7 @@
 from typing import List, Tuple
 
+from utils.misc import int_list_encode
+
 
 class ChatParser:
     def __init__(self, chunk_size: int):
@@ -10,7 +12,7 @@ class ChatParser:
             "doc_id": chat["id"],
             "doc_title": f"{chat['user']['name']}::{chat['user']['id']}",
             "timestamp": int(chat["timestamp"]),
-            "security_groups": chat["security_groups"],
+            "security_groups": int_list_encode(chat["security_groups"]),
         }
         history = chat["history"]
         text = [f"{line['role']}: {line['content']}" for line in history]
