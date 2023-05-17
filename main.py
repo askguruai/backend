@@ -83,8 +83,8 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
-@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
 @app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
+@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
 
 
 ######################################################
@@ -292,6 +292,7 @@ async def upload_collection_documents(
     "/{api_version}/get_answer/text",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, request: Request):
@@ -304,6 +305,7 @@ async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, re
     "/{api_version}/get_answer/link",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, request: Request):
@@ -316,6 +318,7 @@ async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, re
     "/{api_version}/get_answer/document",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def get_answer_document(api_version: ApiVersion, document_request: DocumentRequest, request: Request):
@@ -328,6 +331,7 @@ async def get_answer_document(api_version: ApiVersion, document_request: Documen
     "/{api_version}/upload/pdf",
     response_model=UploadDocumentResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
