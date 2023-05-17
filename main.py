@@ -154,16 +154,7 @@ async def get_collection_answer(
             detail="Both document and document_collection must be provided",
         )
     token_data = decode_token(token)
-    if query and not document:
-        response = await collection_handler.get_answer(
-            vendor=token_data["vendor"],
-            organization=token_data["organization"],
-            collections=collections,
-            query=query,
-            api_version=api_version,
-            user_security_groups=token_data["security_groups"],
-        )
-    elif document and not query:
+    if document and not query:
         response = await collection_handler.get_solution(
             vendor=token_data["vendor"],
             organization=token_data["organization"],
@@ -174,9 +165,15 @@ async def get_collection_answer(
             user_security_groups=token_data["security_groups"],
         )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Only one of query or document must be provided",
+        response = await collection_handler.get_answer(
+            vendor=token_data["vendor"],
+            organization=token_data["organization"],
+            collections=collections,
+            query=query,
+            api_version=api_version,
+            user_security_groups=token_data["security_groups"],
+            document=document,
+            document_collection=document_collection,
         )
     request_id = log_get_answer(
         response.answer,

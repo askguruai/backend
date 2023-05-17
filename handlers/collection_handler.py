@@ -35,13 +35,21 @@ class CollectionHandler:
         query: str,
         api_version: ApiVersion,
         user_security_groups: List[int],
+        document: str = None,
+        document_collection: str = None,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         security_code = int_list_encode(user_security_groups)
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections, query_embedding, self.top_k_chunks, api_version, security_code=security_code
+            search_collections,
+            query_embedding,
+            self.top_k_chunks,
+            api_version,
+            document_id_to_exclude=document,
+            document_collection=document_collection,
+            security_code=security_code,
         )
         if len(chunks) == 0:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
@@ -83,7 +91,13 @@ class CollectionHandler:
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
 
         chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections, embedding, self.top_k_chunks, api_version, security_code=security_code
+            search_collections,
+            embedding,
+            self.top_k_chunks,
+            api_version,
+            document_id_to_exclude=document,
+            document_collection=document_collection,
+            security_code=security_code,
         )
         if len(chunks) == 0:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
@@ -183,7 +197,13 @@ class CollectionHandler:
         # document might be represented by several chunks
         collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
         _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            collections_search, embedding, top_k * 5, api_version.value
+            collections_search,
+            embedding,
+            top_k * 5,
+            api_version.value,
+            document_id_to_exclude=document,
+            document_collection=document_collection,
+            security_code=security_code,
         )
 
         sources, seen, i = [], set(), 0

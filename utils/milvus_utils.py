@@ -56,6 +56,8 @@ class CollectionsManager:
         vec: np.ndarray,
         n_top: int,
         api_version: str,
+        document_id_to_exclude: str = None,
+        document_collection: str = None,
         security_code: int = 2**63 - 1,  # full access by default
     ) -> Tuple[List[str]]:
         search_collections = [self[col] for col in collections]
@@ -76,11 +78,14 @@ class CollectionsManager:
                     f"emb_{api_version}",
                     search_params,
                     offset=i * int(CONFIG["misc"]["collections_search_limit"]),
-                    limit=(i + 1) * int(CONFIG["misc"]["collections_search_limit"]),
+                    limit=int(CONFIG["misc"]["collections_search_limit"]),
                     output_fields=["chunk", "doc_title", "doc_id", "doc_summary", "security_groups"],
                 )[0]
                 for dist, hit in zip(results.distances, results):
-                    if hit.entity.get("security_groups") & security_code:
+                    if (
+                        hit.entity.get("doc_id") != document_id_to_exclude
+                        or document_collection != collection.name.split("_")[-1]
+                    ) and (hit.entity.get("security_groups") & security_code):
                         all_distances.append(dist)
                         all_chunks.append(hit.entity.get("chunk"))
                         all_titles.append(hit.entity.get("doc_title"))
