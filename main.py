@@ -23,6 +23,7 @@ from utils.auth import (
 )
 from utils.schemas import (
     ApiVersion,
+    Chat,
     CollectionResponses,
     DocumentRequest,
     GetAnswerResponse,
