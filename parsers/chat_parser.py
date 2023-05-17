@@ -1,21 +1,21 @@
 from typing import List, Tuple
 
 from utils.misc import int_list_encode
+from utils.schemas import Chat
 
 
 class ChatParser:
     def __init__(self, chunk_size: int):
         self.chunk_size = chunk_size
 
-    def process_document(self, chat: dict) -> Tuple[List[str], dict]:
+    def process_document(self, chat: Chat) -> Tuple[List[str], dict]:
         meta = {
-            "doc_id": chat["id"],
-            "doc_title": f"{chat['user']['name']}::{chat['user']['id']}",
-            "timestamp": int(chat["timestamp"]),
-            "security_groups": int_list_encode(chat["security_groups"]),
+            "doc_id": chat.id,
+            "doc_title": f"{chat.user.name}::{chat.user.id}",
+            "timestamp": int(chat.timestamp),
+            "security_groups": int_list_encode(chat.security_groups),
         }
-        history = chat["history"]
-        text = [f"{line['role']}: {line['content']}" for line in history]
+        text = [f"{message.role}: {message.content}" for message in chat.history]
         return self.to_chunks(text), meta
 
     def to_chunks(self, text_lines: List[str]) -> List[str]:

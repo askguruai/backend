@@ -14,12 +14,11 @@ from utils.schemas import (
     ApiVersion,
     AuthenticatedRequest,
     LivechatLoginRequest,
-    UploadChatsRequest,
     VendorCollectionRequest,
     VendorCollectionTokenRequest,
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/collections/token")
 
 
 def create_access_token(data: dict):
@@ -28,8 +27,8 @@ def create_access_token(data: dict):
 
 async def get_organization_token(
     api_version: ApiVersion,
-    vendor: str = Path(description="Vendor name", example="livechat"),
-    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
+    vendor: str = Body(description="Vendor name", example="livechat"),
+    organization: str = Body(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     password: str = Body(..., description="This is for staff use"),
     security_groups: List[int] = Body(
         None, description="Security groups associated with token. Leave blank for full access"
@@ -43,9 +42,9 @@ async def get_organization_token(
         )
     security_groups = [] if security_groups is None else security_groups
     access_token = create_access_token(
-        {"organization": organization, "vendor": vendor, "security_groups": tuple(security_groups)}
+        {"vendor": vendor, "organization": organization, "security_groups": tuple(security_groups)}
     )
-    return {"access_token": access_token}
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body(...)):
@@ -94,23 +93,6 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-async def validate_organization_scope(
-    vendor: str = Path(description="Vendor name", example="livechat"),
-    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
-    token: str = Depends(oauth2_scheme),
-):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    token_data = decode_token(token)
-    organization_token: str = token_data.get("organization")
-    vendor_token: str = token_data.get("vendor")
-    if organization_token is None or organization_token != organization or vendor_token != vendor:
-        raise credentials_exception
-
-
 def decode_token(token: str) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -123,6 +105,7 @@ def decode_token(token: str) -> dict:
             os.environ["JWT_SECRET_KEY"],
             algorithms=[os.environ["JWT_ALGORITHM"]],
         )
+
     except JWTError:
         raise credentials_exception
     return payload

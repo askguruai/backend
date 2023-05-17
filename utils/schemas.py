@@ -34,6 +34,43 @@ class Document(BaseModel):
     timestamp: int = Field(description="Document last change time", example=1623345600)
 
 
+class Collection(BaseModel):
+    name: str = Field(description="Name of the collection", example="tickets")
+    n_documents: int = Field(description="Number of documents in the collection", example=100)
+
+
+class User(BaseModel):
+    id: str = Field(description="Id of the user", example="7af8c3e548e40aeb984c42dd")
+    name: str = Field(description="Name of the user", example="John Doe")
+
+
+class Message(BaseModel):
+    role: str = Field(description="Role of the user", example="assistant")
+    content: str = Field(description="Content of the message", example="Hello, how can I help you?")
+
+
+class Chat(BaseModel):
+    id: str = Field(description="Id of the chat", example="7af8c3e548e40aeb984c42dd")
+    timestamp: int = Field(description="Chat last change time", example=1623345600)
+    user: User = Field(description="User of the chat", example=User(id="7af8c3e548e40aeb984c42dd", name="John Doe"))
+    history: List[Message] = Field(
+        description="History of the chat", example=[Message(role="assistant", content="Hello, how can I help you?")]
+    )
+    security_groups: List[int] = Field(description="Security groups of the chat", example=[0, 2])
+
+
+class GetCollectionsResponse(BaseModel):
+    collections: List[Collection] = Field(
+        description="Dict of collections names and number of documents in them",
+        example=[
+            Collection(
+                name="tickets",
+                n_documents=100,
+            ),
+        ],
+    )
+
+
 class GetCollectionResponse(BaseModel):
     documents: List[Document] = Field(
         description="List of documents from given collection",
@@ -157,33 +194,6 @@ class DocumentRequest(BaseModel):
     query: str = Field(
         description="Query to generate answer for.",
         example="What are consequences of this invasion for Russia?",
-    )
-
-
-class UploadChatsRequest(VendorCollectionRequest):
-    chats: List[dict] = Field(
-        description="A list of all archive chat objects",
-        example=[
-            {
-                "id": "RSF0JQSFEJ",
-                "user": {"name": "Mike", "id": "c5753edc-0051-4a7a-8b61-2ae64c7aad51"},
-                "history": [
-                    {"author": "agent", "text": "Hello. How may I help you?"},
-                    {"author": "user", "text": "hi do you offer screen sharing chat"},
-                ],
-            },
-            {
-                "id": "RSF0JQB8J4",
-                "user": {"name": "Bob", "id": "efb1f05f-dd19-4b95-95e9-3cd2feb149bf"},
-                "history": [
-                    {"author": "agent", "text": "Hello. How may I help you?"},
-                    {
-                        "author": "user",
-                        "text": "i want to change my subscription from monthly to annually",
-                    },
-                ],
-            },
-        ],
     )
 
 

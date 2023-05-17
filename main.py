@@ -14,21 +14,17 @@ from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, Lin
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer
-from utils.auth import (
-    decode_token,
-    get_livechat_token,
-    get_organization_token,
-    oauth2_scheme,
-    validate_organization_scope,
-)
+from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.schemas import (
     ApiVersion,
+    Chat,
     CollectionResponses,
     DocumentRequest,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
     GetCollectionResponse,
+    GetCollectionsResponse,
     HTTPExceptionResponse,
     LinkRequest,
     SetReactionRequest,
@@ -87,8 +83,8 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
-@app.post("/{api_version}/livechat/token", responses=CollectionResponses)(get_livechat_token)
-@app.post("/{api_version}/{vendor}/{organization}/token", responses=CollectionResponses)(get_organization_token)
+@app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
+@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
 
 
 ######################################################
@@ -112,17 +108,34 @@ async def get_info(
 
 
 @app.get(
-    "/{api_version}/{vendor}/{organization}/answer",
+    "/{api_version}/collections",
+    response_model=GetCollectionsResponse,
+    responses=CollectionResponses,
+)
+@catch_errors
+async def get_collections(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+):
+    token_data = decode_token(token)
+    response = collection_handler.get_collections(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        api_version=api_version,
+    )
+    return response
+
+
+@app.get(
+    "/{api_version}/collections/answer",
     response_model=GetCollectionAnswerResponse,
     responses=CollectionResponses,
-    dependencies=[Depends(validate_organization_scope)],
 )
 @catch_errors
 async def get_collection_answer(
     request: Request,
     api_version: ApiVersion,
-    vendor: str,
-    organization: str,
     token: str = Depends(oauth2_scheme),
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search", example=["chats"]),
@@ -141,19 +154,10 @@ async def get_collection_answer(
             detail="Both document and document_collection must be provided",
         )
     token_data = decode_token(token)
-    if query and not document:
-        response = await collection_handler.get_answer(
-            vendor=vendor,
-            organization=organization,
-            collections=collections,
-            query=query,
-            api_version=api_version,
-            user_security_groups=token_data["security_groups"],
-        )
-    elif document and not query:
+    if document and not query:
         response = await collection_handler.get_solution(
-            vendor=vendor,
-            organization=organization,
+            vendor=token_data["vendor"],
+            organization=token_data["organization"],
             collections=collections,
             document=document,
             document_collection=document_collection,
@@ -161,9 +165,15 @@ async def get_collection_answer(
             user_security_groups=token_data["security_groups"],
         )
     else:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Only one of query or document must be provided",
+        response = await collection_handler.get_answer(
+            vendor=token_data["vendor"],
+            organization=token_data["organization"],
+            collections=collections,
+            query=query,
+            api_version=api_version,
+            user_security_groups=token_data["security_groups"],
+            document=document,
+            document_collection=document_collection,
         )
     request_id = log_get_answer(
         response.answer,
@@ -172,8 +182,8 @@ async def get_collection_answer(
         query,
         request,
         api_version,
-        vendor,
-        organization,
+        token_data["vendor"],
+        token_data["organization"],
         collections,
     )
     response.request_id = request_id
@@ -181,17 +191,14 @@ async def get_collection_answer(
 
 
 @app.get(
-    "/{api_version}/{vendor}/{organization}/ranking",
+    "/{api_version}/collections/ranking",
     response_model=GetCollectionRankingResponse,
     responses=CollectionResponses,
-    dependencies=[Depends(validate_organization_scope)],
 )
 @catch_errors
 async def get_collection_ranking_query(
     request: Request,
     api_version: ApiVersion,
-    vendor: str,
-    organization: str,
     token: str = Depends(oauth2_scheme),
     # TODO make not mandatory collections
     collections: List[str] = Query(description="List of collections to search"),
@@ -213,8 +220,8 @@ async def get_collection_ranking_query(
         )
     token_data = decode_token(token)
     return await collection_handler.get_ranking(
-        vendor=vendor,
-        organization=organization,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
         collections=collections,
         top_k=top_k,
         api_version=api_version,
@@ -226,51 +233,51 @@ async def get_collection_ranking_query(
 
 
 @app.get(
-    "/{api_version}/{vendor}/{organization}/{collection}",
+    "/{api_version}/collections/{collection}",
     response_model=GetCollectionResponse,
     responses=CollectionResponses,
-    dependencies=[Depends(validate_organization_scope)],
 )
 @catch_errors
 async def get_collection(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    vendor: str = Path(description="Vendor name", example="livechat"),
-    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     collection: str = Path(description="Collection within organization", example="chats"),
 ):
     token_data = decode_token(token)
     return collection_handler.get_collection(
-        vendor, organization, collection, api_version, user_security_groups=token_data["security_groups"]
+        token_data["vendor"],
+        token_data["organization"],
+        collection,
+        api_version,
+        user_security_groups=token_data["security_groups"],
     )
 
 
 @app.post(
-    "/{api_version}/{vendor}/{organization}/{collection}",
+    "/{api_version}/collections/{collection}",
     response_model=UploadCollectionDocumentsResponse,
     responses=CollectionResponses,
-    dependencies=[Depends(validate_organization_scope)],
 )
 @catch_errors
 async def upload_collection_documents(
     request: Request,
     api_version: ApiVersion,
-    vendor: str = Path(description="Vendor name", example="livechat"),
-    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
+    token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
     documents: List[Dict] = Body(None, description="List of documents to upload"),
-    chats: List[Dict] = Body(None, description="List of chats to upload"),
+    chats: List[Chat] = Body(None, description="List of chats to upload"),
 ):
     if documents:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Documents are not supported yet",
         )
+    token_data = decode_token(token)
     return await chats_upload_handler.handle_request(
         api_version=api_version,
-        vendor=vendor,
-        organization=organization,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
         collection=collection,
         chats=chats,
     )
@@ -285,6 +292,7 @@ async def upload_collection_documents(
     "/{api_version}/get_answer/text",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, request: Request):
@@ -297,6 +305,7 @@ async def get_answer_text(api_version: ApiVersion, text_request: TextRequest, re
     "/{api_version}/get_answer/link",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, request: Request):
@@ -309,6 +318,7 @@ async def get_answer_link(api_version: ApiVersion, link_request: LinkRequest, re
     "/{api_version}/get_answer/document",
     response_model=GetAnswerResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def get_answer_document(api_version: ApiVersion, document_request: DocumentRequest, request: Request):
@@ -321,6 +331,7 @@ async def get_answer_document(api_version: ApiVersion, document_request: Documen
     "/{api_version}/upload/pdf",
     response_model=UploadDocumentResponse,
     responses={status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse}},
+    include_in_schema=False,
 )
 @catch_errors
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):

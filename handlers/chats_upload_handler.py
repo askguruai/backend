@@ -6,7 +6,7 @@ from loguru import logger
 
 from parsers import ChatParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
-from utils.schemas import ApiVersion, UploadCollectionDocumentsResponse
+from utils.schemas import ApiVersion, Chat, UploadCollectionDocumentsResponse
 
 
 class ChatsUploadHandler:
@@ -14,7 +14,7 @@ class ChatsUploadHandler:
         self.parser = parser
 
     async def handle_request(
-        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Dict]
+        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Chat]
     ) -> UploadCollectionDocumentsResponse:
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
