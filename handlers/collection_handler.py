@@ -11,11 +11,13 @@ from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import int_list_encode
 from utils.schemas import (
     ApiVersion,
+    Collection,
     CollectionSolutionRequest,
     Document,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
     GetCollectionResponse,
+    GetCollectionsResponse,
     Source,
 )
 
@@ -125,6 +127,11 @@ class CollectionHandler:
         query += "\n\nAdress the problem stated above"
 
         return emb, query
+
+    def get_collections(self, vendor: str, organization: str, api_version: ApiVersion) -> GetCollectionResponse:
+        organization_hash = hash_string(organization)
+        collections = MILVUS_DB.get_collections(vendor, organization_hash)
+        return GetCollectionsResponse(collections=[Collection(**collection) for collection in collections])
 
     def get_collection(
         self, vendor: str, organization: str, collection: str, api_version: ApiVersion, user_security_groups: List[int]

@@ -30,6 +30,7 @@ from utils.schemas import (
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
     GetCollectionResponse,
+    GetCollectionsResponse,
     HTTPExceptionResponse,
     LinkRequest,
     SetReactionRequest,
@@ -113,10 +114,29 @@ async def get_info(
 
 
 @app.get(
-    "/{api_version}/{vendor}/{organization}/answer",
+    "/{api_version}/collections",
+    response_model=GetCollectionsResponse,
+    responses=CollectionResponses,
+)
+@catch_errors
+async def get_collections(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+):
+    token_data = decode_token(token)
+    response = collection_handler.get_collections(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        api_version=api_version,
+    )
+    return response
+
+
+@app.get(
+    "/{api_version}/collections/answer",
     response_model=GetCollectionAnswerResponse,
     responses=CollectionResponses,
-    dependencies=[Depends(validate_organization_scope)],
 )
 @catch_errors
 async def get_collection_answer(
