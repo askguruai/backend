@@ -93,23 +93,6 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-async def validate_organization_scope(
-    vendor: str = Path(description="Vendor name", example="livechat"),
-    organization: str = Path(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
-    token: str = Depends(oauth2_scheme),
-):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    token_data = decode_token(token)
-    organization_token: str = token_data.get("organization")
-    vendor_token: str = token_data.get("vendor")
-    if organization_token is None or organization_token != organization or vendor_token != vendor:
-        raise credentials_exception
-
-
 def decode_token(token: str) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
