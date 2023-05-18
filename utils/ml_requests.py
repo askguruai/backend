@@ -1,3 +1,4 @@
+import json
 from typing import List, Union
 
 import numpy as np
@@ -31,13 +32,20 @@ async def get_answer(
     api_version: str,
     mode: str = "general",
     chat: Union[list, None] = None,
+    stream: bool = False,
 ) -> str:
-    async with CLIENT_SESSION_WRAPPER.coreml_session.post(
+    response = await CLIENT_SESSION_WRAPPER.coreml_session.post(
         f"/{api_version}/completions/",
-        json={"info": context, "query": query, "mode": mode, "chat": chat},
-    ) as response:
-        response_status = response.status
+        json={"info": context, "query": query, "mode": mode, "chat": chat, "stream": stream},
+    )
+    response_status = response.status
+    if stream:
+        answer = (
+            json.loads(data.decode('utf-8'))["data"] if data else "" async for data, _ in response.content.iter_chunks()
+        )
+    else:
         response_json = await response.json()
         if response_status == status.HTTP_500_INTERNAL_SERVER_ERROR:
             raise CoreMLError(response_json["detail"])
-        return response_json["data"]
+        answer = response_json["data"]
+    return answer

@@ -142,6 +142,7 @@ async def get_collection_answer(
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
+    stream: bool = Query(default=False, description="Stream results", example=False),
 ):
     if not query and not document:
         raise HTTPException(
@@ -174,6 +175,7 @@ async def get_collection_answer(
             user_security_groups=token_data["security_groups"],
             document=document,
             document_collection=document_collection,
+            stream=stream,
         )
     request_id = log_get_answer(
         response.answer,
