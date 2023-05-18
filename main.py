@@ -7,13 +7,13 @@ from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, StreamingResponse
 from pymongo.collection import ReturnDocument
 
 from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
 from parsers import ChatParser, DocumentParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
-from utils.api import catch_errors, log_get_answer
+from utils.api import catch_errors, log_get_answer, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.schemas import (
     ApiVersion,
@@ -179,18 +179,25 @@ async def get_collection_answer(
             stream=stream,
         )
     request_id = log_get_answer(
-        response.answer,
-        "",
-        [source.id for source in response.sources],
-        query,
-        request,
-        api_version,
-        token_data["vendor"],
-        token_data["organization"],
-        collections,
+        answer=response.answer if not stream else "",
+        context="",
+        document_ids=[source.id for source in response.sources] if not stream else [],
+        query=query,
+        request=request,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collections=collections,
     )
-    response.request_id = request_id
-    return response
+    if stream:
+        return StreamingResponse(
+            stream_and_log(response, request_id),
+            media_type="text/event-stream",
+            headers={"X-Accel-Buffering": "no"},
+        )
+    else:
+        response.request_id = request_id
+        return response
 
 
 @app.get(

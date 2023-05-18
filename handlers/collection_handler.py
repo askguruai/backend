@@ -68,11 +68,8 @@ class CollectionHandler:
                 seen.add(doc_id)
 
         if stream:
-            response = (
-                f"event: message\ndata: {GetCollectionAnswerResponse(answer=text, sources=[]).json()}\n\n"
-                async for text in answer
-            )
-            return StreamingResponse(response, media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
+            response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
+            return response
 
         return GetCollectionAnswerResponse(
             answer=answer,
@@ -110,7 +107,7 @@ class CollectionHandler:
             security_code=security_code,
         )
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
+            return GetCollectionAnswerResponse(answer="Unable to find an anwser", sources=[])
         context = "\n\n".join(chunks)
 
         answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
@@ -124,11 +121,8 @@ class CollectionHandler:
                 seen.add(doc_id)
 
         if stream:
-            response = (
-                f"event: message\ndata: {GetCollectionAnswerResponse(answer=text, sources=[]).json()}\n\n"
-                async for text in answer
-            )
-            return StreamingResponse(response, media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
+            response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
+            return response
 
         return GetCollectionAnswerResponse(
             answer=answer,
