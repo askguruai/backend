@@ -164,6 +164,7 @@ async def get_collection_answer(
             document_collection=document_collection,
             api_version=api_version,
             user_security_groups=token_data["security_groups"],
+            stream=stream,
         )
     else:
         response = await collection_handler.get_answer(

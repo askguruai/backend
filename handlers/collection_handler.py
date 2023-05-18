@@ -68,7 +68,10 @@ class CollectionHandler:
                 seen.add(doc_id)
 
         if stream:
-            response = (f"event: message\ndata: {GetCollectionAnswerResponse(answer=text, sources=[]).json()}\n\n" async for text in answer)
+            response = (
+                f"event: message\ndata: {GetCollectionAnswerResponse(answer=text, sources=[]).json()}\n\n"
+                async for text in answer
+            )
             return StreamingResponse(response, media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
         return GetCollectionAnswerResponse(
@@ -85,6 +88,7 @@ class CollectionHandler:
         document_collection: str,
         api_version: ApiVersion,
         user_security_groups: List[int],
+        stream: bool = False,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
@@ -109,7 +113,7 @@ class CollectionHandler:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
         context = "\n\n".join(chunks)
 
-        answer = await ml_requests.get_answer(context, query, api_version)
+        answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
@@ -118,6 +122,13 @@ class CollectionHandler:
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 )
                 seen.add(doc_id)
+
+        if stream:
+            response = (
+                f"event: message\ndata: {GetCollectionAnswerResponse(answer=text, sources=[]).json()}\n\n"
+                async for text in answer
+            )
+            return StreamingResponse(response, media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
         return GetCollectionAnswerResponse(
             answer=answer,
