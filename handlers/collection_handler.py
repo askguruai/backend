@@ -68,8 +68,8 @@ class CollectionHandler:
                 seen.add(doc_id)
 
         if stream:
-            response = (GetCollectionAnswerResponse(answer=text, sources=[]).json() async for text in answer)
-            return StreamingResponse(response, media_type="text/event-stream")
+            response = (f"event: message\ndata: {GetCollectionAnswerResponse(answer=text, sources=[]).json()}\n\n" async for text in answer)
+            return StreamingResponse(response, media_type="text/event-stream", headers={"X-Accel-Buffering": "no"})
 
         return GetCollectionAnswerResponse(
             answer=answer,
