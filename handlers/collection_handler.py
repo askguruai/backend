@@ -5,9 +5,10 @@ from collections import defaultdict
 from typing import List, Tuple
 
 import numpy as np
+import tiktoken
 from fastapi.responses import StreamingResponse
 
-from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
+from utils import DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import int_list_encode
 from utils.schemas import (
@@ -24,9 +25,11 @@ from utils.schemas import (
 
 
 class CollectionHandler:
-    def __init__(self, top_k_chunks: int, chunk_size: int):
+    def __init__(self, top_k_chunks: int, chunk_size: int, tokenizer_name: str, max_tokens_in_context: int):
         self.top_k_chunks = top_k_chunks
         self.chunk_size = chunk_size
+        self.enc = tiktoken.get_encoding(tokenizer_name)
+        self.max_tokens_in_context = max_tokens_in_context
 
     async def get_answer(
         self,
@@ -55,12 +58,18 @@ class CollectionHandler:
         )
         if len(chunks) == 0:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
-        context = "\n\n".join(chunks)
+
+        context, i = "", 0
+        while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
+            context += f"---\ndoc_id: {doc_ids[i]}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
+            i += 1
 
         answer = await ml_requests.get_answer(context, query, api_version.value, "support", stream=stream)
 
         sources, seen = [], set()
-        for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
+        for title, doc_id, doc_summary, collection in zip(
+            titles[:i], doc_ids[:i], doc_summaries[:i], doc_collections[:i]
+        ):
             if doc_id not in seen:
                 sources.append(
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
@@ -108,12 +117,18 @@ class CollectionHandler:
         )
         if len(chunks) == 0:
             return GetCollectionAnswerResponse(answer="Unable to find an anwser", sources=[])
-        context = "\n\n".join(chunks)
+
+        context, i = "", 0
+        while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
+            context += f"---\ndoc_id: {doc_ids[i]}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
+            i += 1
 
         answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
 
         sources, seen = [], set()
-        for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
+        for title, doc_id, doc_summary, collection in zip(
+            titles[:i], doc_ids[:i], doc_summaries[:i], doc_collections[:i]
+        ):
             if doc_id not in seen:
                 sources.append(
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)

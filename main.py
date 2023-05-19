@@ -69,6 +69,8 @@ async def init_handlers():
     collection_handler = CollectionHandler(
         top_k_chunks=int(CONFIG["handlers"]["top_k_chunks"]),
         chunk_size=int(CONFIG["handlers"]["chunk_size"]),
+        tokenizer_name=CONFIG["handlers"]["tokenizer_name"],
+        max_tokens_in_context=int(CONFIG["handlers"]["max_tokens_in_context"]),
     )
     pdf_upload_handler = PDFUploadHandler(
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
