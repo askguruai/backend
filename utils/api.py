@@ -4,9 +4,25 @@ import traceback
 from functools import wraps
 from typing import List, Union
 
+from bson.objectid import ObjectId
 from fastapi import HTTPException, Request, status
+from pymongo.collection import ReturnDocument
 
 from utils import CONFIG, DB
+
+
+async def stream_and_log(generator, request_id):
+    answer, sources = "", []
+    async for response in generator:
+        answer += response.answer
+        sources = response.sources
+        response.request_id = request_id
+        yield f"event: message\ndata: {response.json()}\n\n"
+    db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
+        {"_id": ObjectId(request_id)},
+        {"$set": {"answer": answer, "document_id": [source.id for source in sources]}},
+        return_document=ReturnDocument.AFTER,
+    )
 
 
 def log_get_answer(

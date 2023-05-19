@@ -5,6 +5,7 @@ from collections import defaultdict
 from typing import List, Tuple
 
 import numpy as np
+from fastapi.responses import StreamingResponse
 
 from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError
@@ -37,6 +38,7 @@ class CollectionHandler:
         user_security_groups: List[int],
         document: str = None,
         document_collection: str = None,
+        stream: bool = False,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
@@ -55,7 +57,7 @@ class CollectionHandler:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
         context = "\n\n".join(chunks)
 
-        answer = await ml_requests.get_answer(context, query, api_version.value, "support")
+        answer = await ml_requests.get_answer(context, query, api_version.value, "support", stream=stream)
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
@@ -64,6 +66,10 @@ class CollectionHandler:
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 )
                 seen.add(doc_id)
+
+        if stream:
+            response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
+            return response
 
         return GetCollectionAnswerResponse(
             answer=answer,
@@ -79,6 +85,7 @@ class CollectionHandler:
         document_collection: str,
         api_version: ApiVersion,
         user_security_groups: List[int],
+        stream: bool = False,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
@@ -100,10 +107,10 @@ class CollectionHandler:
             security_code=security_code,
         )
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
+            return GetCollectionAnswerResponse(answer="Unable to find an anwser", sources=[])
         context = "\n\n".join(chunks)
 
-        answer = await ml_requests.get_answer(context, query, api_version)
+        answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(titles, doc_ids, doc_summaries, doc_collections):
@@ -112,6 +119,10 @@ class CollectionHandler:
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 )
                 seen.add(doc_id)
+
+        if stream:
+            response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
+            return response
 
         return GetCollectionAnswerResponse(
             answer=answer,
