@@ -10,7 +10,6 @@ from utils.errors import TokenMalformedError
 class ApiVersion(str, Enum):
     v1 = "v1"
     v2 = "v2"
-    v3 = "v3"
 
 
 class HTTPExceptionResponse(BaseModel):
