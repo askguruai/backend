@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Tuple
 
@@ -251,3 +252,34 @@ class SetReactionRequest(BaseModel):
 
     class Config:
         use_enum_values = True
+
+
+class Log(BaseModel):
+    id: str
+    datetime: datetime
+    query: str
+    answer: str
+    api_version: ApiVersion
+    collections: List[str]
+    rating: int | None
+    like_status: LikeStatus | None
+    comment: str | None
+
+
+class GetReactionsResponse(BaseModel):
+    reactions: List[Log] = Field(
+        description="List of reactions",
+        example=[
+            Log(
+                id="123456",
+                datetime=datetime(2021, 3, 1, 12, 0, 0),
+                query="What is your name?",
+                answer="My name is Bob",
+                api_version=ApiVersion.v1,
+                collections=["chats", "tickets"],
+                rating=5,
+                like_status=LikeStatus.good_answer,
+                comment="Very accurate!",
+            )
+        ],
+    )

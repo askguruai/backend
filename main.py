@@ -25,8 +25,11 @@ from utils.schemas import (
     GetCollectionRankingResponse,
     GetCollectionResponse,
     GetCollectionsResponse,
+    GetReactionsResponse,
     HTTPExceptionResponse,
+    LikeStatus,
     LinkRequest,
+    Log,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
@@ -85,15 +88,6 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
-@app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
-@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
-
-
-######################################################
-#                   COLLECTIONS                      #
-######################################################
-
-
 @app.get(
     "/{api_version}/info",
     response_model=Dict[str, Any],
@@ -107,6 +101,15 @@ async def get_info(
 ):
     token_data = decode_token(token)
     return token_data
+
+
+@app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
+@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
+
+
+######################################################
+#                   COLLECTIONS                      #
+######################################################
 
 
 @app.get(
@@ -135,7 +138,7 @@ async def get_collections(
     responses=CollectionResponses,
 )
 @catch_errors
-async def get_collection_answer(
+async def get_collections_answer(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
@@ -208,7 +211,7 @@ async def get_collection_answer(
     responses=CollectionResponses,
 )
 @catch_errors
-async def get_collection_ranking_query(
+async def get_collections_ranking(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
@@ -295,6 +298,90 @@ async def upload_collection_documents(
     )
 
 
+@app.get(
+    "/{api_version}/reactions",
+    responses=CollectionResponses,
+    response_model=GetReactionsResponse,
+)
+async def get_reactions(request: Request, api_version: ApiVersion, token: str = Depends(oauth2_scheme)):
+    token_data = decode_token(token)
+    result = DB[CONFIG["mongo"]["requests_collection"]].find(
+        {"vendor": token_data["vendor"], "organization": token_data["organization"]},
+        {
+            "datetime": 1,
+            "query": 1,
+            "answer": 1,
+            "api_version": 1,
+            "collections": 1,
+            "rating": 1,
+            "like_status": 1,
+            "comment": 1,
+        },
+    )
+    return GetReactionsResponse(
+        reactions=[
+            Log(
+                id=str(row["_id"]),
+                datetime=row["datetime"],
+                query=row["query"],
+                answer=row["answer"],
+                api_version=row["api_version"],
+                collections=row["collections"],
+                rating=row["rating"] if "rating" in row else None,
+                like_status=row["like_status"] if "like_status" in row else None,
+                comment=row["comment"] if "comment" in row else None,
+            )
+            for row in result
+        ]
+    )
+
+
+@app.post(
+    "/{api_version}/reactions",
+    responses=CollectionResponses,
+)
+async def upload_reaction(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    request_id: str = Body(..., description="Request ID to set reaction for.", example="63cbd74e8d31a62a1512eab1"),
+    rating: int = Body(None, description="Rating to set. INT from 1 to 5.", example=5, gt=0, lt=6),
+    like_status: LikeStatus = Body(None, description="Reaction to set.", example=LikeStatus.good_answer),
+    comment: str = Body(None, description="Comment to set.", example="Very accurate!"),
+):
+    token_data = decode_token(token)
+    if not (bool(rating) ^ bool(like_status) ^ bool(comment)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Either rating, like_status or comment must be provided",
+        )
+    row_update = {
+        "rating": rating,
+        "like_status": like_status,
+        "comment": comment,
+    }
+
+    try:
+        db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
+            {"_id": ObjectId(request_id), "vendor": token_data["vendor"], "organization": token_data["organization"]},
+            {"$set": row_update},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not db_status:
+            logging.error(f"Can't find row with id {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Can't find row with id {request_id}",
+            )
+    except bson.errors.InvalidId as e:
+        logging.error(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    return Response(status_code=status.HTTP_200_OK)
+
+
 ######################################################
 #                    DEMO APP                        #
 ######################################################
@@ -362,6 +449,7 @@ async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
         status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
         status.HTTP_404_NOT_FOUND: {"model": HTTPExceptionResponse},
     },
+    include_in_schema=False,
 )
 async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactionRequest):
     row_update = {
