@@ -350,7 +350,7 @@ async def upload_reaction(
     comment: str = Body(None, description="Comment to set.", example="Very accurate!"),
 ):
     token_data = decode_token(token)
-    if not (bool(rating) ^ bool(like_status) ^ bool(comment)):
+    if not (bool(rating) or bool(like_status) or bool(comment)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Either rating, like_status or comment must be provided",
