@@ -223,11 +223,6 @@ async def get_collections_ranking(
     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
 ):
     # TODO add logging
-    if not (bool(query) ^ bool(document)):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Either query or document must be provided",
-        )
     if bool(document) ^ bool(document_collection):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
