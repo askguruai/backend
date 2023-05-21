@@ -75,7 +75,8 @@ class CollectionsManager:
             for collection in search_collections:
                 results = collection.search(
                     [vec],
-                    f"emb_{api_version}",
+                    f"emb_v1",
+                    # f"emb_{api_version}",
                     search_params,
                     offset=i * int(CONFIG["misc"]["collections_search_limit"]),
                     limit=int(CONFIG["misc"]["collections_search_limit"]),

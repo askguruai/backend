@@ -34,12 +34,20 @@ async def get_organization_token(
         None, description="Security groups associated with token. Leave blank for full access"
     ),
 ):
-    if password != os.environ["AUTH_COLLECTION_PASSWORD"]:
+    if password == os.environ["AUTH_COLLECTION_PASSWORD_TADA"] and vendor != "tada":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="You are only allowed to access organizations from tada vendor",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if password != os.environ["AUTH_COLLECTION_PASSWORD"] and password != os.environ["AUTH_COLLECTION_PASSWORD_TADA"]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     security_groups = [] if security_groups is None else security_groups
     access_token = create_access_token(
         {"vendor": vendor, "organization": organization, "security_groups": tuple(security_groups)}
