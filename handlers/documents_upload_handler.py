@@ -3,6 +3,7 @@ import logging
 from typing import Dict, List
 
 from loguru import logger
+from tqdm import tqdm
 
 from parsers import DocumentsParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
@@ -26,7 +27,7 @@ class DocumentsUploadHandler:
         all_summaries = []
         all_timestamps = []
         all_security_groups = []
-        for doc in documents:
+        for doc in tqdm(documents):
             chunks, meta_info = self.parser.process_document(doc)
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
@@ -68,7 +69,10 @@ class DocumentsUploadHandler:
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
-            all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
+            all_embeddings = []
+            for i in range(0, len(all_chunks), 25):
+                all_embeddings.extend(await ml_requests.get_embeddings(all_chunks[i : i + 25], api_version=api_version))
+
             data = [
                 all_chunk_hashes,
                 all_doc_ids,

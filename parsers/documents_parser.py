@@ -26,7 +26,7 @@ class DocumentsParser:
                 if document.security_groups is not None
                 else 2**63 - 1,
             }
-            chunks = self.doc_to_chunks(document.content)
+            chunks = self.doc_to_chunks(document.content, meta["doc_title"], meta["doc_summary"])
         elif isinstance(document, Chat):
             meta = {
                 "doc_id": document.id,
@@ -39,16 +39,18 @@ class DocumentsParser:
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta
 
-    def doc_to_chunks(self, text: str) -> List[str]:
+    def doc_to_chunks(self, content: str, title: str = "", summary: str = "") -> List[str]:
         chunks = []
 
-        current_content, part = "", 0
-        # TODO: split by lines which are bolded
+        # TODO: omit title because it is already in summary
+
+        current_content, part = f"{summary}\n\n", 0
+        # TODO: split by lines which are bolded (in case of cars)
         # because they are the titles of the sections
         for line in content.split("\n"):
             if len(self.enc.encode(current_content + line + "\n")) > self.chunk_size:
                 chunks.append(current_content.strip())
-                current_content = ""
+                current_content = f"{summary}\n\n"
                 part += 1
             current_content += line + "\n"
         chunks.append(current_content.strip())
