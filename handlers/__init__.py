@@ -1,6 +1,6 @@
-from handlers.chats_upload_handler import ChatsUploadHandler
 from handlers.collection_handler import CollectionHandler
 from handlers.document_handler import DocumentHandler
+from handlers.documents_upload_handler import DocumentsUploadHandler
 from handlers.link_handler import LinkHandler
 from handlers.text_handler import TextHandler
 from handlers.upload_handler import PDFUploadHandler

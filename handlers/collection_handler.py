@@ -66,7 +66,6 @@ class CollectionHandler:
             elif api_version == ApiVersion.v2:
                 context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
                 # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
-
             i += 1
 
         answer = await ml_requests.get_answer(context, query, api_version.value, "support", stream=stream)
@@ -127,7 +126,11 @@ class CollectionHandler:
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
-            context += f"---\ndoc_id: {doc_ids[i]}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
+            if api_version == ApiVersion.v1:
+                context += f"{chunks[i]}\n{'=' * 20}\n"
+            elif api_version == ApiVersion.v2:
+                context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
+                # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
             i += 1
 
         answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
@@ -140,7 +143,9 @@ class CollectionHandler:
                 sources.append(
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 )
-                seen.add(doc_id)
+                # we allow duplicate chunks on v2 because in context we index them as they appear
+                if api_version == ApiVersion.v1:
+                    seen.add(doc_id)
 
         if stream:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)

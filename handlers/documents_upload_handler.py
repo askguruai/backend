@@ -4,17 +4,17 @@ from typing import Dict, List
 
 from loguru import logger
 
-from parsers import ChatParser
+from parsers import DocumentsParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
-from utils.schemas import ApiVersion, Chat, UploadCollectionDocumentsResponse
+from utils.schemas import ApiVersion, Chat, Doc, UploadCollectionDocumentsResponse
 
 
-class ChatsUploadHandler:
-    def __init__(self, parser: ChatParser):
+class DocumentsUploadHandler:
+    def __init__(self, parser: DocumentsParser):
         self.parser = parser
 
     async def handle_request(
-        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Chat]
+        self, api_version: str, vendor: str, organization: str, collection: str, documents: List[Doc] | List[Chat]
     ) -> UploadCollectionDocumentsResponse:
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
@@ -26,11 +26,11 @@ class ChatsUploadHandler:
         all_summaries = []
         all_timestamps = []
         all_security_groups = []
-        for chat in chats:
-            chunks, meta_info = self.parser.process_document(chat)
-            chat_id = meta_info["doc_id"]
+        for doc in documents:
+            chunks, meta_info = self.parser.process_document(doc)
+            doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
-                expr=f'doc_id=="{chat_id}"',
+                expr=f'doc_id=="{doc_id}"',
                 offset=0,
                 limit=10000,
                 output_fields=["pk", "chunk_hash", "security_groups", "timestamp"],
@@ -63,7 +63,7 @@ class ChatsUploadHandler:
             all_chunks.extend(new_chunks)
             all_doc_ids.extend([meta_info["doc_id"]] * len(new_chunks))
             all_doc_titles.extend([meta_info["doc_title"]] * len(new_chunks))
-            all_summaries.extend([""] * len(new_chunks))
+            all_summaries.extend([meta_info["doc_summary"]] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
@@ -80,6 +80,6 @@ class ChatsUploadHandler:
                 all_security_groups,
             ]
             collection.insert(data)
-            logger.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
+            logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
 
         return UploadCollectionDocumentsResponse(n_chunks=len(all_chunks))
