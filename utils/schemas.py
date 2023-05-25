@@ -9,8 +9,8 @@ from utils.errors import TokenMalformedError
 
 
 class ApiVersion(str, Enum):
-    v1 = "v1"
-    v2 = "v2"
+    v1 = "v1"  # fast, w/o footnote links
+    v2 = "v2"  # slow, w/ footnote links
 
 
 class HTTPExceptionResponse(BaseModel):

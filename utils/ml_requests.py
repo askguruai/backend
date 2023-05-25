@@ -49,3 +49,21 @@ async def get_answer(
             raise CoreMLError(response_json["detail"])
         answer = response_json["data"]
     return answer
+
+
+async def if_answer_in_context(
+    context: str,
+    query: str,
+    api_version: str,
+    chat: Union[list, None] = None,
+) -> str:
+    response = await CLIENT_SESSION_WRAPPER.coreml_session.post(
+        f"/{api_version}/if_answer_in_context/",
+        json={"info": context, "query": query, "chat": chat},
+    )
+    response_status = response.status
+    response_json = await response.json()
+    if response_status == status.HTTP_500_INTERNAL_SERVER_ERROR:
+        raise CoreMLError(response_json["detail"])
+    answer = response_json["answer"]
+    return answer

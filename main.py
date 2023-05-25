@@ -158,6 +158,11 @@ async def get_collections_answer(
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
     stream: bool = Query(default=False, description="Stream results", example=False),
+    collections_only: bool = Query(
+        default=True,
+        description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
+        example=True,
+    ),
 ):
     if not query and not document:
         raise HTTPException(
@@ -192,6 +197,7 @@ async def get_collections_answer(
             document=document,
             document_collection=document_collection,
             stream=stream,
+            collections_only=collections_only,
         )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",

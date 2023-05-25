@@ -42,6 +42,7 @@ class CollectionHandler:
         document: str = None,
         document_collection: str = None,
         stream: bool = False,
+        collections_only: bool = True,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
@@ -56,6 +57,7 @@ class CollectionHandler:
             document_collection=document_collection,
             security_code=security_code,
         )
+        mode = "support"
         if len(chunks) == 0:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
 
@@ -66,9 +68,17 @@ class CollectionHandler:
             elif api_version == ApiVersion.v2:
                 context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
                 # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
+            else:
+                raise ValueError(f"Invalid api version: {api_version}")
             i += 1
 
-        answer = await ml_requests.get_answer(context, query, api_version.value, "support", stream=stream)
+        if not collections_only:
+            answer_in_context = await ml_requests.if_answer_in_context(context, query, api_version)
+            logging.info(f"answer_in_context: {answer_in_context}")
+            if not answer_in_context:
+                context, mode = "", "general"
+
+        answer = await ml_requests.get_answer(context, query, api_version.value, mode=mode, stream=stream)
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(
@@ -101,6 +111,7 @@ class CollectionHandler:
         api_version: ApiVersion,
         user_security_groups: List[int],
         stream: bool = False,
+        collection_only: bool = True,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
