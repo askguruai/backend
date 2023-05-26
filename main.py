@@ -10,8 +10,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from pymongo.collection import ReturnDocument
 
-from handlers import ChatsUploadHandler, CollectionHandler, DocumentHandler, LinkHandler, PDFUploadHandler, TextHandler
-from parsers import ChatParser, DocumentParser, LinkParser, TextParser
+from handlers import (
+    CollectionHandler,
+    DocumentHandler,
+    DocumentsUploadHandler,
+    LinkHandler,
+    PDFUploadHandler,
+    TextHandler,
+)
+from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
@@ -19,6 +26,7 @@ from utils.schemas import (
     ApiVersion,
     Chat,
     CollectionResponses,
+    Doc,
     DocumentRequest,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
@@ -52,7 +60,7 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, chats_upload_handler, CLIENT_SESSION_WRAPPER
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, CLIENT_SESSION_WRAPPER
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
@@ -78,8 +86,10 @@ async def init_handlers():
     pdf_upload_handler = PDFUploadHandler(
         parser=DocumentParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
     )
-    chats_upload_handler = ChatsUploadHandler(
-        parser=ChatParser(chunk_size=int(CONFIG["handlers"]["chunk_size"])),
+    documents_upload_handler = DocumentsUploadHandler(
+        parser=DocumentsParser(
+            chunk_size=int(CONFIG["handlers"]["chunk_size"]), tokenizer_name=CONFIG["handlers"]["tokenizer_name"]
+        ),
     )
 
 
@@ -148,6 +158,11 @@ async def get_collections_answer(
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
     stream: bool = Query(default=False, description="Stream results", example=False),
+    collections_only: bool = Query(
+        default=True,
+        description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
+        example=True,
+    ),
 ):
     if not query and not document:
         raise HTTPException(
@@ -182,6 +197,7 @@ async def get_collections_answer(
             document=document,
             document_collection=document_collection,
             stream=stream,
+            collections_only=collections_only,
         )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
@@ -275,21 +291,21 @@ async def upload_collection_documents(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
-    documents: List[Dict] = Body(None, description="List of documents to upload"),
+    documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
 ):
-    if documents:
+    if not (bool(documents) ^ bool(chats)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Documents are not supported yet",
+            detail="Either documents or chats must be provided",
         )
     token_data = decode_token(token)
-    return await chats_upload_handler.handle_request(
+    return await documents_upload_handler.handle_request(
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        chats=chats,
+        documents=documents if documents else chats,
     )
 
 

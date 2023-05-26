@@ -3,18 +3,19 @@ import logging
 from typing import Dict, List
 
 from loguru import logger
+from tqdm import tqdm
 
-from parsers import ChatParser
+from parsers import DocumentsParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
-from utils.schemas import ApiVersion, Chat, UploadCollectionDocumentsResponse
+from utils.schemas import ApiVersion, Chat, Doc, UploadCollectionDocumentsResponse
 
 
-class ChatsUploadHandler:
-    def __init__(self, parser: ChatParser):
+class DocumentsUploadHandler:
+    def __init__(self, parser: DocumentsParser):
         self.parser = parser
 
     async def handle_request(
-        self, api_version: str, vendor: str, organization: str, collection: str, chats: List[Chat]
+        self, api_version: str, vendor: str, organization: str, collection: str, documents: List[Doc] | List[Chat]
     ) -> UploadCollectionDocumentsResponse:
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
@@ -26,11 +27,11 @@ class ChatsUploadHandler:
         all_summaries = []
         all_timestamps = []
         all_security_groups = []
-        for chat in chats:
-            chunks, meta_info = self.parser.process_document(chat)
-            chat_id = meta_info["doc_id"]
+        for doc in tqdm(documents):
+            chunks, meta_info = self.parser.process_document(doc)
+            doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
-                expr=f'doc_id=="{chat_id}"',
+                expr=f'doc_id=="{doc_id}"',
                 offset=0,
                 limit=10000,
                 output_fields=["pk", "chunk_hash", "security_groups", "timestamp"],
@@ -47,7 +48,7 @@ class ChatsUploadHandler:
                 if (
                     text_hash in existing_chunks
                     and existing_chunks[text_hash][1] == meta_info["security_groups"]
-                    and existing_chunks[text_hash][2] >= meta_info["timestamp"]
+                    # and existing_chunks[text_hash][2] >= meta_info["timestamp"]
                 ):
                     del existing_chunks[text_hash]
                 else:
@@ -63,12 +64,15 @@ class ChatsUploadHandler:
             all_chunks.extend(new_chunks)
             all_doc_ids.extend([meta_info["doc_id"]] * len(new_chunks))
             all_doc_titles.extend([meta_info["doc_title"]] * len(new_chunks))
-            all_summaries.extend([""] * len(new_chunks))
+            all_summaries.extend([meta_info["doc_summary"]] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
-            all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
+            all_embeddings = []
+            for i in range(0, len(all_chunks), 25):
+                all_embeddings.extend(await ml_requests.get_embeddings(all_chunks[i : i + 25], api_version=api_version))
+
             data = [
                 all_chunk_hashes,
                 all_doc_ids,
@@ -80,6 +84,6 @@ class ChatsUploadHandler:
                 all_security_groups,
             ]
             collection.insert(data)
-            logger.info(f"Request of {len(chats)} chats inserted in database in {len(all_chunks)} chunks")
+            logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
 
         return UploadCollectionDocumentsResponse(n_chunks=len(all_chunks))

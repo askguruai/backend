@@ -42,6 +42,7 @@ class CollectionHandler:
         document: str = None,
         document_collection: str = None,
         stream: bool = False,
+        collections_only: bool = True,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
@@ -56,6 +57,7 @@ class CollectionHandler:
             document_collection=document_collection,
             security_code=security_code,
         )
+        mode = "support"
         if len(chunks) == 0:
             return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
 
@@ -66,10 +68,17 @@ class CollectionHandler:
             elif api_version == ApiVersion.v2:
                 context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
                 # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
-
+            else:
+                raise ValueError(f"Invalid api version: {api_version}")
             i += 1
 
-        answer = await ml_requests.get_answer(context, query, api_version.value, "support", stream=stream)
+        if not collections_only:
+            answer_in_context = await ml_requests.if_answer_in_context(context, query, api_version)
+            logging.info(f"answer_in_context: {answer_in_context}")
+            if not answer_in_context:
+                context, mode = "", "general"
+
+        answer = await ml_requests.get_answer(context, query, api_version.value, mode=mode, stream=stream)
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(
@@ -102,6 +111,7 @@ class CollectionHandler:
         api_version: ApiVersion,
         user_security_groups: List[int],
         stream: bool = False,
+        collection_only: bool = True,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
@@ -127,7 +137,11 @@ class CollectionHandler:
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
-            context += f"---\ndoc_id: {doc_ids[i]}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
+            if api_version == ApiVersion.v1:
+                context += f"{chunks[i]}\n{'=' * 20}\n"
+            elif api_version == ApiVersion.v2:
+                context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
+                # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
             i += 1
 
         answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
@@ -140,7 +154,9 @@ class CollectionHandler:
                 sources.append(
                     Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
                 )
-                seen.add(doc_id)
+                # we allow duplicate chunks on v2 because in context we index them as they appear
+                if api_version == ApiVersion.v1:
+                    seen.add(doc_id)
 
         if stream:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)

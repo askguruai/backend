@@ -117,7 +117,7 @@ class CollectionsManager:
                 FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
                 FieldSchema(name="chunk", dtype=DataType.VARCHAR, max_length=8096),
                 FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
-                FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=256),
+                FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=1024),
                 FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
                 FieldSchema(name="timestamp", dtype=DataType.INT64),
                 FieldSchema(name="security_groups", dtype=DataType.INT64),

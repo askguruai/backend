@@ -9,8 +9,8 @@ from utils.errors import TokenMalformedError
 
 
 class ApiVersion(str, Enum):
-    v1 = "v1"
-    v2 = "v2"
+    v1 = "v1"  # fast, w/o footnote links
+    v2 = "v2"  # slow, w/ footnote links
 
 
 class HTTPExceptionResponse(BaseModel):
@@ -57,6 +57,15 @@ class Chat(BaseModel):
         description="History of the chat", example=[Message(role="assistant", content="Hello, how can I help you?")]
     )
     security_groups: List[int] = Field(description="Security groups of the chat", example=[0, 2])
+
+
+class Doc(BaseModel):
+    content: str = Field(description="Content of the document", example="")
+    id: str | None = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
+    title: str | None = Field(description="Title of the document", example="Passwords")
+    summary: str | None = Field(description="Summary of the document", example="Instruction when forget password")
+    timestamp: int | None = Field(description="Document last change time", example=1623345600)
+    security_groups: List[int] | None = Field(description="Security groups of the document", example=[0, 2])
 
 
 class GetCollectionsResponse(BaseModel):
