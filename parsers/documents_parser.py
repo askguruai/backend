@@ -52,7 +52,23 @@ class DocumentsParser:
                 chunks.append(current_content.strip())
                 current_content = f"{summary}\n\n"
                 part += 1
-            current_content += line + "\n"
+
+            line_tokens = self.enc.encode(line)
+            if len(line_tokens) > self.chunk_size:
+                line_token_parts = [
+                    line_tokens[i : i + self.chunk_size] for i in range(0, len(line_tokens), self.chunk_size)
+                ]
+
+                for line_token_part in line_token_parts:
+                    line_part = self.enc.decode(line_token_part)
+                    if len(self.enc.encode(current_content + line_part + "\n")) > self.chunk_size:
+                        chunks.append(current_content.strip())
+                        current_content = f"{summary}\n\n"
+                    current_content += line_part + "\n"
+
+            else:
+                current_content += line + "\n"
+
         chunks.append(current_content.strip())
         return chunks
 

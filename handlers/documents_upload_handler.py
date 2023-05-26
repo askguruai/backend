@@ -48,7 +48,7 @@ class DocumentsUploadHandler:
                 if (
                     text_hash in existing_chunks
                     and existing_chunks[text_hash][1] == meta_info["security_groups"]
-                    and existing_chunks[text_hash][2] >= meta_info["timestamp"]
+                    # and existing_chunks[text_hash][2] >= meta_info["timestamp"]
                 ):
                     del existing_chunks[text_hash]
                 else:
