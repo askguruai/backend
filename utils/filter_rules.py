@@ -6,7 +6,7 @@ from typing import List
 from fastapi import HTTPException, status
 
 from utils import CONFIG, DB
-from utils.schemas import PostFilterResponse
+from utils.schemas import FilterRule, GetFiltersResponse, PostFilterResponse
 
 
 async def create_filter_rule(vendor: str, organization: str, name: str, description: str | None, stop_words: List[str]):
@@ -15,7 +15,7 @@ async def create_filter_rule(vendor: str, organization: str, name: str, descript
     if result is not None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
-            detail=f"Rule with name {name} already exists. Use UPDATE method to update existing rule",
+            detail=f"Rule with name {name} already exists. Use PATCH method to update existing rule",
         )
     result = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find_one({"rule_name": name})
     if result is not None:
@@ -62,6 +62,29 @@ async def update_filter_rule(vendor: str, organization: str, name: str, descript
     )
     logging.info(f"{vendor}.{organization}: Rule {name} updated")
     return PostFilterResponse(name=name)
+
+
+async def get_filters(vendor: str, organization: str):
+    active_rules, archived_rules = [], []
+    actives = DB[CONFIG["mongo"]["filters"]][vendor][organization].find({})
+    for active_rule in actives:
+        active_rules.append(
+            FilterRule(
+                name=active_rule["rule_name"],
+                description=active_rule["description"],
+                stop_words=active_rule["stop_words"],
+            )
+        )
+    archived = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find({})
+    for archived_rule in archived:
+        archived_rules.append(
+            FilterRule(
+                name=archived_rule["rule_name"],
+                description=archived_rule["description"],
+                stop_words=archived_rule["stop_words"],
+            )
+        )
+    return GetFiltersResponse(active_rules=active_rules, archived_rules=archived_rules)
 
 
 def check_filters(

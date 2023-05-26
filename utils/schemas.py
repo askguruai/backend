@@ -295,4 +295,15 @@ class GetReactionsResponse(BaseModel):
 
 
 class PostFilterResponse(BaseModel):
-    name: str = Field(description="Rule name that was sccessfully added/updated", example="ProfanityRule")
+    name: str = Field(description="Rule name that was sccessfully added/updated/deleted", example="ProfanityRule")
+
+
+class FilterRule(BaseModel):
+    name: str = Field(description="Unique rule name", example="ProfanityRule")
+    description: str | None = Field(description="Optionanl rule description", example="Profanity is prohibited")
+    stop_words: List[str] = Field(description="Rule stop words", example=["damn", "sex", "paki"])
+
+
+class GetFiltersResponse(BaseModel):
+    active_rules: List[FilterRule] = Field(description="Organization active rules list")
+    archived_rules: List[FilterRule] = Field(description="Organization archived rules list")

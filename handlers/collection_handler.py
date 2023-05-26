@@ -10,7 +10,6 @@ from fastapi.responses import StreamingResponse
 
 from utils import DB, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError
-from utils.filter_rules import check_filters
 from utils.misc import int_list_encode
 from utils.schemas import (
     ApiVersion,
@@ -45,7 +44,6 @@ class CollectionHandler:
         stream: bool = False,
         collections_only: bool = True,
     ) -> GetCollectionAnswerResponse:
-        check_filters(vendor, organization, query)
         org_hash = hash_string(organization)
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
@@ -232,7 +230,6 @@ class CollectionHandler:
         document_collection: str = None,
         collections: List[str] = None,
     ) -> GetCollectionRankingResponse:
-        check_filters(vendor, organization, query)
         organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
         if query:
