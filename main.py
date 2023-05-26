@@ -3,6 +3,7 @@ from typing import Any, Dict, List
 
 import bson
 import uvicorn
+import time
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
@@ -115,6 +116,43 @@ async def get_info(
 
 @app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
 @app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
+
+
+######################################################
+#                     FILTERS                        #
+######################################################
+
+@app.post(
+    "/{api_version}/filters",
+)
+@catch_errors
+async def set_filter_rule(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    name: str = Query(description="Rule name", example="Profanity"),
+    description: str = Query(default=None, description="Rule name", example="No profanity allowed in requests"),
+    stop_words: List[str] = Query(description="A list of words to be searched in requests",
+                                  example=["damn", "sex", "paki"])
+):
+    token_data = decode_token(token)
+    result = DB[CONFIG["mongo"]["filters"]][token_data["vendor"]][token_data["organization"]].find_one(
+        {"rule_name": name}
+    )
+    if result is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
+            detail=f"Rule with name {name} already exists. Use UPDATE method to update existing rule",
+        )
+    new_rule = {
+        "rule_name": name,
+        "description": description,
+        "stop_words": stop_words,
+        "timestammp": time.time()
+    }
+    DB[CONFIG["mongo"]["filters"]][token_data["vendor"]][token_data["organization"]].insert_one(new_rule)
+    logging.info(f"Rule {name} created for {token_data['vendor']}.{token_data['organization']}")
+
 
 
 ######################################################
