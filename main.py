@@ -1,9 +1,9 @@
 import logging
+import time
 from typing import Any, Dict, List
 
 import bson
 import uvicorn
-import time
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
@@ -23,7 +23,7 @@ from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
-from utils.filter_rules import create_filter_rule, archive_filter_rule, update_filter_rule
+from utils.filter_rules import archive_filter_rule, create_filter_rule, update_filter_rule
 from utils.schemas import (
     ApiVersion,
     Chat,
@@ -36,11 +36,11 @@ from utils.schemas import (
     GetCollectionResponse,
     GetCollectionsResponse,
     GetReactionsResponse,
-    PostFilterResponse,
     HTTPExceptionResponse,
     LikeStatus,
     LinkRequest,
     Log,
+    PostFilterResponse,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
@@ -124,6 +124,7 @@ async def get_info(
 #                     FILTERS                        #
 ######################################################
 
+
 @app.post(
     "/{api_version}/filters",
 )
@@ -134,14 +135,17 @@ async def create_filter_rule_epoint(
     token: str = Depends(oauth2_scheme),
     name: str = Body(description="Rule name", example="Profanity"),
     description: str = Body(default=None, description="Rule name", example="No profanity allowed in requests"),
-    stop_words: List[str] = Body(description="A list of words to be searched in requests",
-                                  example=["damn", "sex", "paki"])
+    stop_words: List[str] = Body(
+        description="A list of words to be searched in requests", example=["damn", "sex", "paki"]
+    ),
 ):
     token_data = decode_token(token)
     response = await create_filter_rule(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
-        name=name, description=description, stop_words=stop_words
+        name=name,
+        description=description,
+        stop_words=stop_words,
     )
     return response
 
@@ -154,13 +158,11 @@ async def archive_filter_rule_epoint(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    name: str = Body(description="Rule name", example="Profanity")
+    name: str = Body(description="Rule name", example="Profanity"),
 ):
     token_data = decode_token(token)
     response = await archive_filter_rule(
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        name=name
+        vendor=token_data["vendor"], organization=token_data["organization"], name=name
     )
     return response
 
@@ -175,17 +177,19 @@ async def update_filter_rule_epoint(
     token: str = Depends(oauth2_scheme),
     name: str = Body(description="Rule name", example="Profanity"),
     description: str = Body(default=None, description="Rule name", example="No profanity allowed in requests"),
-    stop_words: List[str] = Body(description="A list of words to be searched in requests",
-                                  example=["damn", "sex", "paki"])
+    stop_words: List[str] = Body(
+        description="A list of words to be searched in requests", example=["damn", "sex", "paki"]
+    ),
 ):
     token_data = decode_token(token)
     response = await update_filter_rule(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
-        name=name, description=description, stop_words=stop_words
+        name=name,
+        description=description,
+        stop_words=stop_words,
     )
     return response
-
 
 
 ######################################################

@@ -295,7 +295,4 @@ class GetReactionsResponse(BaseModel):
 
 
 class PostFilterResponse(BaseModel):
-    name: str = Field(
-        description="Rule name that was sccessfully added/updated",
-        example="ProfanityRule"
-    )
+    name: str = Field(description="Rule name that was sccessfully added/updated", example="ProfanityRule")

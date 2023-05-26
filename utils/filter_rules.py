@@ -1,31 +1,23 @@
-from utils import CONFIG, DB
-from typing import List
 import logging
+import re
 import time
+from typing import List
 
 from fastapi import HTTPException, status
+
+from utils import CONFIG, DB
 from utils.schemas import PostFilterResponse
 
 
-async def create_filter_rule(
-    vendor: str,
-    organization: str,
-    name: str,
-    description: str | None,
-    stop_words: List[str]
-):
+async def create_filter_rule(vendor: str, organization: str, name: str, description: str | None, stop_words: List[str]):
     # checking if the rule with such name exists
-    result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one(
-        {"rule_name": name}
-    )
+    result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one({"rule_name": name})
     if result is not None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
             detail=f"Rule with name {name} already exists. Use UPDATE method to update existing rule",
         )
-    result = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find_one(
-        {"rule_name": name}
-    )
+    result = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find_one({"rule_name": name})
     if result is not None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
@@ -36,43 +28,29 @@ async def create_filter_rule(
         "rule_name": name,
         "description": description,
         "stop_words": stop_words,
-        "timestamp": int(round(time.time()))
+        "timestamp": int(round(time.time())),
     }
     DB[CONFIG["mongo"]["filters"]][vendor][organization].insert_one(new_rule)
-    logging.info(f"Rule {name} created for {vendor}.{organization}")
+    logging.info(f"{vendor}.{organization}: Rule {name} created")
     return PostFilterResponse(name=name)
 
 
-async def archive_filter_rule(
-    vendor: str,
-    organization: str,
-    name: str
-):
-    result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one(
-        {"rule_name": name}
-    )
+async def archive_filter_rule(vendor: str, organization: str, name: str):
+    result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one({"rule_name": name})
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
             detail=f"Rule with name {name} does not exist",
         )
-    result["timestamp"] = int(round(time.time())) # updating timestamp
+    result["timestamp"] = int(round(time.time()))  # updating timestamp
     DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].insert_one(result)
     DB[CONFIG["mongo"]["filters"]][vendor][organization].delete_one({"_id": result["_id"]})
-    logging.info(f"Rule {name} of {vendor}.{organization} archived")
+    logging.info(f"{vendor}.{organization}: Rule {name} archived")
     return PostFilterResponse(name=name)
 
 
-async def update_filter_rule(
-    vendor: str,
-    organization: str,
-    name: str,
-    description: str | None,
-    stop_words: List[str]
-):
-    result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one(
-        {"rule_name": name}
-    )
+async def update_filter_rule(vendor: str, organization: str, name: str, description: str | None, stop_words: List[str]):
+    result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one({"rule_name": name})
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
@@ -80,7 +58,37 @@ async def update_filter_rule(
         )
     DB[CONFIG["mongo"]["filters"]][vendor][organization].update_one(
         {"_id": result["_id"]},
-        {"$set": {"description": description, "stop_words": stop_words, "timestamp": int(round(time.time()))}}
+        {"$set": {"description": description, "stop_words": stop_words, "timestamp": int(round(time.time()))}},
     )
-    logging.info(f"Rule {name} of {vendor}.{organization} updated")
+    logging.info(f"{vendor}.{organization}: Rule {name} updated")
     return PostFilterResponse(name=name)
+
+
+def check_filters(
+    vendor: str,
+    organization: str,
+    query: str | None,
+):
+    if query is None:
+        return
+    clean_query = re.sub(
+        r"""
+               [,.;@#?!&$]+  # Accept one or more copies of punctuation
+               \ *           # plus zero or more copies of a space,
+               """,
+        " ",  # and replace it with a single space
+        query.lower(),
+        flags=re.VERBOSE,
+    )
+    word_set = set(clean_query.split(" "))
+    word_set.remove("")
+
+    all_rules = DB[CONFIG["mongo"]["filters"]][vendor][organization].find({})
+    for rule in all_rules:
+        for stopword in rule["stop_words"]:
+            if stopword in word_set:
+                logging.info(f"{vendor}.{organization}: query {query} failed check with rule {rule['rule_name']}")
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
+                    detail=f"Request blocked by organization policy rule:\n{rule['rule_name']}\n{rule['description']}",
+                )
