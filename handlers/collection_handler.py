@@ -255,9 +255,9 @@ class CollectionHandler:
             security_code=security_code,
         )
 
-        sources, seen, i = [], set(), 0
+        sources, seen, seen_title, i = [], set(), set(), 0
         while len(sources) < top_k and i < len(titles):
-            if doc_ids[i] not in seen:
+            if titles[i] not in seen_title or doc_ids[i] not in seen:
                 sources.append(
                     Source(
                         id=doc_ids[i],
@@ -267,5 +267,6 @@ class CollectionHandler:
                     )
                 )
                 seen.add(doc_ids[i])
+                seen_title.add(titles[i])
             i += 1
         return GetCollectionRankingResponse(sources=sources)
