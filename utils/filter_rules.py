@@ -73,6 +73,7 @@ async def get_filters(vendor: str, organization: str):
                 name=active_rule["rule_name"],
                 description=active_rule["description"],
                 stop_words=active_rule["stop_words"],
+                timestamp=active_rule["timestamp"]
             )
         )
     archived = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find({})
@@ -82,6 +83,7 @@ async def get_filters(vendor: str, organization: str):
                 name=archived_rule["rule_name"],
                 description=archived_rule["description"],
                 stop_words=archived_rule["stop_words"],
+                timestamp=archived_rule["timestamp"]
             )
         )
     return GetFiltersResponse(active_rules=active_rules, archived_rules=archived_rules)

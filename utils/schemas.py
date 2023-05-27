@@ -302,9 +302,27 @@ class PostFilterResponse(BaseModel):
 class FilterRule(BaseModel):
     name: str = Field(description="Unique rule name", example="ProfanityRule")
     description: str | None = Field(description="Optionanl rule description", example="Profanity is prohibited")
-    stop_words: List[str] = Field(description="Rule stop words", example=["damn", "sex", "paki"])
+    stop_words: List[str] = Field(description="Rule stop words", example=["damn", "sex"])
+    timestamp: int = Field(description="Timestamp of last operation (creation, update, archive)")
 
 
 class GetFiltersResponse(BaseModel):
-    active_rules: List[FilterRule] = Field(description="Organization active rules list")
-    archived_rules: List[FilterRule] = Field(description="Organization archived rules list")
+    active_rules: List[FilterRule] = Field(description="Organization active rules list",
+                                           example=[
+                                               {"name": "ProfanityRule",
+                                                "description": "Optionanl rule description",
+                                                "stop_words": ["damn", "sex"],
+                                                "timestamp": 12345},
+                                                {"name": "NoRacism",
+                                                 "description": "Racist language is forbidden",
+                                                 "stop_words": ["paki", "nword"],
+                                                 "timestamp": 456789
+                                                }
+                                           ])
+    archived_rules: List[FilterRule] = Field(description="Organization archived rules list",
+                                             example=[
+                                                 {"name": "HateCitrus",
+                                                  "description": "Enough of them",
+                                                  "stop_words": ["orange", "lemon", "lime"],
+                                                  "timestamp": 456789}
+                                             ])
