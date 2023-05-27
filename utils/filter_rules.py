@@ -104,7 +104,8 @@ def check_filters(
         flags=re.VERBOSE,
     )
     word_set = set(clean_query.split(" "))
-    word_set.remove("")
+    if "" in word_set:
+        word_set.remove("")
 
     all_rules = DB[CONFIG["mongo"]["filters"]][vendor][organization].find({})
     for rule in all_rules:
