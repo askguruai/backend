@@ -35,13 +35,13 @@ from utils.schemas import (
     GetCollectionRankingResponse,
     GetCollectionResponse,
     GetCollectionsResponse,
+    GetFiltersResponse,
     GetReactionsResponse,
     HTTPExceptionResponse,
     LikeStatus,
     LinkRequest,
     Log,
     PostFilterResponse,
-    GetFiltersResponse,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
@@ -504,10 +504,7 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
 ######################################################
 
 
-@app.get(
-    "/{api_version}/filters",
-    response_model=GetFiltersResponse
-)
+@app.get("/{api_version}/filters", response_model=GetFiltersResponse)
 @catch_errors
 async def get_filter_rules_epoint(
     request: Request,

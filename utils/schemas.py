@@ -307,22 +307,31 @@ class FilterRule(BaseModel):
 
 
 class GetFiltersResponse(BaseModel):
-    active_rules: List[FilterRule] = Field(description="Organization active rules list",
-                                           example=[
-                                               {"name": "ProfanityRule",
-                                                "description": "Optionanl rule description",
-                                                "stop_words": ["damn", "sex"],
-                                                "timestamp": 12345},
-                                                {"name": "NoRacism",
-                                                 "description": "Racist language is forbidden",
-                                                 "stop_words": ["paki", "nword"],
-                                                 "timestamp": 456789
-                                                }
-                                           ])
-    archived_rules: List[FilterRule] = Field(description="Organization archived rules list",
-                                             example=[
-                                                 {"name": "HateCitrus",
-                                                  "description": "Enough of them",
-                                                  "stop_words": ["orange", "lemon", "lime"],
-                                                  "timestamp": 456789}
-                                             ])
+    active_rules: List[FilterRule] = Field(
+        description="Organization active rules list",
+        example=[
+            {
+                "name": "ProfanityRule",
+                "description": "Optionanl rule description",
+                "stop_words": ["damn", "sex"],
+                "timestamp": 12345,
+            },
+            {
+                "name": "NoRacism",
+                "description": "Racist language is forbidden",
+                "stop_words": ["paki", "nword"],
+                "timestamp": 456789,
+            },
+        ],
+    )
+    archived_rules: List[FilterRule] = Field(
+        description="Organization archived rules list",
+        example=[
+            {
+                "name": "HateCitrus",
+                "description": "Enough of them",
+                "stop_words": ["orange", "lemon", "lime"],
+                "timestamp": 456789,
+            }
+        ],
+    )

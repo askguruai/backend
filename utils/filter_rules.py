@@ -52,10 +52,23 @@ async def archive_filter_rule(vendor: str, organization: str, name: str):
 async def update_filter_rule(vendor: str, organization: str, name: str, description: str | None, stop_words: List[str]):
     result = DB[CONFIG["mongo"]["filters"]][vendor][organization].find_one({"rule_name": name})
     if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
-            detail=f"Rule with name {name} does not exist",
+        # looking into archived
+        result = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find_one({"rule_name": name})
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
+                detail=f"Rule with name {name} does not exist",
+            )
+        DB[CONFIG["mongo"]["filters"]][vendor][organization].insert_one(
+            {
+                "rule_name": name,
+                "description": description,
+                "stop_words": stop_words,
+                "timestamp": int(round(time.time())),
+            }
         )
+        DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].delete_one({"_id": result["_id"]})
+    # the rule is found in active rules
     DB[CONFIG["mongo"]["filters"]][vendor][organization].update_one(
         {"_id": result["_id"]},
         {"$set": {"description": description, "stop_words": stop_words, "timestamp": int(round(time.time()))}},
@@ -73,7 +86,7 @@ async def get_filters(vendor: str, organization: str):
                 name=active_rule["rule_name"],
                 description=active_rule["description"],
                 stop_words=active_rule["stop_words"],
-                timestamp=active_rule["timestamp"]
+                timestamp=active_rule["timestamp"],
             )
         )
     archived = DB[CONFIG["mongo"]["filters"]][vendor][organization]["archived"].find({})
@@ -83,7 +96,7 @@ async def get_filters(vendor: str, organization: str):
                 name=archived_rule["rule_name"],
                 description=archived_rule["description"],
                 stop_words=archived_rule["stop_words"],
-                timestamp=archived_rule["timestamp"]
+                timestamp=archived_rule["timestamp"],
             )
         )
     return GetFiltersResponse(active_rules=active_rules, archived_rules=archived_rules)
@@ -116,5 +129,5 @@ def check_filters(
                 logging.info(f"{vendor}.{organization}: query {query} failed check with rule {rule['rule_name']}")
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,  # todo: more appropriate code
-                    detail=f"Request blocked by organization policy rule:\n{rule['rule_name']}\n{rule['description']}",
+                    detail=f"Request blocked by organization policy rule: '{rule['rule_name']}' ({rule['description']})",
                 )
