@@ -166,6 +166,7 @@ async def get_collections_answer(
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
         example=True,
     ),
+    user: str = Query(default=None, description="User ID", example="1234567890"),
 ):
     if not query and not document:
         raise HTTPException(
@@ -213,6 +214,7 @@ async def get_collections_answer(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collections=collections,
+        user=user,
     )
     if stream:
         return StreamingResponse(
@@ -332,6 +334,7 @@ async def get_reactions(request: Request, api_version: ApiVersion, token: str = 
             "rating": 1,
             "like_status": 1,
             "comment": 1,
+            "user": 1,
         },
     )
     return GetReactionsResponse(
@@ -339,6 +342,7 @@ async def get_reactions(request: Request, api_version: ApiVersion, token: str = 
             Log(
                 id=str(row["_id"]),
                 datetime=row["datetime"],
+                user=row["user"] if "user" in row else None,
                 query=row["query"],
                 answer=row["answer"],
                 api_version=row["api_version"],

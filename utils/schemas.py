@@ -268,8 +268,9 @@ class Log(BaseModel):
     datetime: datetime
     query: str
     answer: str
-    api_version: ApiVersion
+    api_version: str
     collections: List[str]
+    user: str | None
     rating: int | None
     like_status: LikeStatus | None
     comment: str | None
