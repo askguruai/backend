@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Any, Dict, List
 
 import bson
@@ -22,6 +23,7 @@ from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
+from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
 from utils.schemas import (
     ApiVersion,
     Chat,
@@ -33,11 +35,13 @@ from utils.schemas import (
     GetCollectionRankingResponse,
     GetCollectionResponse,
     GetCollectionsResponse,
+    GetFiltersResponse,
     GetReactionsResponse,
     HTTPExceptionResponse,
     LikeStatus,
     LinkRequest,
     Log,
+    PostFilterResponse,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
@@ -188,6 +192,7 @@ async def get_collections_answer(
             stream=stream,
         )
     else:
+        check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
         response = await collection_handler.get_answer(
             vendor=token_data["vendor"],
             organization=token_data["organization"],
@@ -247,6 +252,7 @@ async def get_collections_ranking(
             detail="Both document and document_collection must be provided",
         )
     token_data = decode_token(token)
+    check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
     return await collection_handler.get_ranking(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
@@ -491,6 +497,90 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
             detail=str(e),
         )
     return Response(status_code=status.HTTP_200_OK)
+
+
+######################################################
+#                     FILTERS                        #
+######################################################
+
+
+@app.get("/{api_version}/filters", response_model=GetFiltersResponse)
+@catch_errors
+async def get_filter_rules_epoint(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+):
+    token_data = decode_token(token)
+    response = await get_filters(vendor=token_data["vendor"], organization=token_data["organization"])
+    return response
+
+
+@app.post(
+    "/{api_version}/filters",
+)
+@catch_errors
+async def create_filter_rule_epoint(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    name: str = Body(description="Rule name", example="Profanity"),
+    description: str = Body(default=None, description="Rule name", example="No profanity allowed in requests"),
+    stop_words: List[str] = Body(
+        description="A list of words to be searched in requests", example=["damn", "sex", "paki"]
+    ),
+):
+    token_data = decode_token(token)
+    response = await create_filter_rule(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        name=name,
+        description=description,
+        stop_words=stop_words,
+    )
+    return response
+
+
+@app.patch(
+    "/{api_version}/filters",
+)
+@catch_errors
+async def update_filter_rule_epoint(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    name: str = Body(description="Rule name", example="Profanity"),
+    description: str = Body(default=None, description="Rule name", example="No profanity allowed in requests"),
+    stop_words: List[str] = Body(
+        description="A list of words to be searched in requests", example=["damn", "sex", "paki"]
+    ),
+):
+    token_data = decode_token(token)
+    response = await update_filter_rule(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        name=name,
+        description=description,
+        stop_words=stop_words,
+    )
+    return response
+
+
+@app.delete(
+    "/{api_version}/filters",
+)
+@catch_errors
+async def archive_filter_rule_epoint(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    name: str = Body(description="Rule name", example="Profanity"),
+):
+    token_data = decode_token(token)
+    response = await archive_filter_rule(
+        vendor=token_data["vendor"], organization=token_data["organization"], name=name
+    )
+    return response
 
 
 if __name__ == "__main__":
