@@ -1,3 +1,4 @@
+import asyncio
 from collections import deque
 from datetime import datetime
 from typing import List, Tuple
@@ -6,6 +7,7 @@ from urllib.parse import urljoin
 import html2text
 import requests
 import tiktoken
+from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from loguru import logger
 
@@ -47,31 +49,47 @@ class DocumentsParser:
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta
 
-    def link_to_docs(self, root_link: str) -> List[Doc]:
+    async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set) -> Doc:
+        try:
+            async with session.get(link) as response:
+                page_content = await response.text()
+        except Exception as e:
+            logger.error(f"Error while downloading {link}: {e}")
+            return None
+
+        if page_content:
+            soup = BeautifulSoup(page_content, "html.parser")
+            for a in soup.find_all(href=True):
+                url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
+                is_file = url.split("/")[-1].count(".") > 0
+                if url not in visited and url.startswith(root_link) and (not is_file or url.endswith(".html")):
+                    queue.append(url)
+                    visited.add(url)
+            if soup.find("title"):
+                title = soup.find("title").text
+                content = self.converter.handle(page_content)
+                return Doc(id=link, title=title, summary=title, content=content)
+
+        return None
+
+    async def link_to_docs(self, root_link: str) -> List[Doc]:
         if root_link[-1] != "/":
             root_link += "/"
         queue, visited = deque([root_link]), set([root_link])
         docs = []
 
-        while queue:
-            link = queue.popleft()
-            try:
-                # content = requests.get(link).text
-                page = requests.get(link)
-            except Exception as e:
-                logger.error(f"Error while downloading {link}: {e}")
-                continue
-            # soup = BeautifulSoup(content, "html.parser")
-            if page:
-                soup = BeautifulSoup(page.content, "html.parser")
-                for a in soup.find_all(href=True):
-                    url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
-                    if url not in visited and url.startswith(root_link):
-                        queue.append(url)
-                        visited.add(url)
-                title = soup.find("title").text
-                content = self.converter.handle(page.text)
-                docs.append(Doc(id=link, title=title, summary=title, content=content))
+        async with ClientSession() as session:
+            while queue:
+                tasks = []
+                for _ in range(len(queue)):
+                    tasks.append(self.process_link(session, queue.popleft(), root_link, queue, visited))
+
+                results = await asyncio.gather(*tasks)
+
+                for result in results:
+                    if result:
+                        docs.append(result)
+
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs
 
