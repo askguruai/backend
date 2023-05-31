@@ -79,19 +79,23 @@ class DocumentsUploadHandler:
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
-            all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
-
-            data = [
-                all_chunk_hashes,
-                all_doc_ids,
-                all_chunks,
-                all_embeddings,
-                all_doc_titles,
-                all_summaries,
-                all_timestamps,
-                all_security_groups,
-            ]
-            collection.insert(data)
+            all_embeddings = []
+            for i in range(0, len(all_chunks), 500):
+                all_embeddings.extend(
+                    await ml_requests.get_embeddings(all_chunks[i : i + 500], api_version=api_version)
+                )
+                collection.insert(
+                    [
+                        all_chunk_hashes[i : i + 500],
+                        all_doc_ids[i : i + 500],
+                        all_chunks[i : i + 500],
+                        all_embeddings[i : i + 500],
+                        all_doc_titles[i : i + 500],
+                        all_summaries[i : i + 500],
+                        all_timestamps[i : i + 500],
+                        all_security_groups[i : i + 500],
+                    ]
+                )
             logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
 
         return UploadCollectionDocumentsResponse(n_chunks=len(all_chunks))
