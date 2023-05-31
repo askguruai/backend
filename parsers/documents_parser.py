@@ -1,7 +1,13 @@
+from collections import deque
 from datetime import datetime
 from typing import List, Tuple
+from urllib.parse import urljoin
 
+import html2text
+import requests
 import tiktoken
+from bs4 import BeautifulSoup
+from loguru import logger
 
 from utils import hash_string
 from utils.misc import int_list_encode
@@ -12,6 +18,8 @@ class DocumentsParser:
     def __init__(self, chunk_size: int, tokenizer_name: str):
         self.chunk_size = chunk_size
         self.enc = tiktoken.get_encoding(tokenizer_name)
+        self.converter = html2text.HTML2Text()
+        self.converter.ignore_images = True
 
     def process_document(self, document: Chat | Doc) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
@@ -38,6 +46,34 @@ class DocumentsParser:
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta
+
+    def link_to_docs(self, root_link: str) -> List[Doc]:
+        if root_link[-1] != "/":
+            root_link += "/"
+        queue, visited = deque([root_link]), set([root_link])
+        docs = []
+
+        while queue:
+            link = queue.popleft()
+            try:
+                # content = requests.get(link).text
+                page = requests.get(link)
+            except Exception as e:
+                logger.error(f"Error while downloading {link}: {e}")
+                continue
+            # soup = BeautifulSoup(content, "html.parser")
+            if page:
+                soup = BeautifulSoup(page.content, "html.parser")
+                for a in soup.find_all(href=True):
+                    url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
+                    if url not in visited and url.startswith(root_link):
+                        queue.append(url)
+                        visited.add(url)
+                title = soup.find("title").text
+                content = self.converter.handle(page.text)
+                docs.append(Doc(id=link, title=title, summary=title, content=content))
+        logger.info(f"Found {len(docs)} documents on {root_link}")
+        return docs
 
     def doc_to_chunks(self, content: str, title: str = "", summary: str = "") -> List[str]:
         chunks = []
