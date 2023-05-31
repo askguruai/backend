@@ -301,11 +301,13 @@ async def upload_collection_documents(
     collection: str = Path(description="Collection within organization", example="chats"),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
+    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
 ):
-    if not (bool(documents) ^ bool(chats)):
+    # only one of documents, chats or links must be provided
+    if sum([bool(documents), bool(chats), bool(links)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Either documents or chats must be provided",
+            detail="One and only one of documents, chats or links must be provided",
         )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
@@ -313,7 +315,7 @@ async def upload_collection_documents(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=documents if documents else chats,
+        documents=documents if documents else chats if chats else links,
     )
 
 

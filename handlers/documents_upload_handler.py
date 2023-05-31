@@ -15,8 +15,18 @@ class DocumentsUploadHandler:
         self.parser = parser
 
     async def handle_request(
-        self, api_version: str, vendor: str, organization: str, collection: str, documents: List[Doc] | List[Chat]
+        self,
+        api_version: str,
+        vendor: str,
+        organization: str,
+        collection: str,
+        documents: List[Doc] | List[Chat] | List[str],
     ) -> UploadCollectionDocumentsResponse:
+        if isinstance(documents[0], str):
+            # traversing each link, extracting all pages from each link,
+            # representing them as docs and flatten the list
+            documents = [doc for link in documents for doc in self.parser.link_to_docs(link)]
+
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
 
@@ -69,9 +79,7 @@ class DocumentsUploadHandler:
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
-            all_embeddings = []
-            for i in range(0, len(all_chunks), 25):
-                all_embeddings.extend(await ml_requests.get_embeddings(all_chunks[i : i + 25], api_version=api_version))
+            all_embeddings = await ml_requests.get_embeddings(all_chunks, api_version=api_version)
 
             data = [
                 all_chunk_hashes,
