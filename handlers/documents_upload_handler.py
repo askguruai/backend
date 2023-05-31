@@ -13,6 +13,7 @@ from utils.schemas import ApiVersion, Chat, Doc, UploadCollectionDocumentsRespon
 class DocumentsUploadHandler:
     def __init__(self, parser: DocumentsParser):
         self.parser = parser
+        self.insert_chunk_size = 500
 
     async def handle_request(
         self,
@@ -80,20 +81,20 @@ class DocumentsUploadHandler:
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = []
-            for i in range(0, len(all_chunks), 500):
+            for i in range(0, len(all_chunks), self.insert_chunk_size):
                 all_embeddings.extend(
-                    await ml_requests.get_embeddings(all_chunks[i : i + 500], api_version=api_version)
+                    await ml_requests.get_embeddings(all_chunks[i : i + self.insert_chunk_size], api_version=api_version)
                 )
                 collection.insert(
                     [
-                        all_chunk_hashes[i : i + 500],
-                        all_doc_ids[i : i + 500],
-                        all_chunks[i : i + 500],
-                        all_embeddings[i : i + 500],
-                        all_doc_titles[i : i + 500],
-                        all_summaries[i : i + 500],
-                        all_timestamps[i : i + 500],
-                        all_security_groups[i : i + 500],
+                        all_chunk_hashes[i : i + self.insert_chunk_size],
+                        all_doc_ids[i : i + self.insert_chunk_size],
+                        all_chunks[i : i + self.insert_chunk_size],
+                        all_embeddings[i : i + self.insert_chunk_size],
+                        all_doc_titles[i : i + self.insert_chunk_size],
+                        all_summaries[i : i + self.insert_chunk_size],
+                        all_timestamps[i : i + self.insert_chunk_size],
+                        all_security_groups[i : i + self.insert_chunk_size],
                     ]
                 )
             logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
