@@ -1,6 +1,7 @@
 numpy
 fastapi
 uvicorn[standart]
+gunicorn
 loguru
 nltk
 PyMuPDF
