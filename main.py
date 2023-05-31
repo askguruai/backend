@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import Any, Dict, List
 
@@ -9,6 +8,7 @@ from bson.objectid import ObjectId
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
+from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from handlers import (
@@ -24,6 +24,7 @@ from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
+from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     Chat,
@@ -47,7 +48,7 @@ from utils.schemas import (
     UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
 )
-from utils.uvicorn_logging import RequestLoggerMiddleware, run_uvicorn_loguru
+from utils.uvicorn_logging import RequestLoggerMiddleware
 
 app = FastAPI()
 
@@ -391,13 +392,13 @@ async def upload_reaction(
             return_document=ReturnDocument.AFTER,
         )
         if not db_status:
-            logging.error(f"Can't find row with id {request_id}")
+            logger.error(f"Can't find row with id {request_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Can't find row with id {request_id}",
             )
     except bson.errors.InvalidId as e:
-        logging.error(e)
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -487,13 +488,13 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
             return_document=ReturnDocument.AFTER,
         )
         if not db_status:
-            logging.error(f"Can't find row with id {set_reaction_request.request_id}")
+            logger.error(f"Can't find row with id {set_reaction_request.request_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Can't find row with id {set_reaction_request.request_id}",
             )
     except bson.errors.InvalidId as e:
-        logging.error(e)
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -585,13 +586,9 @@ async def archive_filter_rule_epoint(
     return response
 
 
-if __name__ == "__main__":
-    run_uvicorn_loguru(
-        uvicorn.Config(
-            "main:app",
-            host=CONFIG["app"]["host"],
-            port=int(CONFIG["app"]["port"]),
-            log_level=CONFIG["app"]["log_level"],
-            workers=int(CONFIG["app"]["workers"]),
-        )
-    )
+if __name__ == '__main__':
+    options = {
+        "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
+        "workers": CONFIG["app"]["workers"],
+    }
+    run_gunicorn_loguru(app, options)
