@@ -83,7 +83,9 @@ class DocumentsUploadHandler:
             all_embeddings = []
             for i in range(0, len(all_chunks), self.insert_chunk_size):
                 all_embeddings.extend(
-                    await ml_requests.get_embeddings(all_chunks[i : i + self.insert_chunk_size], api_version=api_version)
+                    await ml_requests.get_embeddings(
+                        all_chunks[i : i + self.insert_chunk_size], api_version=api_version
+                    )
                 )
                 collection.insert(
                     [
