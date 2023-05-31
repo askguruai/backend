@@ -590,5 +590,6 @@ if __name__ == '__main__':
     options = {
         "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
         "workers": CONFIG["app"]["workers"],
+        "timeout": CONFIG["app"]["timeout"],
     }
     run_gunicorn_loguru(app, options)
