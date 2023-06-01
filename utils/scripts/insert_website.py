@@ -30,6 +30,8 @@ def insert_website(
     if not link.startswith("http"):
         raise ValueError("Link should start with http/https")
 
+    link = link.replace("www.", "")
+
     api_url = f"{backend_url}/{api_version}"
 
     # extract website name before dot
