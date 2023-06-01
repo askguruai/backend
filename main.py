@@ -157,8 +157,7 @@ async def get_collections_answer(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    # TODO make not mandatory collections
-    collections: List[str] = Query(description="List of collections to search", example=["chats"]),
+    collections: List[str] = Query(None, description="List of collections to search", example=["chats"]),
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
@@ -181,6 +180,15 @@ async def get_collections_answer(
             detail="Both document and document_collection must be provided",
         )
     token_data = decode_token(token)
+    if not collections:
+        collections = [
+            collection.name
+            for collection in collection_handler.get_collections(
+                vendor=token_data["vendor"],
+                organization=token_data["organization"],
+                api_version=api_version,
+            ).collections
+        ]
     if document and not query:
         response = await collection_handler.get_solution(
             vendor=token_data["vendor"],
@@ -239,8 +247,7 @@ async def get_collections_ranking(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    # TODO make not mandatory collections
-    collections: List[str] = Query(description="List of collections to search"),
+    collections: List[str] = Query(None, description="List of collections to search"),
     query: str = Query(default=None, description="Query string", example="How to change my password?"),
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
@@ -254,6 +261,15 @@ async def get_collections_ranking(
         )
     token_data = decode_token(token)
     check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
+    if not collections:
+        collections = [
+            collection.name
+            for collection in collection_handler.get_collections(
+                vendor=token_data["vendor"],
+                organization=token_data["organization"],
+                api_version=api_version,
+            ).collections
+        ]
     return await collection_handler.get_ranking(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
