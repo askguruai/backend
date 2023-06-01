@@ -43,6 +43,7 @@ def insert_website(
     ).json()["access_token"]
     logger.info("Received token")
 
+    logger.info("Inserting...")
     n_chunks = requests.post(
         f"{api_url}/collections/website",
         json={"links": [link]},
