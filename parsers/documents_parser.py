@@ -1,7 +1,15 @@
+import asyncio
+from collections import deque
 from datetime import datetime
 from typing import List, Tuple
+from urllib.parse import urljoin
 
+import html2text
+import requests
 import tiktoken
+from aiohttp import ClientSession
+from bs4 import BeautifulSoup
+from loguru import logger
 
 from utils import hash_string
 from utils.misc import int_list_encode
@@ -12,6 +20,8 @@ class DocumentsParser:
     def __init__(self, chunk_size: int, tokenizer_name: str):
         self.chunk_size = chunk_size
         self.enc = tiktoken.get_encoding(tokenizer_name)
+        self.converter = html2text.HTML2Text()
+        self.converter.ignore_images = True
 
     def process_document(self, document: Chat | Doc) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
@@ -38,6 +48,53 @@ class DocumentsParser:
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta
+
+    async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set) -> Doc:
+        try:
+            async with session.get(link) as response:
+                page_content = await response.text()
+        except Exception as e:
+            logger.error(f"Error while downloading {link}: {e}")
+            return None
+
+        if page_content:
+            soup = BeautifulSoup(page_content, "html.parser")
+            for a in soup.find_all(href=True):
+                url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
+                is_file = url.split("/")[-1].count(".") > 0
+                if url not in visited and url.startswith(root_link) and (not is_file or url.endswith(".html")):
+                    queue.append(url)
+                    visited.add(url)
+            if soup.find("title"):
+                title = soup.find("title").text
+                content = self.converter.handle(page_content)
+                return Doc(id=link, title=title, summary=title, content=content)
+
+        return None
+
+    async def link_to_docs(self, root_link: str) -> List[Doc]:
+        if root_link[-1] != "/":
+            root_link += "/"
+        queue, visited, depth = deque([root_link]), set([root_link]), 0
+        docs = []
+
+        async with ClientSession() as session:
+            while queue:
+                tasks = []
+                logger.info(f"Depth: {depth}, queue size: {len(queue)}, link: {root_link}")
+                for _ in range(len(queue)):
+                    tasks.append(self.process_link(session, queue.popleft(), root_link, queue, visited))
+
+                results = await asyncio.gather(*tasks)
+
+                for result in results:
+                    if result:
+                        docs.append(result)
+
+                depth += 1
+
+        logger.info(f"Found {len(docs)} documents on {root_link}")
+        return docs
 
     def doc_to_chunks(self, content: str, title: str = "", summary: str = "") -> List[str]:
         chunks = []

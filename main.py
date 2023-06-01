@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import Any, Dict, List
 
@@ -9,6 +8,7 @@ from bson.objectid import ObjectId
 from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
+from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from handlers import (
@@ -24,6 +24,7 @@ from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
 from utils.api import catch_errors, log_get_answer, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
+from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     Chat,
@@ -47,7 +48,7 @@ from utils.schemas import (
     UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
 )
-from utils.uvicorn_logging import RequestLoggerMiddleware, run_uvicorn_loguru
+from utils.uvicorn_logging import RequestLoggerMiddleware
 
 app = FastAPI()
 
@@ -301,11 +302,13 @@ async def upload_collection_documents(
     collection: str = Path(description="Collection within organization", example="chats"),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
+    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
 ):
-    if not (bool(documents) ^ bool(chats)):
+    # only one of documents, chats or links must be provided
+    if sum([bool(documents), bool(chats), bool(links)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Either documents or chats must be provided",
+            detail="One and only one of documents, chats or links must be provided",
         )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
@@ -313,7 +316,7 @@ async def upload_collection_documents(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=documents if documents else chats,
+        documents=documents if documents else chats if chats else links,
     )
 
 
@@ -389,13 +392,13 @@ async def upload_reaction(
             return_document=ReturnDocument.AFTER,
         )
         if not db_status:
-            logging.error(f"Can't find row with id {request_id}")
+            logger.error(f"Can't find row with id {request_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Can't find row with id {request_id}",
             )
     except bson.errors.InvalidId as e:
-        logging.error(e)
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -485,13 +488,13 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
             return_document=ReturnDocument.AFTER,
         )
         if not db_status:
-            logging.error(f"Can't find row with id {set_reaction_request.request_id}")
+            logger.error(f"Can't find row with id {set_reaction_request.request_id}")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Can't find row with id {set_reaction_request.request_id}",
             )
     except bson.errors.InvalidId as e:
-        logging.error(e)
+        logger.error(e)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
@@ -583,12 +586,10 @@ async def archive_filter_rule_epoint(
     return response
 
 
-if __name__ == "__main__":
-    run_uvicorn_loguru(
-        uvicorn.Config(
-            "main:app",
-            host=CONFIG["app"]["host"],
-            port=int(CONFIG["app"]["port"]),
-            log_level=CONFIG["app"]["log_level"],
-        )
-    )
+if __name__ == '__main__':
+    options = {
+        "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
+        "workers": CONFIG["app"]["workers"],
+        "timeout": CONFIG["app"]["timeout"],
+    }
+    run_gunicorn_loguru(app, options)
