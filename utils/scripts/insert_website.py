@@ -30,12 +30,10 @@ def insert_website(
     if not link.startswith("http"):
         raise ValueError("Link should start with http/https")
 
-    link = link.replace("www.", "")
-
     api_url = f"{backend_url}/{api_version}"
 
     # extract website name before dot
-    website = link.split("//")[1].split(".")[0]
+    website = link.replace("www.", "").split("//")[1].split(".")[0]
     logger.info(f"Inserting website {link} into collection '{VENDOR}_{website}_website' via {api_url}")
     logger.info(f"After the insertion, collection will be available at https://app.askguru.ai/?org={website}")
 
