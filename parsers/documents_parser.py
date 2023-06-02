@@ -65,7 +65,7 @@ class DocumentsParser:
                 if url not in visited and url.startswith(root_link) and (not is_file or url.endswith(".html")):
                     queue.append(url)
                     visited.add(url)
-            title = soup.find("title").text if soup.find("title") else link
+            title = soup.find("title").text if (soup.find("title") and soup.find("title").text) else link
             content = self.converter.handle(page_content)
             return Doc(id=link, title=title, summary=title, content=content)
 
