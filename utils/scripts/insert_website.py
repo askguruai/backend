@@ -5,6 +5,7 @@ from enum import Enum
 import requests
 import typer
 from loguru import logger
+from urllib.parse import urlencode
 from typing_extensions import Annotated
 
 VENDOR = "askgurupublic"
@@ -24,6 +25,7 @@ class BackendUrl(str, Enum):
 
 def insert_website(
     link: Annotated[str, typer.Argument(help="Link to parse. Should contain http/https in it.")],
+    query: str = None,
     api_version: ApiVersion = ApiVersion.v2.value,
     backend_url: BackendUrl = BackendUrl.prod.value,
 ):
@@ -34,6 +36,13 @@ def insert_website(
 
     # extract website name before dot
     website = link.replace("www.", "").split("//")[1].split(".")[0]
+
+    if query is not None:
+        params = urlencode({"org": website, "query": query})
+        full_link = f"https://app.askguru.ai/?{params}"
+        print(f"{full_link}")
+        return
+
     logger.info(f"Inserting website {link} into collection '{VENDOR}_{website}_website' via {api_url}")
     logger.info(f"After the insertion, collection will be available at https://app.askguru.ai/?org={website}")
 
