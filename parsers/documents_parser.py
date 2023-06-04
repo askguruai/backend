@@ -62,7 +62,7 @@ class DocumentsParser:
             for a in soup.find_all(href=True):
                 url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
                 is_file = url.split("/")[-1].count(".") > 0
-                if url not in visited and url.startswith(root_link) and (not is_file or url.endswith(".html")):
+                if url not in visited and "wp-json" not in url and url.startswith(root_link) and (not is_file or url.endswith(".html")):
                     queue.append(url)
                     visited.add(url)
             title = soup.find("title").text if (soup.find("title") and soup.find("title").text) else link
