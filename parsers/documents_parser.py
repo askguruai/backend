@@ -50,8 +50,11 @@ class DocumentsParser:
         return chunks, meta
 
     async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set) -> Doc:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
+        }
         try:
-            async with session.get(link) as response:
+            async with session.get(link, headers=headers) as response:
                 page_content = await response.text()
         except Exception as e:
             logger.error(f"Error while downloading {link}: {e}")
@@ -62,7 +65,12 @@ class DocumentsParser:
             for a in soup.find_all(href=True):
                 url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
                 is_file = url.split("/")[-1].count(".") > 0
-                if url not in visited and "wp-json" not in url and url.startswith(root_link) and (not is_file or url.endswith(".html")):
+                if (
+                    url not in visited
+                    and "wp-json" not in url
+                    and url.startswith(root_link)
+                    and (not is_file or url.endswith(".html"))
+                ):
                     queue.append(url)
                     visited.add(url)
             title = soup.find("title").text if (soup.find("title") and soup.find("title").text) else link
