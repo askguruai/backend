@@ -1,11 +1,11 @@
 # pip install "typer[all]"
 
 from enum import Enum
+from urllib.parse import urlencode
 
 import requests
 import typer
 from loguru import logger
-from urllib.parse import urlencode
 from typing_extensions import Annotated
 
 VENDOR = "askgurupublic"
