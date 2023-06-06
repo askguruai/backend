@@ -72,6 +72,7 @@ class DocumentsParser:
                     and (not is_file or url.endswith(".html"))
                     and url + "/" not in visited
                     and url[:-1] not in visited
+                    and "<" not in url
                 ):
                     queue.append(url)
                     visited.add(url)
