@@ -25,6 +25,7 @@ class BackendUrl(str, Enum):
 
 def insert_website(
     link: Annotated[str, typer.Argument(help="Link to parse. Should contain http/https in it.")],
+    organization: str = None,
     query: str = None,
     api_version: ApiVersion = ApiVersion.v2.value,
     backend_url: BackendUrl = BackendUrl.prod.value,
@@ -35,7 +36,7 @@ def insert_website(
     api_url = f"{backend_url}/{api_version}"
 
     # extract website name before dot
-    website = link.replace("www.", "").split("//")[1].split(".")[0]
+    website = link.replace("www.", "").split("//")[1].split(".")[0] if organization is None else organization
 
     if query is not None:
         params = urlencode({"org": website, "query": query})
