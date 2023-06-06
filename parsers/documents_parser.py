@@ -63,7 +63,7 @@ class DocumentsParser:
         if page_content:
             soup = BeautifulSoup(page_content, "html.parser")
             for a in soup.find_all(href=True):
-                url = urljoin(link, a["href"]).split("#")[0].split("?")[0]
+                url = urljoin(link, a["href"]).split("#")[0].split("?")[0].split(" ")[0]
                 is_file = url.split("/")[-1].count(".") > 0
                 if (
                     url not in visited
