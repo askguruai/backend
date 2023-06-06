@@ -67,9 +67,11 @@ class DocumentsParser:
                 is_file = url.split("/")[-1].count(".") > 0
                 if (
                     url not in visited
-                    and "wp-json" not in url
                     and url.startswith(root_link)
+                    and "wp-json" not in url
                     and (not is_file or url.endswith(".html"))
+                    and url + "/" not in visited
+                    and url[:-1] not in visited
                 ):
                     queue.append(url)
                     visited.add(url)
