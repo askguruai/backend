@@ -60,7 +60,7 @@ class DocumentsParser:
             logger.error(f"Error while downloading {link}: {e}")
             return None
 
-        if page_content:
+        if page_content and page_content.count("<html") > 0:
             soup = BeautifulSoup(page_content, "html.parser")
             for a in soup.find_all(href=True):
                 url = urljoin(link, a["href"]).split("#")[0].split("?")[0].split(" ")[0]
