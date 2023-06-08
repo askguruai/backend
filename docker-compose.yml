@@ -142,7 +142,7 @@ services:
     depends_on:
       - redash-server
 
-  redash-postgres:
+  postgres:
     container_name: redash-postgres
     image: postgres:9.6-alpine
     environment:
@@ -150,7 +150,7 @@ services:
     volumes:
       - "postgres-data:/var/lib/postgresql/data"
 
-  redash-redis:
+  redis:
     container_name: redash-redis
     image: redis:5.0-alpine
 
