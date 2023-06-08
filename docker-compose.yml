@@ -115,52 +115,6 @@ services:
       - "8082:3000"
     restart: always
 
-  ########################################################
-  #                       REDASH                         #
-  ########################################################
-
-  redash-server:
-    container_name: redash-server
-    image: redash/redash:preview
-    command: server
-    depends_on:
-      - postgres
-      - redis
-      - mongo
-    ports:
-      - "8083:5000"
-    environment:
-      REDASH_REDIS_URL: "redis://redis:6379/0"
-      REDASH_DATABASE_URL: "postgresql://postgres:@postgres/postgres"
-      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
-
-  redash-worker:
-    container_name: redash-worker
-    image: redash/redash:preview
-    command: scheduler
-    environment:
-      REDASH_REDIS_URL: "redis://redis:6379/0"
-      REDASH_DATABASE_URL: "postgresql://postgres:@postgres/postgres"
-      REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
-    depends_on:
-      - redash-server
-
-  postgres:
-    container_name: redash-postgres
-    image: postgres:9.6-alpine
-    environment:
-      POSTGRES_HOST_AUTH_METHOD: "trust"
-    volumes:
-      - "postgres-data:/var/lib/postgresql/data"
-
-  redis:
-    container_name: redash-redis
-    image: redis:5.0-alpine
-
-
 networks:
   default:
     name: milvus
-
-volumes:
-  postgres-data: {}
