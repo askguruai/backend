@@ -122,8 +122,8 @@ services:
     image: redash/redash:latest
     command: server
     depends_on:
-      - redash-postgres
-      - redash-redis
+      - postgres
+      - redis
     ports:
       - "8083:5000"
     environment:
