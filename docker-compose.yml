@@ -118,11 +118,12 @@ services:
   ########################################################
 
   redash-server:
+    container_name: redash-server
     image: redash/redash:latest
     command: server
     depends_on:
-      - postgres
-      - redis
+      - redash-postgres
+      - redash-redis
     ports:
       - "8083:5000"
     environment:
@@ -131,6 +132,7 @@ services:
       REDASH_COOKIE_SECRET: ${REDASH_COOKIE_SECRET}
 
   redash-worker:
+    container_name: redash-worker
     image: redash/redash:latest
     command: scheduler
     environment:
@@ -140,12 +142,16 @@ services:
     depends_on:
       - redash-server
 
-  postgres:
+  redash-postgres:
+    container_name: redash-postgres
     image: postgres:9.6-alpine
+    environment:
+      POSTGRES_HOST_AUTH_METHOD=trust
     volumes:
       - "postgres-data:/var/lib/postgresql/data"
 
-  redis:
+  redash-redis:
+    container_name: redash-redis
     image: redis:5.0-alpine
 
 
