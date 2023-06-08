@@ -49,20 +49,6 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/
 
   ########################################################
-  #                       GRAFANA                        #
-  ########################################################
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - 8083:3000
-    environment:
-      GF_INSTALL_PLUGINS: "grafana-mongodb-datasource"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - grafana-logs:/var/log/grafana
-
-  ########################################################
   #                       MILVUS                         #
   ########################################################
 
@@ -130,7 +116,3 @@ services:
 networks:
   default:
     name: milvus
-
-volumes:
-  grafana-data:
-  grafana-logs:
