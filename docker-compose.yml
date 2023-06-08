@@ -124,6 +124,7 @@ services:
     depends_on:
       - postgres
       - redis
+      - mongo
     ports:
       - "8083:5000"
     environment:
