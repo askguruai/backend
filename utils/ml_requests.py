@@ -33,6 +33,11 @@ async def get_embeddings(chunks: List[str] | str, api_version: str) -> List[np.n
         return embeddings
 
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    before_sleep=before_sleep_log(logger, "WARNING"),
+)
 async def get_answer(
     context: str,
     query: str,
