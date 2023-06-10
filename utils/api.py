@@ -1,11 +1,11 @@
 import datetime
-import logging
 import traceback
 from functools import wraps
 from typing import List, Union
 
 from bson.objectid import ObjectId
 from fastapi import HTTPException, Request, status
+from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from utils import CONFIG, DB
@@ -18,6 +18,7 @@ async def stream_and_log(generator, request_id):
         sources = response.sources
         response.request_id = request_id
         yield f"event: message\ndata: {response.json()}\n\n"
+    logger.info(f"answer: {answer}")
     db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
         {"_id": ObjectId(request_id)},
         {"$set": {"answer": answer, "document_id": [source.id for source in sources]}},
@@ -53,7 +54,9 @@ def log_get_answer(
         "user": user,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
-    logging.info(row)
+    logger.info(
+        f"vendor: {vendor}, organization: {organization}, collections: {collections}, query: {query}, api_version: {api_version}"
+    )
     return str(request_id)
 
 
@@ -65,7 +68,7 @@ def catch_errors(func):
         except Exception as e:
             if type(e) == HTTPException:
                 raise e
-            logging.error(f"{e.__class__.__name__}: {e}")
+            logger.error(f"{e.__class__.__name__}: {e}")
             traceback.print_exc()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
