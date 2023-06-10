@@ -4,11 +4,18 @@ from typing import List, Union
 import numpy as np
 import requests
 from fastapi import status
+from loguru import logger
+from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 from utils import CLIENT_SESSION_WRAPPER, CONFIG
 from utils.errors import CoreMLError
 
 
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    before_sleep=before_sleep_log(logger, "WARNING"),
+)
 async def get_embeddings(chunks: List[str] | str, api_version: str) -> List[np.ndarray]:
     if type(chunks) is not list:
         chunks = [chunks]
