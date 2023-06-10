@@ -82,14 +82,14 @@ class DocumentsParser:
 
         return None
 
-    async def link_to_docs(self, root_link: str) -> List[Doc]:
+    async def link_to_docs(self, root_link: str, max_depth: int = 50) -> List[Doc]:
         if root_link[-1] != "/":
             root_link += "/"
         queue, visited, depth = deque([root_link]), set([root_link]), 0
         docs = []
 
         async with ClientSession() as session:
-            while queue:
+            while queue and depth < max_depth:
                 tasks = []
                 logger.info(f"Depth: {depth}, queue size: {len(queue)}, link: {root_link}")
                 for _ in range(len(queue)):
