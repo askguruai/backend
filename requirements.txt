@@ -16,7 +16,7 @@ marko
 tqdm
 python-jose[cryptography]
 aiohttp[speedups]
-pymilvus==2.2.7
+pymilvus==2.2.9
 tiktoken
 beautifulsoup4
 typer[all]
