@@ -1,5 +1,4 @@
 import hashlib
-import logging
 import pickle
 from collections import defaultdict
 from typing import List, Tuple
@@ -76,7 +75,7 @@ class CollectionHandler:
 
         if not collections_only:
             answer_in_context = await ml_requests.if_answer_in_context(context, query, api_version)
-            logging.info(f"answer_in_context: {answer_in_context}")
+            logger.info(f"answer_in_context: {answer_in_context}")
             if not answer_in_context:
                 context, mode = "", "general"
 
