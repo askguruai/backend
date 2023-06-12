@@ -20,10 +20,14 @@ class HTTPExceptionResponse(BaseModel):
 class AuthExceptionResponse(BaseModel):
     detail: str = Field(example="Could not validate credentials")
 
+class NotFoundResponse(BaseModel):
+    detail: str = Field(example="Requested resource not found")
+
 
 CollectionResponses = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
     status.HTTP_401_UNAUTHORIZED: {"model": AuthExceptionResponse},
+    status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}
 }
 
 AUTH_METHODS = ["org_scope", "default"]

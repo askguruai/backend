@@ -394,15 +394,14 @@ async def upload_reaction(
     if not (bool(rating) or bool(like_status) or bool(comment) or (answer_copied is not None)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Either rating, like_status or comment must be provided",
+            detail="Either rating, like_status, comment or copy flag must be provided",
         )
     row_update = {
         "rating": rating,
         "like_status": like_status,
         "comment": comment,
+        "answer_copied": answer_copied
     }
-    if answer_copied is not None:
-        row_update["answer_copied"] = answer_copied
 
     try:
         db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(

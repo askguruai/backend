@@ -63,7 +63,6 @@ def run_gunicorn_loguru(app, options):
         "accesslog": "-",
         "errorlog": "-",
         "worker_class": "uvicorn.workers.UvicornWorker",
-        "worker_connections": 1000,
         "logger_class": StubbedGunicornLogger,
     }
     intercept_handler = InterceptHandler()
