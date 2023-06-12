@@ -42,11 +42,11 @@ from utils.schemas import (
     LikeStatus,
     LinkRequest,
     Log,
-    PostFilterResponse,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
+    NotFoundResponse
 )
 from utils.uvicorn_logging import RequestLoggerMiddleware
 
@@ -286,7 +286,7 @@ async def get_collections_ranking(
 @app.get(
     "/{api_version}/collections/{collection}",
     response_model=GetCollectionResponse,
-    responses=CollectionResponses,
+    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
 async def get_collection(

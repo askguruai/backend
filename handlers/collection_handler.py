@@ -210,7 +210,7 @@ class CollectionHandler:
             logger.error(f"Requested collection {full_collection_name} not found")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Requested collection not found",
+                detail=f"Requested collection {full_collection_name} not found",
             )
         chunks = milvus_collection.query(
             expr='pk >= 0',
