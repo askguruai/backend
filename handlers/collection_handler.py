@@ -6,10 +6,11 @@ from typing import List, Tuple
 import numpy as np
 import tiktoken
 from fastapi.responses import StreamingResponse
+from fastapi import status, HTTPException
 from loguru import logger
 
 from utils import DB, MILVUS_DB, hash_string, ml_requests
-from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError
+from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError, DatabaseError
 from utils.misc import int_list_encode
 from utils.schemas import (
     ApiVersion,
@@ -202,7 +203,14 @@ class CollectionHandler:
         organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
         full_collection_name = f"{vendor}_{organization_hash}_{collection}"
-        milvus_collection = MILVUS_DB[full_collection_name]
+        try:
+            milvus_collection = MILVUS_DB[full_collection_name]
+        except DatabaseError:
+            logger.error(f"Requested collection {full_collection_name} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Requested collection {full_collection_name} not found",
+            )
         chunks = milvus_collection.query(
             expr='pk >= 0',
             output_fields=["doc_id", "timestamp", "security_groups"],

@@ -20,6 +20,9 @@ class HTTPExceptionResponse(BaseModel):
 class AuthExceptionResponse(BaseModel):
     detail: str = Field(example="Could not validate credentials")
 
+class NotFoundResponse(BaseModel):
+    detail: str = Field(example="Requested resource not found")
+
 
 CollectionResponses = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},

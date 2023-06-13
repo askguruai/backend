@@ -42,11 +42,11 @@ from utils.schemas import (
     LikeStatus,
     LinkRequest,
     Log,
-    PostFilterResponse,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
+    NotFoundResponse
 )
 from utils.uvicorn_logging import RequestLoggerMiddleware
 
@@ -286,7 +286,7 @@ async def get_collections_ranking(
 @app.get(
     "/{api_version}/collections/{collection}",
     response_model=GetCollectionResponse,
-    responses=CollectionResponses,
+    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
 async def get_collection(
@@ -387,18 +387,20 @@ async def upload_reaction(
     request_id: str = Body(..., description="Request ID to set reaction for.", example="63cbd74e8d31a62a1512eab1"),
     rating: int = Body(None, description="Rating to set. INT from 1 to 5.", example=5, gt=0, lt=6),
     like_status: LikeStatus = Body(None, description="Reaction to set.", example=LikeStatus.good_answer),
+    answer_copied: bool = Body(None, description="Flag whether the answer was copied by user", example=True),
     comment: str = Body(None, description="Comment to set.", example="Very accurate!"),
 ):
     token_data = decode_token(token)
-    if not (bool(rating) or bool(like_status) or bool(comment)):
+    if not (bool(rating) or bool(like_status) or bool(comment) or (answer_copied is not None)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Either rating, like_status or comment must be provided",
+            detail="Either rating, like_status, comment or copy flag must be provided",
         )
     row_update = {
         "rating": rating,
         "like_status": like_status,
         "comment": comment,
+        "answer_copied": answer_copied
     }
 
     try:
