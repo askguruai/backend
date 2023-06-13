@@ -27,7 +27,6 @@ class NotFoundResponse(BaseModel):
 CollectionResponses = {
     status.HTTP_500_INTERNAL_SERVER_ERROR: {"model": HTTPExceptionResponse},
     status.HTTP_401_UNAUTHORIZED: {"model": AuthExceptionResponse},
-    status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}
 }
 
 AUTH_METHODS = ["org_scope", "default"]
