@@ -69,7 +69,7 @@ class DocumentsParser:
                     url not in visited
                     and url.startswith(root_link)
                     and "wp-json" not in url
-                    and (not is_file or url.endswith(".html"))
+                    and (not is_file or url.endswith(".html") or url.endswith(".htm"))
                     and url + "/" not in visited
                     and url[:-1] not in visited
                     and "<" not in url
