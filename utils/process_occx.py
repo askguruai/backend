@@ -1,15 +1,19 @@
 import sys
 import os, os.path as osp
+sys.path.insert(1, os.getcwd())
+
 import json
-from utils import hash_string, CONFIG, MILVUS_DB, ml_requests
+from utils import hash_string, CONFIG, MILVUS_DB, ml_requests, CLIENT_SESSION_WRAPPER
 from utils.tokenize_ import doc_to_chunks
 from argparse import ArgumentParser
+from aiohttp import ClientSession
 import glob
 import asyncio
 from typing import List
 from loguru import logger
+from pymilvus import utility
 
-sys.path.insert(1, os.getcwd())
+
 
 from parsers import DocxParser
 
@@ -37,36 +41,43 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
     chunks, meta_info = parser.process_file(filepath)
     if len(chunks) == 0:
         return True  # nothing to do
-    doc_id = meta_info["doc_id"]
+    doc_id = DOCS_N_LINKS[filename]
     existing_chunks = collection.query(
         expr=f'doc_id=="{doc_id}"',
         offset=0,
         limit=10000,
-        output_fields=["chunk_hash"],
+        output_fields=["pk", "chunk_hash", "security_groups", "timestamp"],
         consistency_level="Strong",
     )
-    existing_chunks = set((hit["chunk_hash"] for hit in existing_chunks))
+    existing_chunks = {
+        hit["chunk_hash"]: (hit["pk"], hit["security_groups"], hit["timestamp"]) for hit in existing_chunks
+    }
+    # determining which chunks are new
     new_chunks_hashes = []
     new_chunks = []
     for chunk in chunks:
         text_hash = hash_string(chunk)
-        if text_hash in existing_chunks:
-            existing_chunks.remove(text_hash)
+        if (
+            text_hash in existing_chunks
+            and existing_chunks[text_hash][1] == meta_info["security_groups"]
+            # and existing_chunks[text_hash][2] >= meta_info["timestamp"]
+        ):
+            del existing_chunks[text_hash]
         else:
             new_chunks.append(chunk)
             new_chunks_hashes.append(text_hash)
     # dropping outdated chunks
-    existing_chunks = [f'"{ch}"' for ch in existing_chunks]
-    collection.delete(f"chunk_hash in [{','.join(existing_chunks)}]")
+    existing_chunks_pks = list(map(lambda val: str(val[0]), existing_chunks.values()))
+    collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
 
     if len(new_chunks) == 0:
         # everyting is already in the database
         return True
-    embeddings = await ml_requests.get_embeddings(new_chunks)
+    embeddings = await ml_requests.get_embeddings(new_chunks, api_version=api_version)
 
     data = [
         new_chunks_hashes,
-        [meta_info["doc_id"]] * len(new_chunks),
+        [doc_link] * len(new_chunks),
         new_chunks,
         embeddings,
         [meta_info["doc_title"]] * len(new_chunks),
@@ -80,11 +91,15 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
 
 
 async def main(parser:DocxParser, filepaths: List[str], collection, api_version):
-    results = await asyncio.gather(
-        process_file(filepaths[0], parser, collection, api_version),
-        process_file(filepaths[1], parser, collection, api_version),
-        process_file(filepaths[2], parser, collection, api_version)
+    CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
+        f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
+    CLIENT_SESSION_WRAPPER.general_session = ClientSession()
+    
+    results = await asyncio.gather(
+        *[ process_file(fp, parser, collection, api_version) for fp in filepaths]
+    )
+    # todo: repeat unsuccessful
     print(results)
 
 
@@ -98,13 +113,15 @@ if __name__ == "__main__":
     vendor = "oneclickcx"
     organization = hash_string(vendor)
 
+    utility.drop_collection(f"{vendor}_{organization}_{collection_name}")
+
     collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{organization}_{collection_name}")
     docx_parser = DocxParser(1024)
 
     all_docs = glob.glob(osp.join(args.source, "*.docx"))
     loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(main(docx_parser, all_docs, collection, api_version))
+        loop.run_until_complete(main(docx_parser, all_docs, collection, args.api_version))
         loop.run_until_complete(loop.shutdown_asyncgens())
     finally:
         loop.close()

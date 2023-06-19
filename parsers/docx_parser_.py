@@ -56,7 +56,7 @@ class DocxParser(GeneralParser):
                 paragraph_text = self.parse_paragraph(p)
                 contents.append(paragraph_text)
         content = "\n".join(contents)
-        meta["doc_id"] = hash_string(content)
+        meta["security_groups"] = 2 ** 63 - 1
         chunks = doc_to_chunks(content=content, title=file_name)
         return chunks, meta
         
