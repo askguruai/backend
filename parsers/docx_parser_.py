@@ -1,14 +1,16 @@
-from parsers.general_parser import GeneralParser
-# from docx_parser import DocumentParser
+import json
+import os
+import os.path as osp
+from typing import List, Tuple
 
 import docx
 from simplify_docx import simplify
-import json
-from typing import Tuple, List
-import os, os.path as osp
+
+from parsers.general_parser import GeneralParser
 from utils import hash_string
 from utils.tokenize_ import doc_to_chunks
 
+# from docx_parser import DocumentParser
 
 
 class ListingDispatcher:
@@ -56,10 +58,10 @@ class DocxParser(GeneralParser):
                 paragraph_text = self.parse_paragraph(p)
                 contents.append(paragraph_text)
         content = "\n".join(contents)
-        meta["security_groups"] = 2 ** 63 - 1
+        meta["security_groups"] = 2**63 - 1
         chunks = doc_to_chunks(content=content, title=file_name)
         return chunks, meta
-        
+
     def parse_paragraph(self, paragraph: dict):
         text = ""
         for item in paragraph["VALUE"]:
@@ -78,10 +80,6 @@ class DocxParser(GeneralParser):
             # resetting dispatcher
             self.ld = None
         return text
-
-        
-
-
 
 
 # my_doc = docx.Document(infile)

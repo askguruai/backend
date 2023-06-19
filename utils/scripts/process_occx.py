@@ -1,21 +1,22 @@
+import os
+import os.path as osp
 import sys
-import os, os.path as osp
+
 sys.path.insert(1, os.getcwd())
 
-import json
-from utils import hash_string, CONFIG, MILVUS_DB, ml_requests, CLIENT_SESSION_WRAPPER
-from utils.tokenize_ import doc_to_chunks
-from argparse import ArgumentParser
-from aiohttp import ClientSession
-import glob
 import asyncio
+import glob
+import json
+from argparse import ArgumentParser
 from typing import List
+
+from aiohttp import ClientSession
 from loguru import logger
 from pymilvus import utility
 
-
-
 from parsers import DocxParser
+from utils import CLIENT_SESSION_WRAPPER, CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils.tokenize_ import doc_to_chunks
 
 DOCS_N_LINKS = {
     "How to Add New Contact Number.docx": "https://docs.google.com/document/d/1srUhSp5CbafXIslVKnJFiZ6tUinsIgG7/",
@@ -32,8 +33,9 @@ DOCS_N_LINKS = {
     "How to Factory Reset.docx": "https://docs.google.com/document/d/1lm_lETldfiWBUtB394qPCjhfBpN1KxNJ/",
     "How to insert SIM Card.docx": "https://docs.google.com/document/d/1-8ZHNJmgfXilh92wf4inY5sw8Ii5neot/",
     "How to move or copy files and folders.docx": "https://docs.google.com/document/d/19JGnCRWPDTcryuCIwaqd5SbKEwaygyNr/",
-    "How to use touchpad.docx": "https://docs.google.com/document/d/1qQPO0ttjb8w8dOkCxAYYy1Kn-6Y6jbqS/"
+    "How to use touchpad.docx": "https://docs.google.com/document/d/1qQPO0ttjb8w8dOkCxAYYy1Kn-6Y6jbqS/",
 }
+
 
 async def process_file(filepath: str, parser: DocxParser, collection, api_version):
     filename = osp.split(filepath)[1]
@@ -83,22 +85,20 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
         [meta_info["doc_title"]] * len(new_chunks),
         [""] * len(new_chunks),
         [0] * len(new_chunks),
-        [2 ** 63 - 1] * len(new_chunks)
+        [2**63 - 1] * len(new_chunks),
     ]
     collection.insert(data)
     logger.info(f"Document {meta_info['doc_title']} updated in {len(new_chunks)} chunks")
     return True
 
 
-async def main(parser:DocxParser, filepaths: List[str], collection, api_version):
+async def main(parser: DocxParser, filepaths: List[str], collection, api_version):
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
     CLIENT_SESSION_WRAPPER.general_session = ClientSession()
-    
-    results = await asyncio.gather(
-        *[ process_file(fp, parser, collection, api_version) for fp in filepaths]
-    )
+
+    results = await asyncio.gather(*[process_file(fp, parser, collection, api_version) for fp in filepaths])
     # todo: repeat unsuccessful
     print(results)
 
@@ -127,4 +127,3 @@ if __name__ == "__main__":
         loop.close()
 
     # https://stackoverflow.com/questions/47169474/parallel-asynchronous-io-in-pythons-coroutines
-    

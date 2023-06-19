@@ -42,11 +42,11 @@ from utils.schemas import (
     LikeStatus,
     LinkRequest,
     Log,
+    NotFoundResponse,
     SetReactionRequest,
     TextRequest,
     UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
-    NotFoundResponse
 )
 from utils.uvicorn_logging import RequestLoggerMiddleware
 
