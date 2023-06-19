@@ -84,3 +84,31 @@ async def if_answer_in_context(
         raise CoreMLError(response_json["detail"])
     answer = response_json["answer"]
     return answer
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=60),
+    before_sleep=before_sleep_log(logger, "WARNING"),
+)
+async def get_summary(
+    info: str,
+    max_tokens: int,
+    api_version: str,
+    stream: bool = False,
+) -> str:
+    response = await CLIENT_SESSION_WRAPPER.coreml_session.post(
+        f"/{api_version}/summarization/",
+        json={"info": info, "max_tokens": max_tokens, "stream": stream},
+    )
+    response_status = response.status
+    if stream:
+        answer = (
+            json.loads(data.decode('utf-8'))["data"] if data else "" async for data, _ in response.content.iter_chunks()
+        )
+    else:
+        response_json = await response.json()
+        if response_status == status.HTTP_500_INTERNAL_SERVER_ERROR:
+            raise CoreMLError(response_json["detail"])
+        answer = response_json["data"]
+    return answer
