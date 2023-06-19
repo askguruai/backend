@@ -1,4 +1,5 @@
 from utils.errors import SecurityGroupError
+from utils import CONFIG
 
 
 def int_list_encode(group_list: list) -> int:

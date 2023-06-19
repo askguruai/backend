@@ -6,13 +6,14 @@ from simplify_docx import simplify
 import json
 from typing import Tuple, List
 import os, os.path as osp
+from utils import hash_string
+from utils.tokenize_ import doc_to_chunks
 
 
 
 class ListingDispatcher:
     def __init__(self, numbered: bool = False) -> None:
         self.numbered = numbered
-        print(f"Dispatcher created. Numbered: {numbered}")
         self.nums = {}
 
     def reset(self):
@@ -54,7 +55,10 @@ class DocxParser(GeneralParser):
             if p["TYPE"] == "paragraph":
                 paragraph_text = self.parse_paragraph(p)
                 contents.append(paragraph_text)
-        return "\n".join(contents), meta
+        content = "\n".join(contents)
+        meta["doc_id"] = hash_string(content)
+        chunks = doc_to_chunks(content=content, title=file_name)
+        return chunks, meta
         
     def parse_paragraph(self, paragraph: dict):
         text = ""
