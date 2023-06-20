@@ -40,7 +40,13 @@ DOCS_N_LINKS = {
 async def process_file(filepath: str, parser: DocxParser, collection, api_version):
     filename = osp.split(filepath)[1]
     doc_link = DOCS_N_LINKS[filename]
-    chunks, meta_info = parser.process_file(filepath)
+    chunks, content, meta_info = parser.process_file(filepath)
+    # trimmed_content = content.split("FAQ")
+    # print(f"{filename} Split in {len(trimmed_content)} parts")
+    # trimmed_content = trimmed_content[0]
+    summary = await ml_requests.get_summary(info=content,
+                                      max_tokens=int(CONFIG["coreml"]["summarization_max_tokens"]),
+                                      api_version=api_version)
     if len(chunks) == 0:
         return True  # nothing to do
     doc_id = DOCS_N_LINKS[filename]
@@ -83,7 +89,7 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
         new_chunks,
         embeddings,
         [meta_info["doc_title"]] * len(new_chunks),
-        [""] * len(new_chunks),
+        [summary] * len(new_chunks),
         [0] * len(new_chunks),
         [2**63 - 1] * len(new_chunks),
     ]
@@ -113,7 +119,8 @@ if __name__ == "__main__":
     vendor = "oneclickcx"
     organization = hash_string(vendor)
 
-    utility.drop_collection(f"{vendor}_{organization}_{collection_name}")
+    # utility.drop_collection(f"{vendor}_{organization}_{collection_name}")
+    # exit(0)
 
     collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{organization}_{collection_name}")
     docx_parser = DocxParser(1024)

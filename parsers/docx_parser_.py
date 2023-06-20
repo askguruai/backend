@@ -60,7 +60,7 @@ class DocxParser(GeneralParser):
         content = "\n".join(contents)
         meta["security_groups"] = 2**63 - 1
         chunks = doc_to_chunks(content=content, title=file_name)
-        return chunks, meta
+        return chunks, content, meta
 
     def parse_paragraph(self, paragraph: dict):
         text = ""
