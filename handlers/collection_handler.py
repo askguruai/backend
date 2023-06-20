@@ -237,7 +237,7 @@ class CollectionHandler:
         document: str = None,
         document_collection: str = None,
         collections: List[str] = None,
-        similarity_threshold = 0,
+        similarity_threshold=0,
     ) -> GetCollectionRankingResponse:
         organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
@@ -266,8 +266,9 @@ class CollectionHandler:
 
         sources, seen, seen_title, i = [], set(), set(), 0
         while len(sources) < top_k and i < len(titles):
-            if len(sources) == 0 or \
-            (similarities[i] > similarity_threshold and (titles[i] not in seen_title or doc_ids[i] not in seen)):
+            if len(sources) == 0 or (
+                similarities[i] > similarity_threshold and (titles[i] not in seen_title or doc_ids[i] not in seen)
+            ):
                 sources.append(
                     Source(
                         id=doc_ids[i],

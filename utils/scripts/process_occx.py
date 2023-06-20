@@ -44,9 +44,9 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
     # trimmed_content = content.split("FAQ")
     # print(f"{filename} Split in {len(trimmed_content)} parts")
     # trimmed_content = trimmed_content[0]
-    summary = await ml_requests.get_summary(info=content,
-                                      max_tokens=int(CONFIG["coreml"]["summarization_max_tokens"]),
-                                      api_version=api_version)
+    summary = await ml_requests.get_summary(
+        info=content, max_tokens=int(CONFIG["coreml"]["summarization_max_tokens"]), api_version=api_version
+    )
     if len(chunks) == 0:
         return True  # nothing to do
     doc_id = DOCS_N_LINKS[filename]

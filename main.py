@@ -252,7 +252,9 @@ async def get_collections_ranking(
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
     top_k: int = Query(default=10, description="Number of top documents to return", example=10),
-    similarity_threshold: float = Query(default=0.0, description="Similarity threshold to filter sources", example=0.75)
+    similarity_threshold: float = Query(
+        default=0.0, description="Similarity threshold to filter sources", example=0.75
+    ),
 ):
     # TODO add logging
     if bool(document) ^ bool(document_collection):
@@ -281,7 +283,7 @@ async def get_collections_ranking(
         document=document,
         document_collection=document_collection,
         user_security_groups=token_data["security_groups"],
-        similarity_threshold=similarity_threshold
+        similarity_threshold=similarity_threshold,
     )
 
 
