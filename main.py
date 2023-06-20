@@ -21,7 +21,7 @@ from handlers import (
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
-from utils.api import catch_errors, log_get_answer, stream_and_log
+from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
 from utils.gunicorn_logging import run_gunicorn_loguru
@@ -255,6 +255,7 @@ async def get_collections_ranking(
     similarity_threshold: float = Query(
         default=0.0, description="Similarity threshold to filter sources", example=0.75
     ),
+    user: str = Query(default=None, description="User ID", example="1234567890"),
 ):
     # TODO add logging
     if bool(document) ^ bool(document_collection):
@@ -263,7 +264,7 @@ async def get_collections_ranking(
             detail="Both document and document_collection must be provided",
         )
     token_data = decode_token(token)
-    check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
+    # check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
     if not collections:
         collections = [
             collection.name
@@ -273,7 +274,7 @@ async def get_collections_ranking(
                 api_version=api_version,
             ).collections
         ]
-    return await collection_handler.get_ranking(
+    response = await collection_handler.get_ranking(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collections=collections,
@@ -285,7 +286,18 @@ async def get_collections_ranking(
         user_security_groups=token_data["security_groups"],
         similarity_threshold=similarity_threshold,
     )
-
+    request_id = log_get_ranking(
+        document_ids=[source.id for source in response.sources],
+        query=query,
+        request=request,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collections=collections,
+        user=user,
+    )
+    response.request_id = request_id
+    return response
 
 @app.get(
     "/{api_version}/collections/{collection}",

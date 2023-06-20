@@ -26,6 +26,35 @@ async def stream_and_log(generator, request_id):
     )
 
 
+def log_get_ranking(
+    document_ids: Union[str, List[str]],
+    query: str,
+    request: Request,
+    api_version: str,
+    vendor: str = None,
+    organization: str = None,
+    collections: List[str] = None,
+    user: str = None
+) -> str:
+    if isinstance(document_ids, str) == str:
+        document_ids = [document_ids]
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "document_id": document_ids,
+        "query": query,
+        "api_version": api_version,
+        "vendor": vendor,
+        "organization": organization,
+        "collections": collections,
+        "user": user,
+    }
+    request_id = DB[CONFIG["mongo"]["requests_ranking_collection"]].insert_one(row).inserted_id
+    logger.info(
+        f"RANKING: {vendor}:{organization} over collections: {collections}, query: {query}, api_version: {api_version}, docs: {document_ids}"
+    )
+    return str(request_id)
+
 def log_get_answer(
     answer: str,
     context: str,

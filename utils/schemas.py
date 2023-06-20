@@ -126,6 +126,10 @@ class Source(BaseModel):
 
 
 class GetCollectionRankingResponse(BaseModel):
+    request_id: str | None = Field(
+        description="A request id which for use in future requests",
+        example="63cbd74e8d31a62a1512eab1",
+    )
     sources: List[Source] = Field(
         description="List of sources from given collection",
         example=[
