@@ -49,7 +49,7 @@ class CollectionHandler:
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         security_code = int_list_encode(user_security_groups)
-        chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
+        _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections,
             query_embedding,
             self.top_k_chunks,
@@ -124,7 +124,7 @@ class CollectionHandler:
 
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
 
-        chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
+        _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             search_collections,
             embedding,
             self.top_k_chunks,
@@ -237,6 +237,7 @@ class CollectionHandler:
         document: str = None,
         document_collection: str = None,
         collections: List[str] = None,
+        similarity_threshold=0,
     ) -> GetCollectionRankingResponse:
         organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
@@ -253,7 +254,7 @@ class CollectionHandler:
         # extracting more than top_k chunks because each
         # document might be represented by several chunks
         collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
-        _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
+        similarities, _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             collections_search,
             embedding,
             top_k * 5,
@@ -265,7 +266,9 @@ class CollectionHandler:
 
         sources, seen, seen_title, i = [], set(), set(), 0
         while len(sources) < top_k and i < len(titles):
-            if titles[i] not in seen_title or doc_ids[i] not in seen:
+            if len(sources) == 0 or (
+                similarities[i] > similarity_threshold and (titles[i] not in seen_title or doc_ids[i] not in seen)
+            ):
                 sources.append(
                     Source(
                         id=doc_ids[i],

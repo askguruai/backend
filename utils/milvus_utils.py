@@ -21,6 +21,9 @@ class CollectionsManager:
         self.cache_size = collections_cache_size  # does not do anything just yet
         self.cache = {}
         for collection_name in utility.list_collections():
+            if collection_name.endswith("_website"):
+                # not loading these to cache on startup
+                continue
             col = Collection(collection_name)
             col.load()
             self.cache[collection_name] = col
@@ -66,7 +69,7 @@ class CollectionsManager:
             "params": {"nprobe": 10},
         }
         all_chunks = []
-        all_distances = []
+        all_similarities = []
         all_titles = []
         all_ids = []
         all_summaries = []
@@ -87,7 +90,7 @@ class CollectionsManager:
                         hit.entity.get("doc_id") != document_id_to_exclude
                         or document_collection != collection.name.split("_")[-1]
                     ) and (hit.entity.get("security_groups") & security_code):
-                        all_distances.append(dist)
+                        all_similarities.append(dist)
                         all_chunks.append(hit.entity.get("chunk"))
                         all_titles.append(hit.entity.get("doc_title"))
                         all_ids.append(hit.entity.get("doc_id"))
@@ -96,8 +99,9 @@ class CollectionsManager:
             if len(all_chunks) >= n_top:
                 # we found enough, can stop now
                 break
-        top_hits = np.argsort(all_distances)[-n_top:][::-1]
+        top_hits = np.argsort(all_similarities)[-n_top:][::-1]
         return (
+            np.array(all_similarities)[top_hits].tolist(),
             np.array(all_chunks)[top_hits].tolist(),
             np.array(all_titles)[top_hits].tolist(),
             np.array(all_ids)[top_hits].tolist(),

@@ -21,3 +21,5 @@ tiktoken
 beautifulsoup4
 typer[all]
 tenacity
+python-docx
+simplify-docx
