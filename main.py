@@ -119,7 +119,9 @@ async def get_info(
 
 
 @app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
-@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses)(get_livechat_token)
+@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False)(
+    get_livechat_token
+)
 
 
 ######################################################
@@ -356,7 +358,7 @@ async def upload_collection_documents(
 @app.delete(
     "/{api_version}/collections/{collection}",
     response_model=CollectionDocumentsResponse,
-    responses=CollectionResponses,
+    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
 async def upload_collection_documents(

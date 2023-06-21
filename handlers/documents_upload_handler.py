@@ -2,11 +2,13 @@ import hashlib
 import logging
 from typing import Dict, List
 
+from fastapi import HTTPException, status
 from loguru import logger
 from tqdm import tqdm
 
 from parsers import DocumentsParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils.errors import DatabaseError
 from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc
 
 
@@ -112,7 +114,15 @@ class DocumentsUploadHandler:
         documents: List[str],
     ) -> CollectionDocumentsResponse:
         org_hash = hash_string(organization)
-        collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
+        full_collection_name = f"{vendor}_{org_hash}_{collection}"
+        try:
+            collection = MILVUS_DB[full_collection_name]
+        except DatabaseError:
+            logger.error(f"Requested collection {vendor}_{organization}_{collection} not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Requested collection '{collection}' not found",
+            )
         documents = [f"'{doc}'" for doc in documents]
         existing_chunks = collection.query(
             expr=f'doc_id in [{",".join(documents)}]',
