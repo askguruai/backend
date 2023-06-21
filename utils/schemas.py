@@ -20,6 +20,7 @@ class HTTPExceptionResponse(BaseModel):
 class AuthExceptionResponse(BaseModel):
     detail: str = Field(example="Could not validate credentials")
 
+
 class NotFoundResponse(BaseModel):
     detail: str = Field(example="Requested resource not found")
 

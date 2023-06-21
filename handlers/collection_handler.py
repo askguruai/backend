@@ -5,12 +5,12 @@ from typing import List, Tuple
 
 import numpy as np
 import tiktoken
+from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
-from fastapi import status, HTTPException
 from loguru import logger
 
 from utils import DB, MILVUS_DB, hash_string, ml_requests
-from utils.errors import DocumentAccessRestricted, InvalidDocumentIdError, DatabaseError
+from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import int_list_encode
 from utils.schemas import (
     ApiVersion,
