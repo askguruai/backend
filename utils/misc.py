@@ -1,4 +1,3 @@
-from utils import CONFIG
 from utils.errors import SecurityGroupError
 
 

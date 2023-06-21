@@ -34,7 +34,7 @@ def log_get_ranking(
     vendor: str = None,
     organization: str = None,
     collections: List[str] = None,
-    user: str = None
+    user: str = None,
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -54,6 +54,7 @@ def log_get_ranking(
         f"RANKING: {vendor}:{organization} over collections: {collections}, query: {query}, api_version: {api_version}, docs: {document_ids}"
     )
     return str(request_id)
+
 
 def log_get_answer(
     answer: str,

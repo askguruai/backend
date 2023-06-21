@@ -299,6 +299,7 @@ async def get_collections_ranking(
     response.request_id = request_id
     return response
 
+
 @app.get(
     "/{api_version}/collections/{collection}",
     response_model=GetCollectionResponse,
