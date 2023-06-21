@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from parsers import DocumentsParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
-from utils.schemas import ApiVersion, Chat, Doc, UploadCollectionDocumentsResponse
+from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc
 
 
 class DocumentsUploadHandler:
@@ -22,7 +22,7 @@ class DocumentsUploadHandler:
         organization: str,
         collection: str,
         documents: List[Doc] | List[Chat] | List[str],
-    ) -> UploadCollectionDocumentsResponse:
+    ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
             # representing them as docs and flatten the list
@@ -101,4 +101,27 @@ class DocumentsUploadHandler:
                 )
             logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
 
-        return UploadCollectionDocumentsResponse(n_chunks=len(all_chunks))
+        return CollectionDocumentsResponse(n_chunks=len(all_chunks))
+
+    async def delete_documents(
+        self,
+        api_version: str,
+        vendor: str,
+        organization: str,
+        collection: str,
+        documents: List[str],
+    ) -> CollectionDocumentsResponse:
+        org_hash = hash_string(organization)
+        collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
+        documents = [f"'{doc}'" for doc in documents]
+        existing_chunks = collection.query(
+            expr=f'doc_id in [{",".join(documents)}]',
+            offset=0,
+            limit=16384,
+            output_fields=["pk"],
+            consistency_level="Strong",
+        )
+        existing_chunks_pks = [str(hit["pk"]) for hit in existing_chunks]
+        collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
+        logger.info(f"Request of {len(documents)} docs deleted from database in {len(existing_chunks_pks)} chunks")
+        return CollectionDocumentsResponse(n_chunks=len(existing_chunks_pks))

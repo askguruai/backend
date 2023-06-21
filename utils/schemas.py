@@ -248,8 +248,8 @@ class UploadDocumentResponse(BaseModel):
     document_id: str = Field(description="ID of an uploaded document.", example="7af8c3e548e40aeb984c42dd")
 
 
-class UploadCollectionDocumentsResponse(BaseModel):
-    n_chunks: str = Field(description="Number of chunks successfully uploaded", example="5")
+class CollectionDocumentsResponse(BaseModel):
+    n_chunks: str = Field(description="Number of chunks successfully uploaded / deleted", example="5")
 
 
 class LikeStatus(str, Enum):

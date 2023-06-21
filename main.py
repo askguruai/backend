@@ -28,6 +28,7 @@ from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     Chat,
+    CollectionDocumentsResponse,
     CollectionResponses,
     Doc,
     DocumentRequest,
@@ -45,7 +46,6 @@ from utils.schemas import (
     NotFoundResponse,
     SetReactionRequest,
     TextRequest,
-    UploadCollectionDocumentsResponse,
     UploadDocumentResponse,
 )
 from utils.uvicorn_logging import RequestLoggerMiddleware
@@ -324,7 +324,7 @@ async def get_collection(
 
 @app.post(
     "/{api_version}/collections/{collection}",
-    response_model=UploadCollectionDocumentsResponse,
+    response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
 )
 @catch_errors
@@ -350,6 +350,29 @@ async def upload_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=documents if documents else chats if chats else links,
+    )
+
+
+@app.delete(
+    "/{api_version}/collections/{collection}",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+)
+@catch_errors
+async def upload_collection_documents(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    documents: List[str] = Body(None, description="List of ids of documents to delete", example=["1234567890"]),
+):
+    token_data = decode_token(token)
+    return await documents_upload_handler.delete_documents(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=documents,
     )
 
 
