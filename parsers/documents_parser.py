@@ -106,7 +106,7 @@ class DocumentsParser:
                 depth += 1
 
         logger.info(f"Found {len(docs)} documents on {root_link}")
-        return docs
+        return docs[:max_total_docs]
 
     def doc_to_chunks(self, content: str, title: str = "", summary: str = "") -> List[str]:
         chunks = []
