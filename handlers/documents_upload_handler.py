@@ -48,7 +48,7 @@ class DocumentsUploadHandler:
                 offset=0,
                 limit=10000,
                 output_fields=["pk", "chunk_hash", "security_groups", "timestamp"],
-                consistency_level="Strong",
+                consistency_level="Eventually",
             )
             existing_chunks = {
                 hit["chunk_hash"]: (hit["pk"], hit["security_groups"], hit["timestamp"]) for hit in existing_chunks
