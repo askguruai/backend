@@ -1,7 +1,8 @@
 import os
-import numpy as np
-from tqdm import tqdm 
 import sys
+
+import numpy as np
+from tqdm import tqdm
 
 sys.path.insert(1, os.getcwd())
 
@@ -10,6 +11,7 @@ from loguru import logger
 from utils import CONFIG, MILVUS_DB
 
 COL_NAME, TOTAL, BATCH = "test_load", 20000, 500
+
 
 def insert(collection, amount, batch):
     for _ in tqdm(range(0, amount, batch)):
@@ -21,9 +23,10 @@ def insert(collection, amount, batch):
             [""] * batch,
             [""] * batch,
             [0] * batch,
-            [2**63 - 1] * batch
+            [2**63 - 1] * batch,
         ]
         collection.insert(data)
+
 
 def search():
     logger.info("Starting search!")
@@ -34,6 +37,7 @@ def search():
         "v1",
     )
     logger.info("Search finished!")
+
 
 def main():
     collection = MILVUS_DB.get_or_create_collection(COL_NAME)

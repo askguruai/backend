@@ -67,20 +67,29 @@ COLLECTIONS_MAPPING = {
 """## Imports"""
 
 
-import requests
 import json
-from loguru import logger
 import re
-import pandas as pd
 from pprint import pprint
+
+import pandas as pd
+import requests
+from loguru import logger
 
 """# Api definition
 
 These are just API calls with fancy results displaying
 """
 
+
 class Api:
-    def __init__(self, api_url: str, api_version: str, source_pattern: str, collections_mapping: dict = {}, if_jupyter: bool = False):
+    def __init__(
+        self,
+        api_url: str,
+        api_version: str,
+        source_pattern: str,
+        collections_mapping: dict = {},
+        if_jupyter: bool = False,
+    ):
         self.api_url = api_url
         self.api_version = api_version
         self.token = None
@@ -89,9 +98,7 @@ class Api:
         self.collections_mapping = collections_mapping
         self.collections = []
 
-    def _make_request(
-        self, method: str, endpoint: str, params: dict = {}, json: dict = {}
-    ):
+    def _make_request(self, method: str, endpoint: str, params: dict = {}, json: dict = {}):
         url = f"{self.api_url}/{self.api_version}{endpoint}"
         response = requests.request(
             method,
@@ -121,7 +128,11 @@ class Api:
         text = ""
         for collection in response["collections"]:
             text += f"- `{collection['name']}` ({collection['n_documents']} документов)"
-            text += f" — {self.collections_mapping[collection['name']]}" if collection['name'] in self.collections_mapping else ""
+            text += (
+                f" — {self.collections_mapping[collection['name']]}"
+                if collection['name'] in self.collections_mapping
+                else ""
+            )
             text += "\n"
         display(Markdown(text))
         self.collections = [collection['name'] for collection in response["collections"]]
@@ -141,7 +152,11 @@ class Api:
         for i, source in enumerate(response["sources"]):
             text += f"{i + 1}. [{source['title'].replace('message text: ', '')}]({source['id']})"
             # text += f" ({source['summary'].split('>')[0]})" if '>' in source['summary'] else ""
-            text += f" ({self.collections_mapping[source['collection']]})" if source['collection'] in self.collections_mapping else ""
+            text += (
+                f" ({self.collections_mapping[source['collection']]})"
+                if source['collection'] in self.collections_mapping
+                else ""
+            )
             text += "\n"
         display(Markdown(text))
         return response["sources"]
@@ -150,19 +165,32 @@ class Api:
     def postprocess_output(s: str) -> str:
         return s[: max(s.find(")"), s.rfind("."), s.rfind("?"), s.rfind("!"), s.rfind("\n")) + 1]
 
-    def get_answer(self, query: str, user: str = "", collections: list[str] = [], collections_only: bool = False, stream: bool = False):
+    def get_answer(
+        self,
+        query: str,
+        user: str = "",
+        collections: list[str] = [],
+        collections_only: bool = False,
+        stream: bool = False,
+    ):
         if not collections:
             collections = self.collections
-        params = {"collections": collections, "query": query, "user": user, "collections_only": collections_only, "stream": stream}
+        params = {
+            "collections": collections,
+            "query": query,
+            "user": user,
+            "collections_only": collections_only,
+            "stream": stream,
+        }
         response = self._make_request("GET", f"/collections/answer", params=params)
         if stream:
             answer = ""
             generated_sources = []
             for line in response.iter_lines():
                 if line.startswith(b'event: '):
-                    event = line[len(b'event: '):].decode()
+                    event = line[len(b'event: ') :].decode()
                 elif line.startswith(b'data: '):
-                    data_str = line[len(b'data: '):].decode()
+                    data_str = line[len(b'data: ') :].decode()
                     data = json.loads(data_str)
                     if event == 'message':
                         sources = data['sources']
@@ -226,7 +254,14 @@ class Api:
         response = self._make_request("DELETE", "/filters", json=json)
         logger.info(response)
 
-api = Api(api_url=API_URL, api_version=API_VERSION, source_pattern=SOURCE_PATTERN, collections_mapping=COLLECTIONS_MAPPING, if_jupyter=IF_JUPYTER)
+
+api = Api(
+    api_url=API_URL,
+    api_version=API_VERSION,
+    source_pattern=SOURCE_PATTERN,
+    collections_mapping=COLLECTIONS_MAPPING,
+    if_jupyter=IF_JUPYTER,
+)
 
 """## Retrieving token"""
 
@@ -238,31 +273,8 @@ data = pd.read_csv("./data/tadahack/tg.csv")
 documents = []
 for text in data["Text"]:
     if text and type(text) == str:
-        documents.append({
-            "id": "https://t.me/arturdulkarnaev",
-            "title": text.split("\r\n")[0],
-            "content": text
-        })
+        documents.append({"id": "https://t.me/arturdulkarnaev", "title": text.split("\r\n")[0], "content": text})
 api.upload_collection_documents(collection="tgdulkarnaev", documents=documents)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 """## Getting collections"""
