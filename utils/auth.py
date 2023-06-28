@@ -46,10 +46,17 @@ async def get_organization_token(
             detail="You are only allowed to access organizations from tada vendor",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if password == os.environ["AUTH_COLLECTION_PASSWORD_ONECLICKCX"] and vendor != "oneclickcx":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="You are only allowed to access organizations from oneclickcx vendor",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     if password not in [
         os.environ["AUTH_COLLECTION_PASSWORD"],
         os.environ["AUTH_COLLECTION_PASSWORD_TADA"],
         os.environ["AUTH_COLLECTION_PASSWORD_ASKGURUPUBLIC"],
+        os.environ["AUTH_COLLECTION_PASSWORD_ONECLICKCX"],
     ]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
