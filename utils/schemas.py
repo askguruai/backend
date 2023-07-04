@@ -65,7 +65,7 @@ class Chat(BaseModel):
 
 class Doc(BaseModel):
     content: str = Field(description="Content of the document", example="")
-    id: str  = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
+    id: str = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
     title: str = Field(description="Title of the document", example="Passwords")
     timestamp: int | None = Field(description="Document last change time in seconds", example=1688474672)
     summary: str | None = Field(description="Summary of the document", example="Instruction when forget password")
