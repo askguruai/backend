@@ -12,8 +12,8 @@ from utils.errors import CoreMLError
 
 
 @retry(
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(multiplier=1, min=1, max=60),
+    stop=stop_after_attempt(8),
+    wait=wait_exponential(multiplier=1, min=1, max=120),
     before_sleep=before_sleep_log(logger, "WARNING"),
 )
 async def get_embeddings(chunks: List[str] | str, api_version: str) -> List[np.ndarray]:
