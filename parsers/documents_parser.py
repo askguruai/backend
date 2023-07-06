@@ -28,7 +28,6 @@ class DocumentsParser:
             meta = {
                 "doc_id": document.id if document.id is not None else hash_string(document.content),
                 "doc_title": document.title if document.title is not None else "",
-                "doc_summary": document.summary if document.summary is not None else "",
                 "timestamp": int(document.timestamp)
                 if document.timestamp is not None
                 else int(datetime.now().timestamp()),
@@ -36,7 +35,8 @@ class DocumentsParser:
                 if document.security_groups is not None
                 else 2**63 - 1,
             }
-            chunks = self.doc_to_chunks(document.content, meta["doc_title"], meta["doc_summary"])
+            content = document.content
+            chunks = self.doc_to_chunks(document.content, meta["doc_title"])
         elif isinstance(document, Chat):
             meta = {
                 "doc_id": document.id,
@@ -46,8 +46,9 @@ class DocumentsParser:
                 "security_groups": int_list_encode(document.security_groups),
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
+            content = "\n".join(text_lines)
             chunks = self.chat_to_chunks(text_lines)
-        return chunks, meta
+        return chunks, meta, content
 
     async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set) -> Doc:
         headers = {

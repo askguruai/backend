@@ -24,6 +24,8 @@ class DocumentsUploadHandler:
         organization: str,
         collection: str,
         documents: List[Doc] | List[Chat] | List[str],
+        summarize: bool,
+        summary_length: int = CONFIG["misc"]["default_summary_length"]
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
@@ -41,7 +43,7 @@ class DocumentsUploadHandler:
         all_timestamps = []
         all_security_groups = []
         for doc in tqdm(documents):
-            chunks, meta_info = self.parser.process_document(doc)
+            chunks, meta_info, content = self.parser.process_document(doc)
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f'doc_id=="{doc_id}"',
@@ -74,10 +76,15 @@ class DocumentsUploadHandler:
             if len(new_chunks) == 0:
                 # everyting is already in the database
                 continue
+            if summarize:
+                summary = await ml_requests.get_summary(info=content, max_tokens=summary_length, api_version=api_version)
+            else:
+                summary = ""
+
             all_chunks.extend(new_chunks)
             all_doc_ids.extend([meta_info["doc_id"]] * len(new_chunks))
             all_doc_titles.extend([meta_info["doc_title"]] * len(new_chunks))
-            all_summaries.extend([meta_info["doc_summary"]] * len(new_chunks))
+            all_summaries.extend([summary] * len(new_chunks))
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
