@@ -14,7 +14,7 @@ from aiohttp import ClientSession
 from loguru import logger
 from pymilvus import utility
 
-from parsers import DocxParser
+from parsers import DocxParser, PdfParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, MILVUS_DB, hash_string, ml_requests
 from utils.tokenize_ import doc_to_chunks
 
@@ -39,17 +39,16 @@ DOCS_N_LINKS = {
 
 async def process_file(filepath: str, parser: DocxParser, collection, api_version):
     filename = osp.split(filepath)[1]
-    doc_link = DOCS_N_LINKS[filename]
+    # doc_link = DOCS_N_LINKS[filename]
     chunks, content, meta_info = parser.process_file(filepath)
-    # trimmed_content = content.split("FAQ")
-    # print(f"{filename} Split in {len(trimmed_content)} parts")
-    # trimmed_content = trimmed_content[0]
-    summary = await ml_requests.get_summary(
-        info=content, max_tokens=int(CONFIG["coreml"]["summarization_max_tokens"]), api_version=api_version
-    )
+    # summary = await ml_requests.get_summary(
+    #     info=content, max_tokens=int(CONFIG["coreml"]["summarization_max_tokens"]), api_version=api_version
+    # )
+    summary=""
     if len(chunks) == 0:
         return True  # nothing to do
-    doc_id = DOCS_N_LINKS[filename]
+    # doc_id = DOCS_N_LINKS[filename]
+    doc_id = hash_string(content)
     existing_chunks = collection.query(
         expr=f'doc_id=="{doc_id}"',
         offset=0,
@@ -85,7 +84,7 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
 
     data = [
         new_chunks_hashes,
-        [doc_link] * len(new_chunks),
+        [doc_id] * len(new_chunks),
         new_chunks,
         embeddings,
         [meta_info["doc_title"]] * len(new_chunks),
@@ -123,12 +122,13 @@ if __name__ == "__main__":
     # exit(0)
 
     collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{organization}_{collection_name}")
-    docx_parser = DocxParser(1024)
+    # parser = DocxParser(1024)
+    parser = PdfParser(1024)
 
-    all_docs = glob.glob(osp.join(args.source, "*.docx"))
+    all_docs = glob.glob(osp.join(args.source, "*.pdf"))
     loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(main(docx_parser, all_docs, collection, args.api_version))
+        loop.run_until_complete(main(parser, all_docs, collection, args.api_version))
         loop.run_until_complete(loop.shutdown_asyncgens())
     finally:
         loop.close()
