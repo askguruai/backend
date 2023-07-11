@@ -336,7 +336,7 @@ async def upload_collection_documents(
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
     summarize: bool = Body(
-        description="Whether to summarize documents. Will override `summary` that is passed with the document"
+        False, description="Whether to summarize documents. Will override `summary` that is passed with the document"
     ),
     summary_length: int = Body(
         CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
