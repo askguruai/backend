@@ -79,7 +79,7 @@ class DocumentsUploadHandler:
             if summarize:
                 summary = await ml_requests.get_summary(info=content, max_tokens=summary_length, api_version=api_version)
             else:
-                summary = ""
+                summary = meta_info["summary"]
 
             all_chunks.extend(new_chunks)
             all_doc_ids.extend([meta_info["doc_id"]] * len(new_chunks))
