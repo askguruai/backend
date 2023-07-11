@@ -44,7 +44,7 @@ async def process_file(filepath: str, parser: DocxParser, collection, api_versio
     # summary = await ml_requests.get_summary(
     #     info=content, max_tokens=int(CONFIG["coreml"]["summarization_max_tokens"]), api_version=api_version
     # )
-    summary=""
+    summary = ""
     if len(chunks) == 0:
         return True  # nothing to do
     # doc_id = DOCS_N_LINKS[filename]
@@ -114,8 +114,9 @@ if __name__ == "__main__":
     parser.add_argument("--api_version", choices=["v1", "v2"], default="v1")
     args = parser.parse_args()
 
-    collection_name = "internal"
-    vendor = "oneclickcx"
+    # collection_name = "internal"
+    collection_name = "test"
+    vendor = "askguru"
     organization = hash_string(vendor)
 
     # utility.drop_collection(f"{vendor}_{organization}_{collection_name}")
