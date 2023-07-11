@@ -5,7 +5,7 @@ from typing import List, Tuple
 import fitz
 
 from parsers.general_parser import GeneralParser
-from utils.tokenize_ import doc_to_chunks, doc_to_chunks2
+from utils.tokenize_ import doc_to_chunks
 
 
 class PdfParser(GeneralParser):
@@ -22,6 +22,5 @@ class PdfParser(GeneralParser):
                 content += page.get_text()
         content = re.sub(r"\.\.\.\.+", "...", content)
         meta["security_groups"] = 2**63 - 1
-        chunks = doc_to_chunks2(content=content, title=file_name)
         chunks = doc_to_chunks(content=content, title=file_name)
         return chunks, content, meta
