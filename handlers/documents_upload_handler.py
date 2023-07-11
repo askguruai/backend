@@ -25,7 +25,7 @@ class DocumentsUploadHandler:
         collection: str,
         documents: List[Doc] | List[Chat] | List[str],
         summarize: bool,
-        summary_length: int = CONFIG["misc"]["default_summary_length"]
+        summary_length: int = CONFIG["misc"]["default_summary_length"],
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
@@ -77,7 +77,9 @@ class DocumentsUploadHandler:
                 # everyting is already in the database
                 continue
             if summarize:
-                summary = await ml_requests.get_summary(info=content, max_tokens=summary_length, api_version=api_version)
+                summary = await ml_requests.get_summary(
+                    info=content, max_tokens=summary_length, api_version=api_version
+                )
             else:
                 summary = meta_info["summary"]
 
