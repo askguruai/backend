@@ -35,11 +35,11 @@ async def upload_resources(vendor: str, organization: str, collection:str, conte
     collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
 
     embeddings = await ml_requests.get_embeddings(chunks=new_chunks, api_version=api_version)
-    collection.insert(
+    collection.insert([
         new_chunks_hashes,
         [doc_id] * len(new_chunks_hashes),
         embeddings
-    )
+    ])
 
     return {"n_chunks": len(new_chunks_hashes)}
 

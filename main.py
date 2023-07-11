@@ -678,7 +678,7 @@ async def upload_edu_info(
     content: str = Body(description="Content to be chunkized and embedded")
 ):
     token_data = decode_token(token)
-    return upload_edu_resources(vendor=token_data["vendor"],
+    return await upload_edu_resources(vendor=token_data["vendor"],
                                 organization=token_data["organization"],
                                 collection=collection,
                                 content=content,
