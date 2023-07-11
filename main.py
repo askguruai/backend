@@ -656,6 +656,36 @@ async def archive_filter_rule_epoint(
     )
     return response
 
+######################################################
+#                     PLATFORM                       #
+######################################################
+
+
+from handlers.edu_resource_handler import upload_resources as upload_edu_resources
+
+
+@app.post(
+    "/{api_version}/eduplatform/upload/{collection}",
+    include_in_schema=False
+)
+@catch_errors
+async def upload_edu_info(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection title", examples="resources"),
+    resource_id: str = Body(description="Resource or Topic id from database"),
+    content: str = Body(description="Content to be chunkized and embedded")
+):
+    token_data = decode_token(token)
+    return upload_edu_resources(vendor=token_data["vendor"],
+                                organization=token_data["organization"],
+                                collection=collection,
+                                content=content,
+                                doc_id=resource_id,
+                                api_version=api_version)
+    
+
 
 if __name__ == '__main__':
     options = {

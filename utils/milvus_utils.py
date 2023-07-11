@@ -1,5 +1,6 @@
 import os
 from typing import Dict, List, Tuple
+from enum import Enum
 
 import numpy as np
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
@@ -11,9 +12,14 @@ connections.connect(
     "default",
     host=CONFIG["milvus"]["host"],
     port=CONFIG["milvus"]["port"],
-    user=os.environ["MILVUS_USERNAME"],
-    password=os.environ["MILVUS_PASSWORD"],
+    user="root",
+    password="Milvus"
 )
+
+
+class CollectionType(Enum):
+    DEFAULT = "default"
+    EDUPLAT = "edu"
 
 
 class CollectionsManager:
@@ -108,9 +114,9 @@ class CollectionsManager:
             np.array(all_summaries)[top_hits].tolist(),
             np.array(all_collections)[top_hits].tolist(),
         )  # todo
-
-    def get_or_create_collection(self, collection_name: str) -> Collection:
-        if collection_name not in self.cache:
+    
+    def __create_new_collection(self, collection_name: str, collection_type: CollectionType) -> Collection:
+        if collection_type == CollectionType.DEFAULT:
             fields = [
                 FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
                 FieldSchema(
@@ -138,7 +144,35 @@ class CollectionsManager:
                 field_name="doc_id",
                 index_name="scalar_index",
             )
-            # todo: do we need an index on primary key? we do if it is not auto, need to check
+        elif collection_type == CollectionType.EDUPLAT:
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(
+                    name="chunk_hash",
+                    dtype=DataType.VARCHAR,
+                    max_length=24,
+                ),
+                FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+            ]
+            schema = CollectionSchema(fields)
+            m_collection = Collection(collection_name, schema)
+            index_params = {
+                "metric_type": "IP",
+                "index_type": "IVF_FLAT",
+                "params": {"nlist": 1024},
+            }
+            m_collection.create_index(field_name="emb_v1", index_params=index_params)
+            m_collection.create_index(
+                field_name="doc_id",
+                index_name="scalar_index",
+            )
+        return m_collection
+
+    def get_or_create_collection(self, collection_name: str, collection_type: CollectionType = CollectionType.DEFAULT) -> Collection:
+        if collection_name not in self.cache:
+            m_collection = self.__create_new_collection(collection_name=collection_name, 
+                                                        collection_type=collection_type)
             m_collection.load()
             self.cache[collection_name] = m_collection
         return self.cache[collection_name]
