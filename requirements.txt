@@ -23,3 +23,4 @@ typer[all]
 tenacity
 python-docx
 simplify-docx
+pydantic==1.10.11

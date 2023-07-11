@@ -335,6 +335,12 @@ async def upload_collection_documents(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
+    summarize: bool = Body(
+        False, description="Whether to summarize documents. Will override `summary` that is passed with the document"
+    ),
+    summary_length: int = Body(
+        CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
+    ),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
@@ -352,6 +358,8 @@ async def upload_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=documents if documents else chats if chats else links,
+        summarize=summarize,
+        summary_length=summary_length,
     )
 
 
