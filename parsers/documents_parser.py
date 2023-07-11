@@ -32,14 +32,13 @@ class DocumentsParser:
                 "timestamp": int(document.timestamp)
                 if document.timestamp is not None
                 else int(datetime.now().timestamp()),
-                "summary": document.summary if document.summary is not None else "",
+                "doc_summary": document.summary if document.summary is not None else "",
                 "security_groups": int_list_encode(document.security_groups)
                 if document.security_groups is not None
                 else 2**63 - 1,
             }
             chunks = doc_to_chunks(document.content, meta["doc_title"], meta["doc_summary"])
             content = document.content
-            chunks = self.doc_to_chunks(document.content, meta["doc_title"])
         elif isinstance(document, Chat):
             meta = {
                 "doc_id": document.id,
