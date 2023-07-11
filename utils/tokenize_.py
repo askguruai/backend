@@ -1,5 +1,8 @@
+import time
+from collections import deque
 from typing import List
 
+import nltk
 import tiktoken
 
 from utils import CONFIG
@@ -19,34 +22,40 @@ def doc_to_chunks(
     summary: str = "",
     tokenizer_name: str = CONFIG["handlers"]["tokenizer_name"],
     chunk_size: int = int(CONFIG["handlers"]["chunk_size"]),
+    overlapping_lines: int = 5,
 ) -> List[str]:
     chunks = []
     encoder = get_tokenizer(tokenizer_name)
+    olap = deque([], overlapping_lines)
 
-    # TODO: omit title because it is already in summary
-
-    current_content, part = f"{summary}\n\n", 0
+    current_content, part = "", 0
     # TODO: split by lines which are bolded (in case of cars)
     # because they are the titles of the sections
     for line in content.split("\n"):
         if len(encoder.encode(current_content + line + "\n")) > chunk_size:
             chunks.append(current_content.strip())
-            current_content = f"{summary}\n\n"
+            current_content = f"{' '.join(olap)}\n"
             part += 1
 
-        line_tokens = encoder.encode(line)
-        if len(line_tokens) > chunk_size:
-            line_token_parts = [line_tokens[i : i + chunk_size] for i in range(0, len(line_tokens), chunk_size)]
-
-            for line_token_part in line_token_parts:
-                line_part = encoder.decode(line_token_part)
-                if len(encoder.encode(current_content + line_part + "\n")) > chunk_size:
+        if len(encoder.encode(line)) > chunk_size:
+            # splitting paragraph into sentences
+            sentences = nltk.tokenize.sent_tokenize(line)
+            for sent in sentences:
+                if len(encoder.encode(current_content + f" {sent}")) > chunk_size:
                     chunks.append(current_content.strip())
-                    current_content = f"{summary}\n\n"
-                current_content += line_part + "\n"
+                    current_content = f"{'. '.join(olap)}\n{sent}"
+                else:
+                    current_content += f" {sent}"
+                olap.extend(sent)
+
+            # should reapply the paragraph split
+            current_content += "\n"
 
         else:
             current_content += line + "\n"
+            # now need to append a few last sentences to our deque
+            sentences = nltk.tokenize.sent_tokenize(line)
+            olap.extend(sentences[-overlapping_lines:])
 
     chunks.append(current_content.strip())
     return chunks

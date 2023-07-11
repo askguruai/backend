@@ -14,6 +14,7 @@ from loguru import logger
 from utils import hash_string
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc
+from utils.tokenize_ import doc_to_chunks
 
 
 class DocumentsParser:
@@ -36,6 +37,7 @@ class DocumentsParser:
                 if document.security_groups is not None
                 else 2**63 - 1,
             }
+            chunks = doc_to_chunks(document.content, meta["doc_title"], meta["doc_summary"])
             content = document.content
             chunks = self.doc_to_chunks(document.content, meta["doc_title"])
         elif isinstance(document, Chat):
@@ -109,39 +111,6 @@ class DocumentsParser:
 
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
-
-    def doc_to_chunks(self, content: str, title: str = "", summary: str = "") -> List[str]:
-        chunks = []
-
-        # TODO: omit title because it is already in summary
-
-        current_content, part = f"{summary}\n\n", 0
-        # TODO: split by lines which are bolded (in case of cars)
-        # because they are the titles of the sections
-        for line in content.split("\n"):
-            if len(self.enc.encode(current_content + line + "\n")) > self.chunk_size:
-                chunks.append(current_content.strip())
-                current_content = f"{summary}\n\n"
-                part += 1
-
-            line_tokens = self.enc.encode(line)
-            if len(line_tokens) > self.chunk_size:
-                line_token_parts = [
-                    line_tokens[i : i + self.chunk_size] for i in range(0, len(line_tokens), self.chunk_size)
-                ]
-
-                for line_token_part in line_token_parts:
-                    line_part = self.enc.decode(line_token_part)
-                    if len(self.enc.encode(current_content + line_part + "\n")) > self.chunk_size:
-                        chunks.append(current_content.strip())
-                        current_content = f"{summary}\n\n"
-                    current_content += line_part + "\n"
-
-            else:
-                current_content += line + "\n"
-
-        chunks.append(current_content.strip())
-        return chunks
 
     def chat_to_chunks(self, text_lines: List[str]) -> List[str]:
         chunks = []
