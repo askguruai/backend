@@ -39,7 +39,6 @@ class DocumentsParser:
             }
             chunks = doc_to_chunks(document.content, meta["doc_title"], meta["doc_summary"])
             content = document.content
-            chunks = self.doc_to_chunks(document.content, meta["doc_title"])
         elif isinstance(document, Chat):
             meta = {
                 "doc_id": document.id,
