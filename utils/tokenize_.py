@@ -15,7 +15,7 @@ def get_tokenizer(tokenizer_name: str):
     return TOKEIZERS[tokenizer_name]
 
 
-def doc_to_chunks2(
+def doc_to_chunks(
     content: str,
     title: str = "",
     summary: str = "",
@@ -54,45 +54,7 @@ def doc_to_chunks2(
             current_content += line + "\n"
             # now need to append a few last sentences to our deque
             sentences = nltk.tokenize.sent_tokenize(line)
-            print(f"\n\nLast sentences: {sentences[-overlapping_lines:]}\n\n")
             olap.extend(sentences[-overlapping_lines:])
-
-    chunks.append(current_content.strip())
-    return chunks
-
-
-def doc_to_chunks(
-    content: str,
-    title: str = "",
-    summary: str = "",
-    tokenizer_name: str = CONFIG["handlers"]["tokenizer_name"],
-    chunk_size: int = int(CONFIG["handlers"]["chunk_size"]),
-) -> List[str]:
-    chunks = []
-    encoder = get_tokenizer(tokenizer_name)
-
-    current_content, part = "", 0
-    # TODO: split by lines which are bolded (in case of cars)
-    # because they are the titles of the sections
-    for line in content.split("\n"):
-        if len(encoder.encode(current_content + line + "\n")) > chunk_size:
-            chunks.append(current_content.strip())
-            current_content = ""
-            part += 1
-
-        line_tokens = encoder.encode(line)
-        if len(line_tokens) > chunk_size:
-            line_token_parts = [line_tokens[i : i + chunk_size] for i in range(0, len(line_tokens), chunk_size)]
-
-            for line_token_part in line_token_parts:
-                line_part = encoder.decode(line_token_part)
-                if len(encoder.encode(current_content + line_part + "\n")) > chunk_size:
-                    chunks.append(current_content.strip())
-                    current_content = ""
-                current_content += line_part + "\n"
-
-        else:
-            current_content += line + "\n"
 
     chunks.append(current_content.strip())
     return chunks
