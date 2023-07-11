@@ -1,10 +1,11 @@
+import time
+from collections import deque
 from typing import List
 
+import nltk
 import tiktoken
 
 from utils import CONFIG
-from collections import deque
-import nltk
 
 TOKEIZERS = {}
 
@@ -21,7 +22,7 @@ def doc_to_chunks(
     summary: str = "",
     tokenizer_name: str = CONFIG["handlers"]["tokenizer_name"],
     chunk_size: int = int(CONFIG["handlers"]["chunk_size"]),
-    overlapping_lines: int = 5
+    overlapping_lines: int = 5,
 ) -> List[str]:
     chunks = []
     encoder = get_tokenizer(tokenizer_name)
@@ -46,7 +47,7 @@ def doc_to_chunks(
                 else:
                     current_content += f" {sent}"
                 olap.extend(sent)
-            
+
             # should reapply the paragraph split
             current_content += "\n"
 
