@@ -44,6 +44,8 @@ from utils.schemas import (
     LinkRequest,
     Log,
     NotFoundResponse,
+    SearchFilters,
+    SearchResult,
     SetReactionRequest,
     TextRequest,
     UploadDocumentResponse,
@@ -656,35 +658,57 @@ async def archive_filter_rule_epoint(
     )
     return response
 
+
 ######################################################
 #                     PLATFORM                       #
 ######################################################
 
 
-from handlers.edu_resource_handler import upload_resources as upload_edu_resources
+from handlers.edu_resource_handler import search, upload_resource
 
 
-@app.post(
-    "/{api_version}/eduplatform/upload/{collection}",
-    include_in_schema=False
-)
+@app.post("/{api_version}/eduplatform/upload/resource", include_in_schema=False)
 @catch_errors
-async def upload_edu_info(
+async def upload_edu_resource(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection title", examples="resources"),
     resource_id: str = Body(description="Resource or Topic id from database"),
-    content: str = Body(description="Content to be chunkized and embedded")
+    content: str = Body(description="Content to be chunkized and embedded"),
+    type: int = Body(descroption="Resource type code"),
+    paid: int = Body(description="Resource paywall code"),
+    difficulty: int = Body(description="Resource difficulty code"),
 ):
     token_data = decode_token(token)
-    return await upload_edu_resources(vendor=token_data["vendor"],
-                                organization=token_data["organization"],
-                                collection=collection,
-                                content=content,
-                                doc_id=resource_id,
-                                api_version=api_version)
-    
+    return await upload_resource(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        content=content,
+        doc_id=resource_id,
+        type=type,
+        paid=paid,
+        difficulty=difficulty,
+        api_version=api_version,
+    )
+
+
+@app.post("/{api_version}/eduplatform/search", include_in_schema=False, response_model=SearchResult)
+@catch_errors
+async def search_resources(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    query: str = Body(description="Search query"),
+    search_params: SearchFilters = Body(description="Search filters object"),
+):
+    token_data = decode_token(token)
+    return await search(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        query=query,
+        filters=search_params,
+        api_version=api_version,
+    )
 
 
 if __name__ == '__main__':

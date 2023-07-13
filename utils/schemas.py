@@ -343,3 +343,57 @@ class GetFiltersResponse(BaseModel):
             }
         ],
     )
+
+
+############ EDU PLATFORM ############
+class ApiCollection(str, Enum):
+    RESOURCES = "resources"
+    TOPICS = "topics"
+
+
+class ResourceContentType(int, Enum):
+    BOOK = 0
+    ARTICLE = 1
+    RESOURCE = 2
+    TEMPLATE = 3
+    PODCAST = 4
+    VIDEO = 5
+    TOOL = 6
+    OTHER = 7
+    WEBSITE = 8
+    COURSE = 9
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class ResourcePriceType(int, Enum):
+    FREE = 0
+    FREEMIUM = 1
+    PAID = 2
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class ResourceDifficultyType(int, Enum):
+    BEGINNER = 1
+    EASY = 2
+    MODERATE = 3
+    HARD = 4
+    EXPERT = 5
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+
+class SearchFilters(BaseModel):
+    types: List[ResourceContentType] = Field(description="Resource types to search")
+    paid: List[ResourcePriceType] = Field(description="Resource pay settings")
+    difficulty: List[ResourceDifficultyType] = Field(description="Resource difficulty settings")
+    collections: List[ApiCollection] = Field(description="Collections to search")
+
+
+class SearchResult(BaseModel):
+    resources: List[str] = Field(description="Resources ids")
+    topics: List[str] = Field(description="Topics ids")

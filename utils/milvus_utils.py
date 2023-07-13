@@ -1,6 +1,6 @@
 import os
-from typing import Dict, List, Tuple
 from enum import Enum
+from typing import Dict, List, Tuple
 
 import numpy as np
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
@@ -12,8 +12,8 @@ connections.connect(
     "default",
     host=CONFIG["milvus"]["host"],
     port=CONFIG["milvus"]["port"],
-    user="root",
-    password="Milvus"
+    user=os.environ["MILVUS_USERNAME"],
+    password=os.environ["MILVUS_PASSWORD"],
 )
 
 
@@ -114,7 +114,7 @@ class CollectionsManager:
             np.array(all_summaries)[top_hits].tolist(),
             np.array(all_collections)[top_hits].tolist(),
         )  # todo
-    
+
     def __create_new_collection(self, collection_name: str, collection_type: CollectionType) -> Collection:
         if collection_type == CollectionType.DEFAULT:
             fields = [
@@ -154,6 +154,9 @@ class CollectionsManager:
                 ),
                 FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
                 FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+                FieldSchema(name="type", dtype=DataType.INT64),
+                FieldSchema(name="paid", dtype=DataType.INT64),
+                FieldSchema(name="difficulty", dtype=DataType.INT64),
             ]
             schema = CollectionSchema(fields)
             m_collection = Collection(collection_name, schema)
@@ -169,10 +172,13 @@ class CollectionsManager:
             )
         return m_collection
 
-    def get_or_create_collection(self, collection_name: str, collection_type: CollectionType = CollectionType.DEFAULT) -> Collection:
+    def get_or_create_collection(
+        self, collection_name: str, collection_type: CollectionType = CollectionType.DEFAULT
+    ) -> Collection:
         if collection_name not in self.cache:
-            m_collection = self.__create_new_collection(collection_name=collection_name, 
-                                                        collection_type=collection_type)
+            m_collection = self.__create_new_collection(
+                collection_name=collection_name, collection_type=collection_type
+            )
             m_collection.load()
             self.cache[collection_name] = m_collection
         return self.cache[collection_name]
