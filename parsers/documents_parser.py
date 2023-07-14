@@ -9,12 +9,16 @@ import requests
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
+from google.cloud import translate_v2 as translate
+from langdetect import detect as language_detect
 from loguru import logger
 
 from utils import hash_string
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc
 from utils.tokenize_ import doc_to_chunks
+
+TRANSLATE_CLIENT = translate.Client()
 
 
 class DocumentsParser:
@@ -24,7 +28,7 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
-    def process_document(self, document: Chat | Doc) -> Tuple[List[str], dict]:
+    def process_document(self, document: Chat | Doc, translate_to_en: bool) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
                 "doc_id": document.id if document.id is not None else hash_string(document.content),
@@ -37,8 +41,17 @@ class DocumentsParser:
                 if document.security_groups is not None
                 else 2**63 - 1,
             }
-            chunks = doc_to_chunks(document.content, meta["doc_title"], meta["doc_summary"])
-            content = document.content
+            if translate_to_en:
+                document_language = language_detect(document.content[:512])
+                if document_language != "en":
+                    result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
+                    content = result["translatedText"]
+                else:
+                    content = document.content
+            else:
+                content = document.content
+            chunks = doc_to_chunks(content, meta["doc_title"], meta["doc_summary"])
+
         elif isinstance(document, Chat):
             meta = {
                 "doc_id": document.id,

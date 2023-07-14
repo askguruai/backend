@@ -32,7 +32,7 @@ def doc_to_chunks(
     # TODO: split by lines which are bolded (in case of cars)
     # because they are the titles of the sections
     for line in content.split("\n"):
-        if len(encoder.encode(current_content + line + "\n")) > chunk_size:
+        if len(encoder.encode(current_content + line + "\n")) > chunk_size and current_content != "":
             chunks.append(current_content.strip())
             current_content = f"{' '.join(olap)}\n"
             part += 1
