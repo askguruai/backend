@@ -5,20 +5,16 @@ from typing import List, Tuple
 from urllib.parse import urljoin
 
 import html2text
-import requests
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
-from google.cloud import translate_v2 as translate
 from langdetect import detect as language_detect
 from loguru import logger
 
-from utils import hash_string
+from utils import TRANSLATE_CLIENT, hash_string
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc
 from utils.tokenize_ import doc_to_chunks
-
-TRANSLATE_CLIENT = translate.Client()
 
 
 class DocumentsParser:
@@ -44,8 +40,8 @@ class DocumentsParser:
             if translate_to_en:
                 document_language = language_detect(document.content[:512])
                 if document_language != "en":
-                    result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
-                    content = result["translatedText"]
+                    trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
+                    content = trans_result["translatedText"]
                 else:
                     content = document.content
             else:

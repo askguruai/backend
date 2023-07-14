@@ -164,6 +164,7 @@ async def get_collections_answer(
     document: str = Query(default=None, description="Document ID", example="1234567890"),
     document_collection: str = Query(default=None, description="Document collection", example="chats"),
     stream: bool = Query(default=False, description="Stream results", example=False),
+    project_to_en: bool = Query(default=True, description="Whether to project query into English for better precision"),
     collections_only: bool = Query(
         default=True,
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
@@ -215,6 +216,7 @@ async def get_collections_answer(
             document_collection=document_collection,
             stream=stream,
             collections_only=collections_only,
+            project_to_en=project_to_en,
         )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
@@ -335,7 +337,7 @@ async def upload_collection_documents(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
-    translate_to_en: bool = Body(
+    project_to_en: bool = Body(
         True, description="Whether to translate uploaded documet into Eng (increases model performance)"
     ),
     summarize: bool = Body(
@@ -361,7 +363,7 @@ async def upload_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=documents if documents else chats if chats else links,
-        translate_to_en=translate_to_en,
+        project_to_en=project_to_en,
         summarize=summarize,
         summary_length=summary_length,
     )

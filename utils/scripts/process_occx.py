@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     # collection_name = "internal"
     collection_name = "test"
-    vendor = "askguru"
+    vendor = "askgurupublic"
     organization = hash_string(vendor)
 
     # utility.drop_collection(f"{vendor}_{organization}_{collection_name}")

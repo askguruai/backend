@@ -7,9 +7,10 @@ import numpy as np
 import tiktoken
 from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
+from langdetect import detect as language_detect
 from loguru import logger
 
-from utils import DB, MILVUS_DB, hash_string, ml_requests
+from utils import MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import int_list_encode
 from utils.schemas import (
@@ -40,13 +41,27 @@ class CollectionHandler:
         query: str,
         api_version: ApiVersion,
         user_security_groups: List[int],
+        project_to_en: bool,
         document: str = None,
         document_collection: str = None,
         stream: bool = False,
         collections_only: bool = True,
     ) -> GetCollectionAnswerResponse:
         org_hash = hash_string(organization)
+        orig_lang = "en"
+        if project_to_en:
+            # sometimes makes false positives, maybe investigate other tools...Maybe track such cases and find rate
+            q_lang = language_detect(query)
+            if q_lang != "en":
+                trans_result = TRANSLATE_CLIENT.translate(query, target_language="en")
+                query = trans_result['translatedText']
+                orig_lang = trans_result["detectedSourceLanguage"]
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
+
+        # streaming only able when query was in english
+        # todo: try maybe stream by sentences or something or maybe google can receive and return stream
+        stream = stream and (orig_lang == "en")
+
         search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         security_code = int_list_encode(user_security_groups)
         _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
@@ -60,7 +75,11 @@ class CollectionHandler:
         )
         mode = "support"
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(answer="Unable to find an anser", sources=[])
+            # todo: make a cache or sth
+            answer = "Unable to find an anser"
+            if orig_lang is not None:
+                answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang)["translatedText"]
+            return GetCollectionAnswerResponse(answer, sources=[])
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
@@ -78,7 +97,6 @@ class CollectionHandler:
             logger.info(f"answer_in_context: {answer_in_context}")
             if not answer_in_context:
                 context, mode = "", "general"
-
         answer = await ml_requests.get_answer(context, query, api_version.value, mode=mode, stream=stream)
 
         sources, seen = [], set()
@@ -97,6 +115,8 @@ class CollectionHandler:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
             return response
 
+        if orig_lang != "en":
+            answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang)["translatedText"]
         return GetCollectionAnswerResponse(
             answer=answer,
             sources=sources,
