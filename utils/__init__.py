@@ -28,3 +28,7 @@ class ClientSessionWrapper:
 
 
 CLIENT_SESSION_WRAPPER = ClientSessionWrapper()
+
+from google.cloud import translate_v2 as translate
+
+TRANSLATE_CLIENT = translate.Client()

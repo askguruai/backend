@@ -24,6 +24,7 @@ class DocumentsUploadHandler:
         organization: str,
         collection: str,
         documents: List[Doc] | List[Chat] | List[str],
+        project_to_en: bool,
         summarize: bool,
         summary_length: int = CONFIG["misc"]["default_summary_length"],
     ) -> CollectionDocumentsResponse:
@@ -43,7 +44,7 @@ class DocumentsUploadHandler:
         all_timestamps = []
         all_security_groups = []
         for doc in tqdm(documents):
-            chunks, meta_info, content = self.parser.process_document(doc)
+            chunks, meta_info, content = self.parser.process_document(doc, project_to_en=project_to_en)
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f'doc_id=="{doc_id}"',
