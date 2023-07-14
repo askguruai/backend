@@ -24,7 +24,7 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
-    def process_document(self, document: Chat | Doc, translate_to_en: bool) -> Tuple[List[str], dict]:
+    def process_document(self, document: Chat | Doc, project_to_en: bool) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
                 "doc_id": document.id if document.id is not None else hash_string(document.content),
@@ -37,7 +37,7 @@ class DocumentsParser:
                 if document.security_groups is not None
                 else 2**63 - 1,
             }
-            if translate_to_en:
+            if project_to_en:
                 document_language = language_detect(document.content[:512])
                 if document_language != "en":
                     trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
