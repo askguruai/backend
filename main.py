@@ -700,6 +700,7 @@ async def search_resources(
     token: str = Depends(oauth2_scheme),
     query: str = Body(description="Search query"),
     search_params: SearchFilters = Body(description="Search filters object"),
+    search_range: float = Body(0.07, description="A float to control a green zone from top hit to be returned. Use with care!"),
 ):
     token_data = decode_token(token)
     return await search(
@@ -708,6 +709,7 @@ async def search_resources(
         query=query,
         filters=search_params,
         api_version=api_version,
+        search_range=search_range
     )
 
 

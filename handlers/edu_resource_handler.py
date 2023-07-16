@@ -59,7 +59,8 @@ async def upload_resource(
 
 
 async def search(
-    vendor: str, organization: str, query: str, filters: SearchFilters, api_version: ApiVersion
+    vendor: str, organization: str, query: str, filters: SearchFilters, api_version: ApiVersion,
+    score_range: float = 0.07,
 ) -> SearchResult:
     query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
     resources = []
@@ -85,8 +86,13 @@ async def search(
                 "output_fields": ["doc_id"],
             }
             result = collection.search(**search_param)[0]
-            for hit in result:
-                resources.append(hit.entity.get("doc_id"))
+            scores = result.distances
+            print(scores, result.ids)
+            top_score = scores[0]
+            borderline = top_score * (1 - score_range)
+            for i, hit in enumerate(result):
+                if scores[i] >= borderline:
+                    resources.append(hit.entity.get("doc_id"))
         if col == ApiCollection.TOPICS:
             pass
     return SearchResult(resources=resources, topics=topics)
