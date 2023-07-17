@@ -46,7 +46,7 @@ def doc_to_chunks(
                     current_content = f"{'. '.join(olap)}\n{sent}"
                 else:
                     current_content += f" {sent}"
-                olap.extend(sent)
+                olap.append(sent)
 
             # should reapply the paragraph split
             current_content += "\n"
