@@ -2,7 +2,8 @@ from typing import List
 
 from utils import MILVUS_DB, hash_string, ml_requests
 from utils.milvus_utils import CollectionType
-from utils.schemas import ApiCollection, ApiVersion, SearchFilters, SearchResult
+from utils.misc import parse_link
+from utils.schemas import ApiCollection, ApiVersion, DescriptionRequest, SearchFilters, SearchResult
 from utils.tokenize_ import doc_to_chunks
 
 
@@ -59,7 +60,11 @@ async def upload_resource(
 
 
 async def search(
-    vendor: str, organization: str, query: str, filters: SearchFilters, api_version: ApiVersion,
+    vendor: str,
+    organization: str,
+    query: str,
+    filters: SearchFilters,
+    api_version: ApiVersion,
     score_range: float = 0.07,
 ) -> SearchResult:
     query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
@@ -96,3 +101,13 @@ async def search(
         if col == ApiCollection.TOPICS:
             pass
     return SearchResult(resources=resources, topics=topics)
+
+
+async def describe_resource(desc_request: DescriptionRequest, api_version: ApiVersion) -> dict:
+    content = await parse_link(desc_request.resource)
+    if content is None:
+        return {"status": "fail"}
+    resource_description = await ml_requests.get_summary(
+        info=content, max_tokens=desc_request.summary_length, api_version=api_version.value
+    )
+    return {"status": "ok", "description": resource_description}

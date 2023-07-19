@@ -397,3 +397,9 @@ class SearchFilters(BaseModel):
 class SearchResult(BaseModel):
     resources: List[str] = Field(description="Resources ids")
     topics: List[str] = Field(description="Topics ids")
+
+
+class DescriptionRequest(BaseModel):
+    resource: str = Field(description="url of the resource to describe")
+    title: str = Field(description="resource title")
+    summary_length: int = Field(100, description="summary length in tokens")

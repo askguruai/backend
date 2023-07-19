@@ -52,6 +52,7 @@ class DocumentsParser:
         return chunks, meta, content
 
     async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set) -> Doc:
+        # todo: substitute with utils.misc.parse_link
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
         }

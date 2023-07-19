@@ -30,6 +30,7 @@ from utils.schemas import (
     Chat,
     CollectionDocumentsResponse,
     CollectionResponses,
+    DescriptionRequest,
     Doc,
     DocumentRequest,
     GetAnswerResponse,
@@ -664,6 +665,7 @@ async def archive_filter_rule_epoint(
 ######################################################
 
 
+from handlers.edu_resource_handler import describe_resource as describe
 from handlers.edu_resource_handler import search, upload_resource
 
 
@@ -700,7 +702,9 @@ async def search_resources(
     token: str = Depends(oauth2_scheme),
     query: str = Body(description="Search query"),
     search_params: SearchFilters = Body(description="Search filters object"),
-    search_range: float = Body(0.07, description="A float to control a green zone from top hit to be returned. Use with care!"),
+    search_range: float = Body(
+        0.07, description="A float to control a green zone from top hit to be returned. Use with care!"
+    ),
 ):
     token_data = decode_token(token)
     return await search(
@@ -709,8 +713,20 @@ async def search_resources(
         query=query,
         filters=search_params,
         api_version=api_version,
-        search_range=search_range
+        search_range=search_range,
     )
+
+
+@app.post("/{api_version}/eduplatform/describe_resource", include_in_schema=False)
+@catch_errors
+async def describe_resource(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    description_request: DescriptionRequest = Body(description="Description request object"),
+):
+    token_data = decode_token(token)
+    return await describe(desc_request=description_request, api_version=api_version)
 
 
 if __name__ == '__main__':
