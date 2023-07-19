@@ -26,35 +26,94 @@ async def upload_resource(
         expr=f'doc_id=="{doc_id}"',
         offset=0,
         limit=10000,
-        output_fields=["pk", "chunk_hash"],
+        output_fields=["pk", "chunk_hash", "type", "paid", "difficulty"],
         consistency_level="Eventually",
     )
-    existing_chunks = {hit["chunk_hash"]: hit["pk"] for hit in existing_chunks}
+    existing_chunks = {hit["chunk_hash"]: (hit["pk"], hit["type"], hit["paid"], hit["difficulty"]) for hit in existing_chunks}
     # determining which chunks are new
     new_chunks_hashes = []
     new_chunks = []
     for chunk in chunks:
         text_hash = hash_string(chunk)
-        if text_hash in existing_chunks:
+        if (
+            text_hash in existing_chunks and
+            existing_chunks[text_hash][1] == type and
+            existing_chunks[text_hash][2] == paid and
+            existing_chunks[text_hash][3] == difficulty
+        ):
             del existing_chunks[text_hash]
         else:
             new_chunks_hashes.append(text_hash)
             new_chunks.append(chunk)
     # dropping outdated chunks
-    existing_chunks_pks = list(existing_chunks.values())
+    existing_chunks_pks = list(map(lambda val: str(val[0]), existing_chunks.values()))
     collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
 
-    embeddings = await ml_requests.get_embeddings(chunks=new_chunks, api_version=api_version)
-    collection.insert(
-        [
-            new_chunks_hashes,
-            [doc_id] * len(new_chunks_hashes),
-            embeddings,
-            [type] * len(new_chunks_hashes),
-            [paid] * len(new_chunks_hashes),
-            [difficulty] * len(new_chunks_hashes),
-        ]
+    if len(new_chunks) > 0:
+        embeddings = await ml_requests.get_embeddings(chunks=new_chunks, api_version=api_version)
+        collection.insert(
+            [
+                new_chunks_hashes,
+                [doc_id] * len(new_chunks_hashes),
+                embeddings,
+                [type] * len(new_chunks_hashes),
+                [paid] * len(new_chunks_hashes),
+                [difficulty] * len(new_chunks_hashes),
+            ]
+        )
+
+    return {"n_chunks": len(new_chunks_hashes)}
+
+
+async def upload_topic(
+    vendor: str,
+    organization: str,
+    content: str,
+    doc_id: str,
+    difficulty: int,
+    api_version: ApiVersion
+):
+    org_hash = hash_string(organization)
+    collection = MILVUS_DB.get_or_create_collection(
+        collection_name=f"{vendor}_{org_hash}_topics", collection_type=CollectionType.EDUPLAT_TOPICS
     )
+    chunks = doc_to_chunks(content=content)
+    existing_chunks = collection.query(
+        expr=f'doc_id=="{doc_id}"',
+        offset=0,
+        limit=10000,
+        output_fields=["pk", "chunk_hash", "difficulty"],
+        consistency_level="Eventually",
+    )
+    existing_chunks = {hit["chunk_hash"]: (hit["pk"], hit["difficulty"]) for hit in existing_chunks}
+    # determining which chunks are new
+    new_chunks_hashes = []
+    new_chunks = []
+    for chunk in chunks:
+        text_hash = hash_string(chunk)
+        if (
+            text_hash in existing_chunks and
+            existing_chunks[text_hash][1] == difficulty
+        ):
+            del existing_chunks[text_hash]
+        else:
+            new_chunks_hashes.append(text_hash)
+            new_chunks.append(chunk)
+    # dropping outdated chunks
+    existing_chunks_pks = list(map(lambda val: str(val[0]), existing_chunks.values()))
+    collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
+
+
+    if len(new_chunks) > 0:
+        embeddings = await ml_requests.get_embeddings(chunks=new_chunks, api_version=api_version)
+        collection.insert(
+            [
+                new_chunks_hashes,
+                [doc_id] * len(new_chunks_hashes),
+                embeddings,
+                [difficulty] * len(new_chunks_hashes),
+            ]
+        )
 
     return {"n_chunks": len(new_chunks_hashes)}
 

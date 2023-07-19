@@ -20,6 +20,7 @@ connections.connect(
 class CollectionType(Enum):
     DEFAULT = "default"
     EDUPLAT = "edu"
+    EDUPLAT_TOPICS = "edu_topics"
 
 
 class CollectionsManager:
@@ -156,6 +157,30 @@ class CollectionsManager:
                 FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
                 FieldSchema(name="type", dtype=DataType.INT64),
                 FieldSchema(name="paid", dtype=DataType.INT64),
+                FieldSchema(name="difficulty", dtype=DataType.INT64),
+            ]
+            schema = CollectionSchema(fields)
+            m_collection = Collection(collection_name, schema)
+            index_params = {
+                "metric_type": "IP",
+                "index_type": "IVF_FLAT",
+                "params": {"nlist": 1024},
+            }
+            m_collection.create_index(field_name="emb_v1", index_params=index_params)
+            m_collection.create_index(
+                field_name="doc_id",
+                index_name="scalar_index",
+            )
+        elif collection_type == CollectionType.EDUPLAT_TOPICS:
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(
+                    name="chunk_hash",
+                    dtype=DataType.VARCHAR,
+                    max_length=24,
+                ),
+                FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
                 FieldSchema(name="difficulty", dtype=DataType.INT64),
             ]
             schema = CollectionSchema(fields)

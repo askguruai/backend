@@ -666,7 +666,7 @@ async def archive_filter_rule_epoint(
 
 
 from handlers.edu_resource_handler import describe_resource as describe
-from handlers.edu_resource_handler import search, upload_resource
+from handlers.edu_resource_handler import search, upload_resource, upload_topic
 
 
 @app.post("/{api_version}/eduplatform/upload/resource", include_in_schema=False)
@@ -689,6 +689,27 @@ async def upload_edu_resource(
         doc_id=resource_id,
         type=type,
         paid=paid,
+        difficulty=difficulty,
+        api_version=api_version,
+    )
+
+
+@app.post("/{api_version}/eduplatform/upload/topic", include_in_schema=False)
+@catch_errors
+async def upload_edu_topic(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    topic_id: str = Body(description="Topic id"),
+    content: str = Body(description="str content to be indexed"),
+    difficulty: int = Body(description="Topic difficulty code"),
+):
+    token_data = decode_token(token)
+    return await upload_topic(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        content=content,
+        doc_id=topic_id,
         difficulty=difficulty,
         api_version=api_version,
     )
