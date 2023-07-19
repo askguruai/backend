@@ -38,7 +38,11 @@ class DocumentsParser:
                 else 2**63 - 1,
             }
             if project_to_en:
-                document_language = language_detect(document.content[:512])
+                try:
+                    document_language = language_detect(document.content[:512])
+                except Exception as e:
+                    logger.error(f"Failed to detect language of {document.title}")
+                    document_language = None
                 if document_language != "en":
                     trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
                     content = trans_result["translatedText"]
@@ -90,11 +94,14 @@ class DocumentsParser:
                     visited.add(url)
             title = soup.find("title").text if (soup.find("title") and soup.find("title").text) else link
             content = self.converter.handle(page_content)
+            if not content:
+                logger.error(f"Empty content on {link}")
+                return None
             return Doc(id=link, title=title, summary=title, content=content)
 
         return None
 
-    async def link_to_docs(self, root_link: str, max_depth: int = 50, max_total_docs: int = 1300) -> List[Doc]:
+    async def link_to_docs(self, root_link: str, max_depth: int = 50, max_total_docs: int = 500) -> List[Doc]:
         if root_link[-1] != "/":
             root_link += "/"
         queue, visited, depth = deque([root_link]), set([root_link]), 0
