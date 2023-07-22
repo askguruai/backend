@@ -734,7 +734,7 @@ async def search_resources(
         query=query,
         filters=search_params,
         api_version=api_version,
-        search_range=search_range,
+        score_range=search_range,
     )
 
 
