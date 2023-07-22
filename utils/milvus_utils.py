@@ -119,7 +119,7 @@ class CollectionsManager:
                     max_length=24,
                 ),
                 FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
-                FieldSchema(name="chunk", dtype=DataType.VARCHAR, max_length=8096),
+                FieldSchema(name="chunk", dtype=DataType.VARCHAR, max_length=int(CONFIG["milvus"]["chunk_max_symbols"])),
                 FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
                 FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=1024),
                 FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),

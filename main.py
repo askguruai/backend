@@ -349,6 +349,7 @@ async def upload_collection_documents(
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
+    ignore_urls: bool = Body(bool(CONFIG["misc"]["ignore_urls_when_parsing"]), description="Whether to ignore urls when parsing Links")
 ):
     # only one of documents, chats or links must be provided
     if sum([bool(documents), bool(chats), bool(links)]) != 1:
@@ -366,6 +367,7 @@ async def upload_collection_documents(
         project_to_en=project_to_en,
         summarize=summarize,
         summary_length=summary_length,
+        ignore_urls=ignore_urls
     )
 
 

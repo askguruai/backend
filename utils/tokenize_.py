@@ -29,11 +29,13 @@ def doc_to_chunks(
     olap = deque([], overlapping_lines)
 
     current_content, part = "", 0
+    maxlen = int(CONFIG["milvus"]["chunk_max_symbols"])
     # TODO: split by lines which are bolded (in case of cars)
     # because they are the titles of the sections
     for line in content.split("\n"):
-        if len(encoder.encode(current_content + line + "\n")) > chunk_size and current_content != "":
-            chunks.append(current_content.strip())
+        if len(encoder.encode(current_content + line + "\n")) > chunk_size and current_content.strip() != "":
+
+            chunks.append(current_content.strip()[:maxlen])
             current_content = f"{' '.join(olap)}\n"
             part += 1
 
@@ -41,8 +43,8 @@ def doc_to_chunks(
             # splitting paragraph into sentences
             sentences = nltk.tokenize.sent_tokenize(line)
             for sent in sentences:
-                if len(encoder.encode(current_content + f" {sent}")) > chunk_size:
-                    chunks.append(current_content.strip())
+                if len(encoder.encode(current_content + f" {sent}")) > chunk_size and current_content.strip() != "":
+                    chunks.append(current_content.strip()[:maxlen])
                     current_content = f"{'. '.join(olap)}\n{sent}"
                 else:
                     current_content += f" {sent}"
@@ -57,7 +59,8 @@ def doc_to_chunks(
             sentences = nltk.tokenize.sent_tokenize(line)
             olap.extend(sentences[-overlapping_lines:])
 
-    chunks.append(current_content.strip())
+    if current_content.strip() != "":
+        chunks.append(current_content.strip()[:maxlen])
     return chunks
 
 

@@ -65,7 +65,8 @@ class DocumentsParser:
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta, content
 
-    async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set) -> Doc:
+    async def process_link(self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set,
+                           ignore_urls: bool = True) -> Doc:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
         }
@@ -93,7 +94,12 @@ class DocumentsParser:
                     queue.append(url)
                     visited.add(url)
             title = soup.find("title").text if (soup.find("title") and soup.find("title").text) else link
-            content = self.converter.handle(page_content)
+            if ignore_urls != self.converter.ignore_links:
+                self.converter.ignore_links = ignore_urls
+                content = self.converter.handle(page_content)
+                self.converter.ignore_links = not ignore_urls
+            else:
+                content = self.converter.handle(page_content)
             if not content:
                 logger.error(f"Empty content on {link}")
                 return None
@@ -101,7 +107,7 @@ class DocumentsParser:
 
         return None
 
-    async def link_to_docs(self, root_link: str, max_depth: int = 50, max_total_docs: int = 500) -> List[Doc]:
+    async def link_to_docs(self, root_link: str, max_depth: int = 50, max_total_docs: int = 500, ignore_urls: bool = True) -> List[Doc]:
         if root_link[-1] != "/":
             root_link += "/"
         queue, visited, depth = deque([root_link]), set([root_link]), 0
@@ -114,7 +120,7 @@ class DocumentsParser:
                     f"Depth: {depth} / {max_depth}, total: {len(docs)} / {max_total_docs}, queue size: {len(queue)}, link: {root_link}"
                 )
                 for _ in range(len(queue)):
-                    tasks.append(self.process_link(session, queue.popleft(), root_link, queue, visited))
+                    tasks.append(self.process_link(session, queue.popleft(), root_link, queue, visited, ignore_urls=ignore_urls))
 
                 results = await asyncio.gather(*tasks)
 
