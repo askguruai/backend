@@ -27,11 +27,14 @@ class DocumentsUploadHandler:
         project_to_en: bool,
         summarize: bool,
         summary_length: int = CONFIG["misc"]["default_summary_length"],
+        ignore_urls: bool = True,
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
             # representing them as docs and flatten the list
-            documents = [doc for link in documents for doc in (await self.parser.link_to_docs(link))]
+            documents = [
+                doc for link in documents for doc in (await self.parser.link_to_docs(link, ignore_urls=ignore_urls))
+            ]
 
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
