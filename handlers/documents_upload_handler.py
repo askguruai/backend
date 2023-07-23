@@ -27,7 +27,7 @@ class DocumentsUploadHandler:
         project_to_en: bool,
         summarize: bool,
         summary_length: int = CONFIG["misc"]["default_summary_length"],
-        ignore_urls: bool = bool(CONFIG["misc"]["ignore_urls_when_parsing"]),
+        ignore_urls: bool = True,
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
