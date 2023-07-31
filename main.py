@@ -193,7 +193,7 @@ async def get_collections_answer(
             ).collections
         ]
     if document and not query:
-        response = await collection_handler.get_solution(
+        response, context = await collection_handler.get_solution(
             vendor=token_data["vendor"],
             organization=token_data["organization"],
             collections=collections,
@@ -205,7 +205,7 @@ async def get_collections_answer(
         )
     else:
         check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
-        response = await collection_handler.get_answer(
+        response, context = await collection_handler.get_answer(
             vendor=token_data["vendor"],
             organization=token_data["organization"],
             collections=collections,
@@ -220,7 +220,7 @@ async def get_collections_answer(
         )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
-        context="",
+        context=context,
         document_ids=[source.id for source in response.sources] if not stream else [],
         query=query,
         request=request,

@@ -113,14 +113,11 @@ class CollectionHandler:
 
         if stream:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
-            return response
+            return response, context
 
         if orig_lang != "en":
             answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang)["translatedText"]
-        return GetCollectionAnswerResponse(
-            answer=answer,
-            sources=sources,
-        )
+        return GetCollectionAnswerResponse(answer=answer, sources=sources), context
 
     async def get_solution(
         self,
@@ -181,12 +178,9 @@ class CollectionHandler:
 
         if stream:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
-            return response
+            return response, context
 
-        return GetCollectionAnswerResponse(
-            answer=answer,
-            sources=sources,
-        )
+        return GetCollectionAnswerResponse(answer=answer, sources=sources), context
 
     def get_data_from_id(self, document: str, full_collection_name: str, security_code: int) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
