@@ -347,7 +347,10 @@ async def upload_collection_documents(
         CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
     ),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
-    files: List[UploadFile] | None = None,
+    files: List[UploadFile] = File(
+        None,
+        description="File or list of files to upload. Currently only .pdf is supported. Name of the file will become its id",
+    ),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),

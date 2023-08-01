@@ -154,9 +154,7 @@ class DocumentsParser:
                 # todo: support .md and .docx
                 raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
 
-            doc = Doc(content=text, id=hash_string(text), title=name)
-            async with aiofiles.open(file.filename, 'wb') as f:
-                await f.write(contents)
+            doc = Doc(content=text, id=name, title=name)
         except Exception:
             raise FileProcessingError(f"Error processing uploaded file {file.filename}")
         finally:
