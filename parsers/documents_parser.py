@@ -66,13 +66,20 @@ class DocumentsParser:
         return chunks, meta, content
 
     async def process_link(
-        self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set, ignore_urls: bool = True
+        self,
+        session: ClientSession,
+        link: str,
+        root_link: str,
+        queue: deque,
+        visited: set,
+        ignore_urls: bool = True,
+        allow_redirects: bool = True,
     ) -> Doc:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
         }
         try:
-            async with session.get(link, headers=headers) as response:
+            async with session.get(link, headers=headers, allow_redirects=allow_redirects) as response:
                 page_content = await response.text()
         except Exception as e:
             logger.error(f"Error while downloading {link}: {e}")
