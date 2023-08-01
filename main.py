@@ -359,7 +359,7 @@ async def upload_collection_documents(
     if sum([bool(documents), bool(chats), bool(links), bool(files)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One and only one of documents, chats or links must be provided",
+            detail="One and only one of documents, chats, links or files must be provided",
         )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
