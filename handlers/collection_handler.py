@@ -47,7 +47,6 @@ class CollectionHandler:
         stream: bool = False,
         collections_only: bool = True,
     ) -> GetCollectionAnswerResponse:
-        org_hash = hash_string(organization)
         orig_lang = "en"
         if project_to_en:
             # sometimes makes false positives, maybe investigate other tools...Maybe track such cases and find rate
@@ -62,10 +61,13 @@ class CollectionHandler:
         # todo: try maybe stream by sentences or something or maybe google can receive and return stream
         stream = stream and (orig_lang == "en")
 
-        search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+        # org_hash = hash_string(organization)
+        # search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         security_code = int_list_encode(user_security_groups)
         _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections,
+            vendor,
+            organization,
+            collections,
             query_embedding,
             self.top_k_chunks,
             api_version,
@@ -139,10 +141,12 @@ class CollectionHandler:
             security_code=security_code,
         )
 
-        search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+        # search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
 
         _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            search_collections,
+            vendor,
+            organization,
+            collections,
             embedding,
             self.top_k_chunks,
             api_version,
@@ -220,10 +224,12 @@ class CollectionHandler:
         try:
             milvus_collection = MILVUS_DB[full_collection_name]
         except DatabaseError:
-            logger.error(f"Requested collection {full_collection_name} not found")
+            logger.error(
+                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Requested collection {full_collection_name} not found",
+                detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
             )
         chunks = milvus_collection.query(
             expr='pk >= 0',
@@ -267,9 +273,11 @@ class CollectionHandler:
 
         # extracting more than top_k chunks because each
         # document might be represented by several chunks
-        collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
+        # collections_search = [f"{vendor}_{organization_hash}_{collection}" for collection in collections]
         similarities, _, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            collections_search,
+            vendor,
+            organization,
+            collections,
             embedding,
             top_k * 5,
             api_version.value,

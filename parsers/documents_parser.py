@@ -131,7 +131,14 @@ class DocumentsParser:
                 )
                 for _ in range(len(queue)):
                     tasks.append(
-                        self.process_link(session, queue.popleft(), root_link, queue, visited, ignore_urls=ignore_urls)
+                        self.process_link(
+                            session,
+                            queue.popleft(),
+                            root_link,
+                            queue,
+                            visited,
+                            ignore_urls=ignore_urls,
+                        )
                     )
 
                 results = await asyncio.gather(*tasks)
