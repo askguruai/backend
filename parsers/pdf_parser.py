@@ -24,3 +24,11 @@ class PdfParser(GeneralParser):
         meta["security_groups"] = 2**63 - 1
         chunks = doc_to_chunks(content=content, title=file_name)
         return chunks, content, meta
+
+    @staticmethod
+    def stream2text(stream: bytes) -> str:
+        with fitz.open(stream=stream, filetype="pdf") as fl:
+            text = ""
+            for page in fl:
+                text += page.get_text()
+        return text

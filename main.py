@@ -347,15 +347,19 @@ async def upload_collection_documents(
         CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
     ),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
+    files: List[UploadFile] = File(
+        None,
+        description="File or list of files to upload. Currently only .pdf is supported. Name of the file will become its id",
+    ),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
     # only one of documents, chats or links must be provided
-    if sum([bool(documents), bool(chats), bool(links)]) != 1:
+    if sum([bool(documents), bool(chats), bool(links), bool(files)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One and only one of documents, chats or links must be provided",
+            detail="One and only one of documents, chats, links or files must be provided",
         )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
@@ -363,7 +367,7 @@ async def upload_collection_documents(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=documents if documents else chats if chats else links,
+        documents=documents if documents else chats if chats else links if links else files,
         project_to_en=project_to_en,
         summarize=summarize,
         summary_length=summary_length,

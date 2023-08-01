@@ -1,17 +1,23 @@
 import asyncio
+import os.path as osp
 from collections import deque
 from datetime import datetime
 from typing import List, Tuple
 from urllib.parse import urljoin
 
+import aiofiles
+import fitz
 import html2text
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from langdetect import detect as language_detect
 from loguru import logger
+from starlette.datastructures import UploadFile as StarletteUploadFile
 
+from parsers.pdf_parser import PdfParser
 from utils import TRANSLATE_CLIENT, hash_string
+from utils.errors import FileProcessingError
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc
 from utils.tokenize_ import doc_to_chunks
@@ -151,6 +157,23 @@ class DocumentsParser:
 
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
+
+    async def raw_to_doc(self, file: StarletteUploadFile):
+        try:
+            contents = await file.read()
+            name, format = osp.splitext(file.filename)
+            if format == ".pdf":
+                text = PdfParser.stream2text(stream=contents)
+            else:
+                # todo: support .md and .docx
+                raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
+
+            doc = Doc(content=text, id=name, title=name)
+        except Exception:
+            raise FileProcessingError(f"Error processing uploaded file {file.filename}")
+        finally:
+            await file.close()
+        return doc
 
     def chat_to_chunks(self, text_lines: List[str]) -> List[str]:
         chunks = []

@@ -2,8 +2,9 @@ import hashlib
 import logging
 from typing import Dict, List
 
-from fastapi import HTTPException, status
+from fastapi import File, HTTPException, UploadFile, status
 from loguru import logger
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from tqdm import tqdm
 
 from parsers import DocumentsParser
@@ -23,7 +24,7 @@ class DocumentsUploadHandler:
         vendor: str,
         organization: str,
         collection: str,
-        documents: List[Doc] | List[Chat] | List[str],
+        documents: List[Doc] | List[Chat] | List[str] | List[UploadFile],
         project_to_en: bool,
         summarize: bool,
         summary_length: int = CONFIG["misc"]["default_summary_length"],
@@ -35,6 +36,8 @@ class DocumentsUploadHandler:
             documents = [
                 doc for link in documents for doc in (await self.parser.link_to_docs(link, ignore_urls=ignore_urls))
             ]
+        elif isinstance(documents[0], StarletteUploadFile):
+            documents = [(await self.parser.raw_to_doc(raw_doc)) for raw_doc in documents]
 
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
