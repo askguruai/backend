@@ -19,7 +19,7 @@ from parsers.pdf_parser import PdfParser
 from utils import TRANSLATE_CLIENT, hash_string
 from utils.errors import FileProcessingError
 from utils.misc import int_list_encode
-from utils.schemas import Chat, Doc
+from utils.schemas import Chat, Doc, FileMetadata
 from utils.tokenize_ import doc_to_chunks
 
 
@@ -144,7 +144,8 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def raw_to_doc(self, file: StarletteUploadFile):
+    async def raw_to_doc(self, file_w_metadata: Tuple[StarletteUploadFile, FileMetadata]):
+        file, metadata = file_w_metadata
         try:
             contents = await file.read()
             name, format = osp.splitext(file.filename)
@@ -154,9 +155,13 @@ class DocumentsParser:
                 # todo: support .md and .docx
                 raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
 
-            doc = Doc(content=text, id=hash_string(text), title=name)
-            async with aiofiles.open(file.filename, 'wb') as f:
-                await f.write(contents)
+            doc = Doc(content=text, 
+                      id=metadata.id,
+                      title=name if metadata.title is None else metadata.title,
+                      summary="" if metadata.summary is not None else metadata.summary,
+                      timestamp=int(datetime.now().timestamp()) if metadata.timestamp is None else metadata.timestamp,
+                      security_groups=int_list_encode(metadata.security_groups))
+            
         except Exception:
             raise FileProcessingError(f"Error processing uploaded file {file.filename}")
         finally:

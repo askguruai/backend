@@ -5,7 +5,7 @@ import bson
 import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
-from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
+from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from loguru import logger
@@ -27,6 +27,7 @@ from utils.filter_rules import archive_filter_rule, check_filters, create_filter
 from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
+    FileMetadata,
     Chat,
     CollectionDocumentsResponse,
     CollectionResponses,
@@ -347,7 +348,8 @@ async def upload_collection_documents(
         CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
     ),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
-    files: List[UploadFile] | None = None,
+    files: List[UploadFile] = File(None, description="A file or a list of files to be processed. Currently supporting (pdf/md/docx)"),
+    files_metadata: List[FileMetadata] = Form(None, description="Metadata for each of the files in `files`"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
@@ -356,7 +358,15 @@ async def upload_collection_documents(
     if sum([bool(documents), bool(chats), bool(links), bool(files)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One and only one of documents, chats or links must be provided",
+            detail="One and only one of documents, chats, links or files must be provided",
+        )
+    print(f"Files: {files}")
+    print(f"Files meta: {files_metadata}")
+    if files is not None:
+        if files_metadata is None or len(files) != len(files_metadata):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="When uploading files, one must provide a list of FileMetadata of the same length, i.e. metadata for each file",
         )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
@@ -369,6 +379,7 @@ async def upload_collection_documents(
         summarize=summarize,
         summary_length=summary_length,
         ignore_urls=ignore_urls,
+        files_metadata=files_metadata
     )
 
 
