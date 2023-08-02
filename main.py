@@ -381,12 +381,11 @@ async def upload_collection_documents(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
         )
+    token_data = decode_token(token)
     # todo: chat saving as well!
     if documents:
         for i, document in enumerate(documents):
             GRIDFS.put(document.content.encode(), filename=metadata[i].id)
-    
-    token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
         api_version=api_version,
         vendor=token_data["vendor"],
