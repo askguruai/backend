@@ -155,13 +155,15 @@ class DocumentsParser:
                 # todo: support .md and .docx
                 raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
 
-            doc = Doc(content=text, 
-                      id=metadata.id,
-                      title=name if metadata.title is None else metadata.title,
-                      summary="" if metadata.summary is not None else metadata.summary,
-                      timestamp=int(datetime.now().timestamp()) if metadata.timestamp is None else metadata.timestamp,
-                      security_groups=int_list_encode(metadata.security_groups))
-            
+            doc = Doc(
+                content=text,
+                id=metadata.id,
+                title=name if metadata.title is None else metadata.title,
+                summary="" if metadata.summary is not None else metadata.summary,
+                timestamp=int(datetime.now().timestamp()) if metadata.timestamp is None else metadata.timestamp,
+                security_groups=metadata.security_groups,
+            )
+
         except Exception:
             raise FileProcessingError(f"Error processing uploaded file {file.filename}")
         finally:

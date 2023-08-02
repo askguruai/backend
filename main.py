@@ -1,3 +1,4 @@
+import json
 import time
 from typing import Any, Dict, List
 
@@ -5,7 +6,20 @@ import bson
 import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
-from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status, Form
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from loguru import logger
@@ -27,12 +41,12 @@ from utils.filter_rules import archive_filter_rule, check_filters, create_filter
 from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
-    FileMetadata,
     Chat,
     CollectionDocumentsResponse,
     CollectionResponses,
     Doc,
     DocumentRequest,
+    FileMetadata,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
@@ -348,25 +362,15 @@ async def upload_collection_documents(
         CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
     ),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
-    files: List[UploadFile] = File(None, description="A file or a list of files to be processed. Currently supporting (pdf/md/docx)"),
-    files_metadata: List[FileMetadata] = Form(None, description="Metadata for each of the files in `files`"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
     # only one of documents, chats or links must be provided
-    if sum([bool(documents), bool(chats), bool(links), bool(files)]) != 1:
+    if sum([bool(documents), bool(chats), bool(links)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One and only one of documents, chats, links or files must be provided",
-        )
-    print(f"Files: {files}")
-    print(f"Files meta: {files_metadata}")
-    if files is not None:
-        if files_metadata is None or len(files) != len(files_metadata):
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="When uploading files, one must provide a list of FileMetadata of the same length, i.e. metadata for each file",
+            detail="One and only one of documents, chats or links must be provided",
         )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
@@ -374,12 +378,74 @@ async def upload_collection_documents(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=documents if documents else chats if chats else links if links else files,
+        documents=documents if documents else chats if chats else links,
         project_to_en=project_to_en,
         summarize=summarize,
         summary_length=summary_length,
         ignore_urls=ignore_urls,
-        files_metadata=files_metadata
+    )
+
+
+@app.post(
+    "/{api_version}/collections_files/{collection}",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+)
+@catch_errors
+async def upload_collection_documents(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    files: List[UploadFile] = File(
+        description="A file or a list of files to be processed. Currently supporting (pdf/md/docx)"
+    ),
+    files_metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
+    project_to_en: bool = Form(
+        True, description="Whether to translate uploaded documet into Eng (increases model performance)"
+    ),
+    summarize: bool = Form(
+        False, description="Whether to summarize documents. Will override `summary` that is passed with the document"
+    ),
+    summary_length: int = Form(
+        CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
+    ),
+):
+    token_data = decode_token(token)
+    try:
+        raw_metadata = json.loads(files_metadata)
+    except Exception as e:
+        logger.error(f"Error decoding metadata: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must be a valid json string containing a list of metadata objects",
+        )
+    if len(raw_metadata) != len(files):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
+        )
+    metadata = []
+    for i, meta in enumerate(raw_metadata):
+        try:
+            metadata.append(FileMetadata(**meta))
+        except Exception as e:
+            msg = f"Metadata {meta} at index {i} does not satsfy FileMetadata model"
+            logger.error(msg)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=msg,
+            )
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=files,
+        project_to_en=project_to_en,
+        summarize=summarize,
+        summary_length=summary_length,
+        files_metadata=metadata,
     )
 
 

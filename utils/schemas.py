@@ -348,6 +348,10 @@ class GetFiltersResponse(BaseModel):
 class FileMetadata(BaseModel):
     id: str = Field(description="Id of the respective document")
     title: str | None = Field(description="Title of the document to override filename", example="Passwords")
-    timestamp: int | None = Field(description="Document last change time in seconds. Default is server receive time", example=1688474672)
+    timestamp: int | None = Field(
+        description="Document last change time in seconds. Default is server receive time", example=1688474672
+    )
     summary: str | None = Field(description="Pre-defined summary", example="Instruction when forget password")
-    security_groups: List[int] | None = Field(description="Security groups of the document. Default is full access", example=[0, 2])
+    security_groups: List[int] | None = Field(
+        description="Security groups of the document. Default is full access", example=[0, 2]
+    )

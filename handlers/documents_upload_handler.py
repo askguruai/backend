@@ -29,7 +29,7 @@ class DocumentsUploadHandler:
         summarize: bool,
         summary_length: int = CONFIG["misc"]["default_summary_length"],
         ignore_urls: bool = True,
-        files_metadata: List[FileMetadata] = None
+        files_metadata: List[FileMetadata] = None,
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
