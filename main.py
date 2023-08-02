@@ -503,7 +503,7 @@ async def upload_collection_links(
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
-async def upload_collection_documents(
+async def delete_collection_documents(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
@@ -712,7 +712,7 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
 ######################################################
 
 
-@app.get("/{api_version}/filters", response_model=GetFiltersResponse)
+@app.get("/{api_version}/filters", response_model=GetFiltersResponse, include_in_schema=False)
 @catch_errors
 async def get_filter_rules_epoint(
     request: Request,
@@ -726,6 +726,7 @@ async def get_filter_rules_epoint(
 
 @app.post(
     "/{api_version}/filters",
+    include_in_schema=False,
 )
 @catch_errors
 async def create_filter_rule_epoint(
@@ -751,6 +752,7 @@ async def create_filter_rule_epoint(
 
 @app.patch(
     "/{api_version}/filters",
+    include_in_schema=False,
 )
 @catch_errors
 async def update_filter_rule_epoint(
@@ -776,6 +778,7 @@ async def update_filter_rule_epoint(
 
 @app.delete(
     "/{api_version}/filters",
+    include_in_schema=False,
 )
 @catch_errors
 async def archive_filter_rule_epoint(
