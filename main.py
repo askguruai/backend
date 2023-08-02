@@ -399,7 +399,7 @@ async def upload_collection_files(
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
     files: List[UploadFile] = File(
-        description="A file or a list of files to be processed. Currently supporting (pdf/md/docx)"
+        description="A file or a list of files to be processed. Allowed types: .pdf, .docx and .md"
     ),
     metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
 ):
