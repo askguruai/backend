@@ -42,6 +42,7 @@ class DocumentsParser:
                 "security_groups": int_list_encode(metadata.security_groups)
                 if metadata.security_groups is not None
                 else 2**63 - 1,
+                "url": metadata.url if metadata.url else "",
                 "source_language": None,
             }
             if metadata.project_to_en:
@@ -69,6 +70,7 @@ class DocumentsParser:
                 if metadata.timestamp is not None
                 else int(datetime.now().timestamp()),
                 "security_groups": int_list_encode(metadata.security_groups),
+                "url": metadata.url if metadata.url else "",
                 "source_language": None,
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]

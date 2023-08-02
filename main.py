@@ -342,7 +342,33 @@ async def get_collection(
 
 
 @app.post(
-    "/{api_version}/collections/{collection}",
+    "/{api_version}/collections/{collection}/links",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+    include_in_schema=False,
+)
+@catch_errors
+async def upload_collection_links(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
+    ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
+):
+    token_data = decode_token(token)
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=links,
+        ignore_urls=ignore_urls,
+    )
+
+
+@app.post(
+    "/{api_version}/collections/{collection}/docs",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
 )
@@ -354,19 +380,17 @@ async def upload_collection_documents(
     collection: str = Path(description="Collection within organization", example="chats"),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
-    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
     metadata: List[DocumentMetadata] = Body(
         description="List of DocumentMetadata objects for each of the documents/chats provided"
     ),
-    ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
-    # only one of documents, chats or links must be provided
-    if sum([bool(documents), bool(chats), bool(links)]) != 1:
+    # only one of documents or chats must be provided
+    if sum([bool(documents), bool(chats)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="One and only one of documents, chats, links or files must be provided",
         )
-    docs_to_process = documents if documents else chats if chats else links
+    docs_to_process = documents if documents else chats
     if len(docs_to_process) != len(metadata):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -383,7 +407,6 @@ async def upload_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=docs_to_process,
-        ignore_urls=ignore_urls,
         metadata=metadata,
     )
 
