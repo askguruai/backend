@@ -1,6 +1,4 @@
-import hashlib
-import logging
-from typing import Dict, List
+from typing import List
 
 from fastapi import File, HTTPException, UploadFile, status
 from loguru import logger
@@ -8,7 +6,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from tqdm import tqdm
 
 from parsers import DocumentsParser
-from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils import CONFIG, MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
 from utils.errors import DatabaseError
 from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
 
@@ -87,6 +85,9 @@ class DocumentsUploadHandler:
                 summary = await ml_requests.get_summary(
                     info=content, max_tokens=meta.summary_length, api_version=api_version
                 )
+                if meta_info["source_language"] is not None and meta_info["source_language"] != "en":
+                    trans_result = TRANSLATE_CLIENT.translate(summary, target_language=meta_info["source_language"])
+                    summary = trans_result["translatedText"]
             else:
                 summary = meta_info["doc_summary"]
 

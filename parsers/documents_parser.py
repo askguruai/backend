@@ -42,6 +42,7 @@ class DocumentsParser:
                 "security_groups": int_list_encode(metadata.security_groups)
                 if metadata.security_groups is not None
                 else 2**63 - 1,
+                "source_language": None,
             }
             if metadata.project_to_en:
                 try:
@@ -52,6 +53,7 @@ class DocumentsParser:
                 if document_language != "en":
                     trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
                     content = trans_result["translatedText"]
+                    meta["source_language"] = trans_result["detectedSourceLanguage"]
                 else:
                     content = document.content
             else:
@@ -67,6 +69,7 @@ class DocumentsParser:
                 if metadata.timestamp is not None
                 else int(datetime.now().timestamp()),
                 "security_groups": int_list_encode(metadata.security_groups),
+                "source_language": None,
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
             content = "\n".join(text_lines)
