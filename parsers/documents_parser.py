@@ -16,7 +16,7 @@ from loguru import logger
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
 from parsers.pdf_parser import PdfParser
-from utils import TRANSLATE_CLIENT, hash_string
+from utils import GRIDFS, TRANSLATE_CLIENT, hash_string
 from utils.errors import FileProcessingError
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc
@@ -161,6 +161,7 @@ class DocumentsParser:
     async def raw_to_doc(self, file: StarletteUploadFile):
         try:
             contents = await file.read()
+            GRIDFS.put(contents, filename=file.filename, content_type=file.content_type)
             name, format = osp.splitext(file.filename)
             if format == ".pdf":
                 text = PdfParser.stream2text(stream=contents)
