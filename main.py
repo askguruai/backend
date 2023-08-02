@@ -34,7 +34,7 @@ from handlers import (
     TextHandler,
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
-from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB
+from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
@@ -381,6 +381,11 @@ async def upload_collection_documents(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
         )
+    # todo: chat saving as well!
+    if documents:
+        for i, document in enumerate(documents):
+            GRIDFS.put(document.content.encode(), filename=metadata[i].id)
+    
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
         api_version=api_version,

@@ -1,6 +1,7 @@
 import os
 import urllib
 
+import gridfs
 import pymongo
 
 from utils import CONFIG
@@ -19,3 +20,5 @@ mongo_client = pymongo.MongoClient(
 )
 
 DB = mongo_client[DATABASE]
+
+GRIDFS = gridfs.GridFS(database=DB, collection="documents")
