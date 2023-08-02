@@ -374,6 +374,7 @@ async def upload_collection_documents(
         GRIDFS.put(
             document.content.encode(),
             filename=filename,
+            content_type="text/plain",
         )
 
     return await documents_upload_handler.handle_request(
