@@ -45,8 +45,8 @@ from utils.schemas import (
     CollectionDocumentsResponse,
     CollectionResponses,
     Doc,
-    DocumentRequest,
     DocumentMetadata,
+    DocumentRequest,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
@@ -364,7 +364,9 @@ async def upload_collection_documents(
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
-    metadata: List[DocumentMetadata] = Body(description="List of DocumentMetadata objects for each of the documents/chats provided"),
+    metadata: List[DocumentMetadata] = Body(
+        description="List of DocumentMetadata objects for each of the documents/chats provided"
+    ),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
     # only one of documents, chats or links must be provided
@@ -390,7 +392,7 @@ async def upload_collection_documents(
         summarize=summarize,
         summary_length=summary_length,
         ignore_urls=ignore_urls,
-        metadata=metadata
+        metadata=metadata,
     )
 
 

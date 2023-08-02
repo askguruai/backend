@@ -30,7 +30,9 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
-    def process_document(self, document: Chat | Doc, metadata: DocumentMetadata, project_to_en: bool) -> Tuple[List[str], dict]:
+    def process_document(
+        self, document: Chat | Doc, metadata: DocumentMetadata, project_to_en: bool
+    ) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
                 "doc_id": metadata.id,
@@ -158,7 +160,7 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def raw_to_doc(self, file:StarletteUploadFile):
+    async def raw_to_doc(self, file: StarletteUploadFile):
         try:
             contents = await file.read()
             name, format = osp.splitext(file.filename)
