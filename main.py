@@ -422,7 +422,7 @@ async def upload_collection_files(
         try:
             processed_metadata.append(DocumentMetadata(**meta))
         except Exception as e:
-            msg = f"Metadata {meta} at index {i} does not satsfy FileMetadata model"
+            msg = f"Metadata {meta} at index {i} does not satisfy FileMetadata model"
             logger.error(msg)
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
