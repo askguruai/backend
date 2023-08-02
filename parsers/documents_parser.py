@@ -11,6 +11,7 @@ import html2text
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
+from fastapi import HTTPException, status
 from langdetect import detect as language_detect
 from loguru import logger
 from starlette.datastructures import UploadFile as StarletteUploadFile
@@ -166,30 +167,34 @@ class DocumentsParser:
         return docs[:max_total_docs]
 
     async def raw_to_doc(self, file: StarletteUploadFile, vendor: str, organization: str, collection: str) -> Doc:
-        try:
-            contents = await file.read()
-            filename = f"{vendor}_{organization}_{collection}_{file.filename}"
-            res = GRIDFS.find_one({"filename": filename})
-            if res:
-                GRIDFS.delete(res._id)
-                logger.info(f"Deleted file {filename} from GridFS")
-            GRIDFS.put(
-                contents,
-                filename=filename,
-                content_type=file.content_type,
+        contents = await file.read()
+        name, format = osp.splitext(file.filename)
+        if format == ".pdf":
+            text = PdfParser.stream2text(stream=contents)
+        elif format == ".docx":
+            text = ""
+        elif format == ".md":
+            text = ""
+        else:
+            msg = f"Uploading files of type {format} is not supported. Allowed types: pdf, docx, and md"
+            logger.error(msg)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=msg,
             )
-            name, format = osp.splitext(file.filename)
-            if format == ".pdf":
-                text = PdfParser.stream2text(stream=contents)
-            else:
-                # todo: support .md and .docx
-                raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
 
-            doc = Doc(content=text)
-        except Exception:
-            raise FileProcessingError(f"Error processing uploaded file {file.filename}")
-        finally:
-            await file.close()
+        doc = Doc(content=text)
+
+        filename = f"{vendor}_{organization}_{collection}_{file.filename}"
+        res = GRIDFS.find_one({"filename": filename})
+        if res:
+            GRIDFS.delete(res._id)
+            logger.info(f"Deleted file {filename} from GridFS")
+        GRIDFS.put(
+            contents,
+            filename=filename,
+            content_type=file.content_type,
+        )
         return doc
 
     def chat_to_chunks(self, text_lines: List[str]) -> List[str]:
