@@ -72,13 +72,20 @@ class DocumentsParser:
         return chunks, meta, content
 
     async def process_link(
-        self, session: ClientSession, link: str, root_link: str, queue: deque, visited: set, ignore_urls: bool = True
+        self,
+        session: ClientSession,
+        link: str,
+        root_link: str,
+        queue: deque,
+        visited: set,
+        ignore_urls: bool = True,
+        allow_redirects: bool = True,
     ) -> Doc:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
         }
         try:
-            async with session.get(link, headers=headers) as response:
+            async with session.get(link, headers=headers, allow_redirects=allow_redirects) as response:
                 page_content = await response.text()
         except Exception as e:
             logger.error(f"Error while downloading {link}: {e}")
@@ -130,7 +137,14 @@ class DocumentsParser:
                 )
                 for _ in range(len(queue)):
                     tasks.append(
-                        self.process_link(session, queue.popleft(), root_link, queue, visited, ignore_urls=ignore_urls)
+                        self.process_link(
+                            session,
+                            queue.popleft(),
+                            root_link,
+                            queue,
+                            visited,
+                            ignore_urls=ignore_urls,
+                        )
                     )
 
                 results = await asyncio.gather(*tasks)
@@ -154,10 +168,7 @@ class DocumentsParser:
                 # todo: support .md and .docx
                 raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
 
-            doc = Doc(
-                content=text
-            )
-
+            doc = Doc(content=text)
         except Exception:
             raise FileProcessingError(f"Error processing uploaded file {file.filename}")
         finally:

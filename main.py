@@ -371,7 +371,7 @@ async def upload_collection_documents(
     if sum([bool(documents), bool(chats), bool(links)]) != 1:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One and only one of documents, chats or links must be provided",
+            detail="One and only one of documents, chats, links or files must be provided",
         )
     docs_to_process = documents if documents else chats if chats else links
     if len(docs_to_process) != len(metadata):

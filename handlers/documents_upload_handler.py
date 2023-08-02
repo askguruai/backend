@@ -102,7 +102,7 @@ class DocumentsUploadHandler:
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = []
-            for i in range(0, len(all_chunks), self.insert_chunk_size):
+            for i in tqdm(range(0, len(all_chunks), self.insert_chunk_size)):
                 all_embeddings.extend(
                     await ml_requests.get_embeddings(
                         all_chunks[i : i + self.insert_chunk_size], api_version=api_version
@@ -137,10 +137,12 @@ class DocumentsUploadHandler:
         try:
             collection = MILVUS_DB[full_collection_name]
         except DatabaseError:
-            logger.error(f"Requested collection {vendor}_{organization}_{collection} not found")
+            logger.error(
+                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Requested collection '{collection}' not found",
+                detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
             )
         documents = [f"'{doc}'" for doc in documents]
         existing_chunks = collection.query(

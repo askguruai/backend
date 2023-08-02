@@ -27,6 +27,7 @@ def insert_website(
     link: Annotated[str, typer.Argument(help="Link to parse. Should contain http/https in it.")],
     organization: str = None,
     query: str = None,
+    summarize: bool = False,
     api_version: ApiVersion = ApiVersion.v2.value,
     backend_url: BackendUrl = BackendUrl.prod.value,
 ):
@@ -56,7 +57,7 @@ def insert_website(
     logger.info("Inserting...")
     n_chunks = requests.post(
         f"{api_url}/collections/website",
-        json={"links": [link]},
+        json={"links": [link], "summarize": summarize},
         headers={"Authorization": f"Bearer {token}"},
     ).json()["n_chunks"]
     logger.info(f"Inserting finished in {n_chunks} chunks!")

@@ -2,9 +2,11 @@ import os
 from typing import Dict, List, Tuple
 
 import numpy as np
+from fastapi import HTTPException, status
+from loguru import logger
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
 
-from utils import CONFIG
+from utils import CONFIG, hash_string
 from utils.errors import DatabaseError
 
 connections.connect(
@@ -55,6 +57,8 @@ class CollectionsManager:
 
     def search_collections_set(
         self,
+        vendor: str,
+        organization: str,
         collections: List[str],
         vec: np.ndarray,
         n_top: int,
@@ -63,7 +67,23 @@ class CollectionsManager:
         document_collection: str = None,
         security_code: int = 2**63 - 1,  # full access by default
     ) -> Tuple[List[str]]:
-        search_collections = [self[col] for col in collections]
+        org_hash = hash_string(organization)
+        # search_collections = [self[col] for col in collections]
+        # collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+        search_collections = []
+        for collection in collections:
+            collection_name = f"{vendor}_{org_hash}_{collection}"
+            try:
+                search_collections.append(self.get_collection(collection_name))
+            except DatabaseError as e:
+                logger.error(
+                    f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
+                )
+
         search_params = {
             "metric_type": "IP",
             "params": {"nprobe": 10},
