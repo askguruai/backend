@@ -1,6 +1,7 @@
 import json
 import os
 import os.path as osp
+from tempfile import TemporaryDirectory
 from typing import List, Tuple
 
 import docx
@@ -42,7 +43,7 @@ class DocxParser(GeneralParser):
         super().__init__(chunk_size)
         self.ld = None
 
-    def process_file(self, path) -> Tuple[List[str], str]:
+    def process_file(self, path, content_only=False) -> Tuple[List[str], str]:
         file_name = osp.splitext(osp.split(path)[1])[0]
         meta = {"doc_title": file_name}
         contents = []
@@ -58,6 +59,8 @@ class DocxParser(GeneralParser):
                 paragraph_text = self.parse_paragraph(p)
                 contents.append(paragraph_text)
         content = "\n".join(contents)
+        if content_only:
+            return content
         meta["security_groups"] = 2**63 - 1
         chunks = doc_to_chunks(content=content, title=file_name)
         return chunks, content, meta
@@ -80,6 +83,12 @@ class DocxParser(GeneralParser):
             # resetting dispatcher
             self.ld = None
         return text
+
+    def stream2text(self, stream: bytes) -> str:
+        with TemporaryDirectory() as tmp:
+            with open(osp.join(tmp, "document.docx"), "wb") as f:
+                f.write(stream)
+            return self.process_file(osp.join(tmp, "document.docx"), content_only=True)
 
 
 # my_doc = docx.Document(infile)

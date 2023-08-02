@@ -1,6 +1,4 @@
-import hashlib
-import logging
-from typing import Dict, List
+from typing import List
 
 from fastapi import File, HTTPException, UploadFile, status
 from loguru import logger
@@ -8,9 +6,9 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from tqdm import tqdm
 
 from parsers import DocumentsParser
-from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils import CONFIG, MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
 from utils.errors import DatabaseError
-from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc
+from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
 
 
 class DocumentsUploadHandler:
@@ -25,10 +23,8 @@ class DocumentsUploadHandler:
         organization: str,
         collection: str,
         documents: List[Doc] | List[Chat] | List[str] | List[UploadFile],
-        project_to_en: bool,
-        summarize: bool,
-        summary_length: int = CONFIG["misc"]["default_summary_length"],
         ignore_urls: bool = True,
+        metadata: List[DocumentMetadata] = None,
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
@@ -37,7 +33,7 @@ class DocumentsUploadHandler:
                 doc for link in documents for doc in (await self.parser.link_to_docs(link, ignore_urls=ignore_urls))
             ]
         elif isinstance(documents[0], StarletteUploadFile):
-            documents = [(await self.parser.raw_to_doc(raw_doc)) for raw_doc in documents]
+            documents = [(await self.parser.raw_to_doc(doc, vendor, organization, collection)) for doc in documents]
 
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
@@ -49,8 +45,10 @@ class DocumentsUploadHandler:
         all_summaries = []
         all_timestamps = []
         all_security_groups = []
-        for doc in tqdm(documents):
-            chunks, meta_info, content = self.parser.process_document(doc, project_to_en=project_to_en)
+        for i in tqdm(range(len(documents))):
+            doc = documents[i]
+            meta = metadata[i]
+            chunks, meta_info, content = self.parser.process_document(doc, meta)
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f'doc_id=="{doc_id}"',
@@ -83,10 +81,13 @@ class DocumentsUploadHandler:
             if len(new_chunks) == 0:
                 # everyting is already in the database
                 continue
-            if summarize:
+            if meta.summary_length > 0:
                 summary = await ml_requests.get_summary(
-                    info=content, max_tokens=summary_length, api_version=api_version
+                    info=content, max_tokens=meta.summary_length, api_version=api_version
                 )
+                if meta_info["source_language"] is not None and meta_info["source_language"] != "en":
+                    trans_result = TRANSLATE_CLIENT.translate(summary, target_language=meta_info["source_language"])
+                    summary = trans_result["translatedText"]
             else:
                 summary = meta_info["doc_summary"]
 

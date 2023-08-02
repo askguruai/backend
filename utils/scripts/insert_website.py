@@ -56,7 +56,7 @@ def insert_website(
 
     logger.info("Inserting...")
     n_chunks = requests.post(
-        f"{api_url}/collections/website",
+        f"{api_url}/collections/website/links",
         json={"links": [link], "summarize": summarize},
         headers={"Authorization": f"Bearer {token}"},
     ).json()["n_chunks"]

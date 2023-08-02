@@ -5,22 +5,26 @@ from datetime import datetime
 from typing import List, Tuple
 from urllib.parse import urljoin
 
-import aiofiles
-import fitz
 import html2text
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
+from fastapi import HTTPException, status
 from langdetect import detect as language_detect
 from loguru import logger
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
+from parsers.docx_parser_ import DocxParser
+from parsers.markdown_parser import MarkdownParser
 from parsers.pdf_parser import PdfParser
-from utils import GRIDFS, TRANSLATE_CLIENT, hash_string
-from utils.errors import FileProcessingError
+from utils import GRIDFS, TRANSLATE_CLIENT
 from utils.misc import int_list_encode
-from utils.schemas import Chat, Doc
+from utils.schemas import Chat, Doc, DocumentMetadata
 from utils.tokenize_ import doc_to_chunks
+
+DOCX_PARSER = DocxParser(1024)
+PDF_PARSER = PdfParser(1024)
+MD_PARSER = MarkdownParser(1024)
 
 
 class DocumentsParser:
@@ -30,28 +34,31 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
-    def process_document(self, document: Chat | Doc, project_to_en: bool) -> Tuple[List[str], dict]:
+    def process_document(self, document: Chat | Doc, metadata: DocumentMetadata) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
-                "doc_id": document.id if document.id is not None else hash_string(document.content),
-                "doc_title": document.title if document.title is not None else "",
-                "timestamp": int(document.timestamp)
-                if document.timestamp is not None
+                "doc_id": metadata.id,
+                "doc_title": metadata.title,
+                "timestamp": int(metadata.timestamp)
+                if metadata.timestamp is not None
                 else int(datetime.now().timestamp()),
-                "doc_summary": document.summary if document.summary is not None else "",
-                "security_groups": int_list_encode(document.security_groups)
-                if document.security_groups is not None
+                "doc_summary": metadata.summary if metadata.summary is not None else "",
+                "security_groups": int_list_encode(metadata.security_groups)
+                if metadata.security_groups is not None
                 else 2**63 - 1,
+                "url": metadata.url if metadata.url else "",
+                "source_language": None,
             }
-            if project_to_en:
+            if metadata.project_to_en:
                 try:
                     document_language = language_detect(document.content[:512])
                 except Exception as e:
-                    logger.error(f"Failed to detect language of {document.title}")
+                    logger.error(f"Failed to detect language of {metadata.title}")
                     document_language = None
                 if document_language != "en":
                     trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
                     content = trans_result["translatedText"]
+                    meta["source_language"] = trans_result["detectedSourceLanguage"]
                 else:
                     content = document.content
             else:
@@ -60,11 +67,15 @@ class DocumentsParser:
 
         elif isinstance(document, Chat):
             meta = {
-                "doc_id": document.id,
+                "doc_id": metadata.id,
                 "doc_title": f"{document.user.name}::{document.user.id}",
-                "doc_summary": "",
-                "timestamp": int(document.timestamp),
-                "security_groups": int_list_encode(document.security_groups),
+                "doc_summary": metadata.summary if metadata.summary is not None else "",
+                "timestamp": int(metadata.timestamp)
+                if metadata.timestamp is not None
+                else int(datetime.now().timestamp()),
+                "security_groups": int_list_encode(metadata.security_groups),
+                "url": metadata.url if metadata.url else "",
+                "source_language": None,
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
             content = "\n".join(text_lines)
@@ -158,22 +169,35 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def raw_to_doc(self, file: StarletteUploadFile):
-        try:
-            contents = await file.read()
-            GRIDFS.put(contents, filename=file.filename, content_type=file.content_type)
-            name, format = osp.splitext(file.filename)
-            if format == ".pdf":
-                text = PdfParser.stream2text(stream=contents)
-            else:
-                # todo: support .md and .docx
-                raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
+    async def raw_to_doc(self, file: StarletteUploadFile, vendor: str, organization: str, collection: str) -> Doc:
+        contents = await file.read()
+        name, format = osp.splitext(file.filename)
+        if format == ".pdf":
+            text = PDF_PARSER.stream2text(stream=contents)
+        elif format == ".docx":
+            text = DOCX_PARSER.stream2text(stream=contents)
+        elif format == ".md":
+            text = MD_PARSER.stream2text(stream=contents)
+        else:
+            msg = f"Uploading files of type {format} is not supported. Allowed types: pdf, docx, and md"
+            logger.error(msg)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=msg,
+            )
 
-            doc = Doc(content=text, id=name, title=name)
-        except Exception:
-            raise FileProcessingError(f"Error processing uploaded file {file.filename}")
-        finally:
-            await file.close()
+        doc = Doc(content=text)
+
+        filename = f"{vendor}_{organization}_{collection}_{file.filename}"
+        res = GRIDFS.find_one({"filename": filename})
+        if res:
+            GRIDFS.delete(res._id)
+            logger.info(f"Deleted file {filename} from GridFS")
+        GRIDFS.put(
+            contents,
+            filename=filename,
+            content_type=file.content_type,
+        )
         return doc
 
     def chat_to_chunks(self, text_lines: List[str]) -> List[str]:

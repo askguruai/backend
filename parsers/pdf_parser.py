@@ -25,8 +25,7 @@ class PdfParser(GeneralParser):
         chunks = doc_to_chunks(content=content, title=file_name)
         return chunks, content, meta
 
-    @staticmethod
-    def stream2text(stream: bytes) -> str:
+    def stream2text(self, stream: bytes) -> str:
         with fitz.open(stream=stream, filetype="pdf") as fl:
             text = ""
             for page in fl:

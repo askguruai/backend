@@ -1,3 +1,4 @@
+import json
 import time
 from typing import Any, Dict, List
 
@@ -5,7 +6,20 @@ import bson
 import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
-from fastapi import Body, Depends, FastAPI, File, HTTPException, Path, Query, Request, Response, UploadFile, status
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse, StreamingResponse
 from loguru import logger
@@ -31,6 +45,7 @@ from utils.schemas import (
     CollectionDocumentsResponse,
     CollectionResponses,
     Doc,
+    DocumentMetadata,
     DocumentRequest,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
@@ -327,7 +342,7 @@ async def get_collection(
 
 
 @app.post(
-    "/{api_version}/collections/{collection}",
+    "/{api_version}/collections/{collection}/docs",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
 )
@@ -337,45 +352,147 @@ async def upload_collection_documents(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
-    project_to_en: bool = Body(
-        True, description="Whether to translate uploaded documet into Eng (increases model performance)"
+    documents: List[Doc] = Body(description="List of documents to upload"),
+    metadata: List[DocumentMetadata] = Body(
+        description="List of DocumentMetadata objects for each of the documents/chats provided"
     ),
-    summarize: bool = Body(
-        False, description="Whether to summarize documents. Will override `summary` that is passed with the document"
-    ),
-    summary_length: int = Body(
-        CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
-    ),
-    documents: List[Doc] = Body(None, description="List of documents to upload"),
-    files: List[UploadFile] = File(
-        None,
-        description="File or list of files to upload. Currently only .pdf is supported. Name of the file will become its id",
-    ),
-    chats: List[Chat] = Body(None, description="List of chats to upload"),
-    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
-    ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
-    # only one of documents, chats or links must be provided
-    if sum([bool(documents), bool(chats), bool(links), bool(files)]) != 1:
+    if len(documents) != len(metadata):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="One and only one of documents, chats, links or files must be provided",
+            detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
         )
 
-    if documents:
-        for document in documents:
-            GRIDFS.put(document.content.encode(), filename=document.id)
+    token_data = decode_token(token)
 
+    for doc_metadata, document in zip(metadata, documents):
+        filename = f"{token_data['vendor']}_{token_data['organization']}_{collection}_{doc_metadata.id}"
+        res = GRIDFS.find_one({"filename": filename})
+        if res:
+            GRIDFS.delete(res._id)
+            logger.info(f"Deleted file {filename} from GridFS")
+        GRIDFS.put(
+            document.content.encode(),
+            filename=filename,
+            content_type="text/plain",
+        )
+
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=documents,
+        metadata=metadata,
+    )
+
+
+@app.post(
+    "/{api_version}/collections/{collection}/files",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+)
+@catch_errors
+async def upload_collection_files(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    files: List[UploadFile] = File(
+        description="A file or a list of files to be processed. Allowed types: .pdf, .docx and .md"
+    ),
+    metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
+):
+    token_data = decode_token(token)
+    try:
+        raw_metadata = json.loads(metadata)
+    except Exception as e:
+        logger.error(f"Error decoding metadata: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must be a valid json string containing a list of metadata objects",
+        )
+    if len(raw_metadata) != len(files):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
+        )
+    processed_metadata = []
+    for i, meta in enumerate(raw_metadata):
+        try:
+            processed_metadata.append(DocumentMetadata(**meta))
+        except Exception as e:
+            msg = f"Metadata {meta} at index {i} does not satisfy FileMetadata model"
+            logger.error(msg)
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=msg,
+            )
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=files,
+        metadata=processed_metadata,
+    )
+
+
+@app.post(
+    "/{api_version}/collections/{collection}/chats",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+    include_in_schema=False,
+)
+@catch_errors
+async def upload_collection_chats(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    chats: List[Chat] = Body(description="List of chats to upload"),
+    metadata: List[DocumentMetadata] = Body(
+        description="List of DocumentMetadata objects for each of the documents/chats provided"
+    ),
+):
+    if len(chats) != len(metadata):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
+        )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=documents if documents else chats if chats else links if links else files,
-        project_to_en=project_to_en,
-        summarize=summarize,
-        summary_length=summary_length,
+        documents=chats,
+        metadata=metadata,
+    )
+
+
+@app.post(
+    "/{api_version}/collections/{collection}/links",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+    include_in_schema=False,
+)
+@catch_errors
+async def upload_collection_links(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
+    ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
+):
+    token_data = decode_token(token)
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=links,
         ignore_urls=ignore_urls,
     )
 
@@ -386,7 +503,7 @@ async def upload_collection_documents(
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
-async def upload_collection_documents(
+async def delete_collection_documents(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
@@ -595,7 +712,7 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
 ######################################################
 
 
-@app.get("/{api_version}/filters", response_model=GetFiltersResponse)
+@app.get("/{api_version}/filters", response_model=GetFiltersResponse, include_in_schema=False)
 @catch_errors
 async def get_filter_rules_epoint(
     request: Request,
@@ -609,6 +726,7 @@ async def get_filter_rules_epoint(
 
 @app.post(
     "/{api_version}/filters",
+    include_in_schema=False,
 )
 @catch_errors
 async def create_filter_rule_epoint(
@@ -634,6 +752,7 @@ async def create_filter_rule_epoint(
 
 @app.patch(
     "/{api_version}/filters",
+    include_in_schema=False,
 )
 @catch_errors
 async def update_filter_rule_epoint(
@@ -659,6 +778,7 @@ async def update_filter_rule_epoint(
 
 @app.delete(
     "/{api_version}/filters",
+    include_in_schema=False,
 )
 @catch_errors
 async def archive_filter_rule_epoint(

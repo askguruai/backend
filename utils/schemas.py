@@ -54,22 +54,14 @@ class Message(BaseModel):
 
 
 class Chat(BaseModel):
-    id: str = Field(description="Id of the chat", example="7af8c3e548e40aeb984c42dd")
-    timestamp: int = Field(description="Chat last change time in seconds", example=1623345600)
     user: User = Field(description="User of the chat", example=User(id="7af8c3e548e40aeb984c42dd", name="John Doe"))
     history: List[Message] = Field(
         description="History of the chat", example=[Message(role="assistant", content="Hello, how can I help you?")]
     )
-    security_groups: List[int] = Field(description="Security groups of the chat", example=[0, 2])
 
 
 class Doc(BaseModel):
     content: str = Field(description="Content of the document", example="")
-    id: str = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
-    title: str = Field(description="Title of the document", example="Passwords")
-    timestamp: int | None = Field(description="Document last change time in seconds", example=1688474672)
-    summary: str | None = Field(description="Summary of the document", example="Instruction when forget password")
-    security_groups: List[int] | None = Field(description="Security groups of the document", example=[0, 2])
 
 
 class GetCollectionsResponse(BaseModel):
@@ -342,4 +334,24 @@ class GetFiltersResponse(BaseModel):
                 "timestamp": 456789,
             }
         ],
+    )
+
+
+class DocumentMetadata(BaseModel):
+    id: str = Field(description="Id of the respective document")
+    title: str = Field(description="Title of the document to override filename", example="Passwords")
+    url: str | None = Field(description="URL of this resource")
+    timestamp: int | None = Field(
+        description="Document last change time in seconds. Default is server receive time", example=1688474672
+    )
+    summary: str | None = Field(description="Pre-defined summary", example="Instruction when forget password")
+    summary_length: int = Field(
+        default=0,
+        description="If > 0, determines length of summary to be done in tokens (100-200 recommended). Overrides pre-defined summary! ",
+    )
+    project_to_en: bool = Field(
+        default=True, description="Whether to translate uploaded documet into Eng (increases model performance)"
+    )
+    security_groups: List[int] | None = Field(
+        description="Security groups of the document. Default is full access", example=[0, 2]
     )
