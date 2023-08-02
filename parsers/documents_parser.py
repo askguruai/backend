@@ -62,10 +62,12 @@ class DocumentsParser:
 
         elif isinstance(document, Chat):
             meta = {
-                "doc_id": document.id,
+                "doc_id": metadata.id,
                 "doc_title": f"{document.user.name}::{document.user.id}",
                 "doc_summary": "",
-                "timestamp": int(document.timestamp),
+                "timestamp": int(metadata.timestamp)
+                if metadata.timestamp is not None
+                else int(datetime.now().timestamp()),
                 "security_groups": int_list_encode(metadata.security_groups),
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]

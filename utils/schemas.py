@@ -54,13 +54,10 @@ class Message(BaseModel):
 
 
 class Chat(BaseModel):
-    id: str = Field(description="Id of the chat", example="7af8c3e548e40aeb984c42dd")
-    timestamp: int = Field(description="Chat last change time in seconds", example=1623345600)
     user: User = Field(description="User of the chat", example=User(id="7af8c3e548e40aeb984c42dd", name="John Doe"))
     history: List[Message] = Field(
         description="History of the chat", example=[Message(role="assistant", content="Hello, how can I help you?")]
     )
-    security_groups: List[int] = Field(description="Security groups of the chat", example=[0, 2])
 
 
 class Doc(BaseModel):
