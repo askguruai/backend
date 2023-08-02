@@ -165,10 +165,19 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def raw_to_doc(self, file: StarletteUploadFile):
+    async def raw_to_doc(self, file: StarletteUploadFile, vendor: str, organization: str, collection: str) -> Doc:
         try:
             contents = await file.read()
-            GRIDFS.put(contents, filename=file.filename, content_type=file.content_type)
+            filename = f"{vendor}_{organization}_{collection}_{file.filename}"
+            res = GRIDFS.find_one({"filename": filename})
+            if res:
+                GRIDFS.delete(res._id)
+                logger.info(f"Deleted file {filename} from GridFS")
+            GRIDFS.put(
+                contents,
+                filename=filename,
+                content_type=file.content_type,
+            )
             name, format = osp.splitext(file.filename)
             if format == ".pdf":
                 text = PdfParser.stream2text(stream=contents)

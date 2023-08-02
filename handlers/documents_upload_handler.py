@@ -33,7 +33,7 @@ class DocumentsUploadHandler:
                 doc for link in documents for doc in (await self.parser.link_to_docs(link, ignore_urls=ignore_urls))
             ]
         elif isinstance(documents[0], StarletteUploadFile):
-            documents = [(await self.parser.raw_to_doc(doc)) for doc in documents]
+            documents = [(await self.parser.raw_to_doc(doc, vendor, organization, collection)) for doc in documents]
 
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")

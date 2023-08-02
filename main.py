@@ -397,10 +397,19 @@ async def upload_collection_documents(
             detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
         )
     token_data = decode_token(token)
-    # todo: chat saving as well!
+
     if documents:
-        for i, document in enumerate(documents):
-            GRIDFS.put(document.content.encode(), filename=metadata[i].id)
+        for doc_metadata, document in zip(metadata, documents):
+            filename = f"{token_data['vendor']}_{token_data['organization']}_{collection}_{doc_metadata.id}"
+            res = GRIDFS.find_one({"filename": filename})
+            if res:
+                GRIDFS.delete(res._id)
+                logger.info(f"Deleted file {filename} from GridFS")
+            GRIDFS.put(
+                document.content.encode(),
+                filename=filename,
+            )
+
     return await documents_upload_handler.handle_request(
         api_version=api_version,
         vendor=token_data["vendor"],
