@@ -30,9 +30,7 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
-    def process_document(
-        self, document: Chat | Doc, metadata: DocumentMetadata
-    ) -> Tuple[List[str], dict]:
+    def process_document(self, document: Chat | Doc, metadata: DocumentMetadata) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
                 "doc_id": metadata.id,

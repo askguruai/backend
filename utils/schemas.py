@@ -345,8 +345,13 @@ class DocumentMetadata(BaseModel):
         description="Document last change time in seconds. Default is server receive time", example=1688474672
     )
     summary: str | None = Field(description="Pre-defined summary", example="Instruction when forget password")
-    summary_length: int = Field(default=0, description="If > 0, determines length of summary to be done in tokens (100-200 recommended). Overrides pre-defined summary! ")
-    project_to_en: bool = Field(default=True, description="Whether to translate uploaded documet into Eng (increases model performance)")
+    summary_length: int = Field(
+        default=0,
+        description="If > 0, determines length of summary to be done in tokens (100-200 recommended). Overrides pre-defined summary! ",
+    )
+    project_to_en: bool = Field(
+        default=True, description="Whether to translate uploaded documet into Eng (increases model performance)"
+    )
     security_groups: List[int] | None = Field(
         description="Security groups of the document. Default is full access", example=[0, 2]
     )
