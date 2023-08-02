@@ -19,7 +19,7 @@ from parsers.pdf_parser import PdfParser
 from utils import TRANSLATE_CLIENT, hash_string
 from utils.errors import FileProcessingError
 from utils.misc import int_list_encode
-from utils.schemas import Chat, Doc, FileMetadata
+from utils.schemas import Chat, Doc, DocumentMetadata
 from utils.tokenize_ import doc_to_chunks
 
 
@@ -30,24 +30,24 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
-    def process_document(self, document: Chat | Doc, project_to_en: bool) -> Tuple[List[str], dict]:
+    def process_document(self, document: Chat | Doc, metadata: DocumentMetadata, project_to_en: bool) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
-                "doc_id": document.id if document.id is not None else hash_string(document.content),
-                "doc_title": document.title if document.title is not None else "",
-                "timestamp": int(document.timestamp)
-                if document.timestamp is not None
+                "doc_id": metadata.id,
+                "doc_title": metadata.title,
+                "timestamp": int(metadata.timestamp)
+                if metadata.timestamp is not None
                 else int(datetime.now().timestamp()),
-                "doc_summary": document.summary if document.summary is not None else "",
-                "security_groups": int_list_encode(document.security_groups)
-                if document.security_groups is not None
+                "doc_summary": metadata.summary if metadata.summary is not None else "",
+                "security_groups": int_list_encode(metadata.security_groups)
+                if metadata.security_groups is not None
                 else 2**63 - 1,
             }
             if project_to_en:
                 try:
                     document_language = language_detect(document.content[:512])
                 except Exception as e:
-                    logger.error(f"Failed to detect language of {document.title}")
+                    logger.error(f"Failed to detect language of {metadata.title}")
                     document_language = None
                 if document_language != "en":
                     trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
@@ -64,7 +64,7 @@ class DocumentsParser:
                 "doc_title": f"{document.user.name}::{document.user.id}",
                 "doc_summary": "",
                 "timestamp": int(document.timestamp),
-                "security_groups": int_list_encode(document.security_groups),
+                "security_groups": int_list_encode(metadata.security_groups),
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
             content = "\n".join(text_lines)
@@ -144,8 +144,7 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def raw_to_doc(self, file_w_metadata: Tuple[StarletteUploadFile, FileMetadata]):
-        file, metadata = file_w_metadata
+    async def raw_to_doc(self, file:StarletteUploadFile):
         try:
             contents = await file.read()
             name, format = osp.splitext(file.filename)
@@ -156,12 +155,7 @@ class DocumentsParser:
                 raise FileProcessingError(f"Uploading files of type {format} is currently not supported")
 
             doc = Doc(
-                content=text,
-                id=metadata.id,
-                title=name if metadata.title is None else metadata.title,
-                summary="" if metadata.summary is not None else metadata.summary,
-                timestamp=int(datetime.now().timestamp()) if metadata.timestamp is None else metadata.timestamp,
-                security_groups=metadata.security_groups,
+                content=text
             )
 
         except Exception:

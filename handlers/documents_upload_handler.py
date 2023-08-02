@@ -10,7 +10,7 @@ from tqdm import tqdm
 from parsers import DocumentsParser
 from utils import CONFIG, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DatabaseError
-from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, FileMetadata
+from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
 
 
 class DocumentsUploadHandler:
@@ -29,7 +29,7 @@ class DocumentsUploadHandler:
         summarize: bool,
         summary_length: int = CONFIG["misc"]["default_summary_length"],
         ignore_urls: bool = True,
-        files_metadata: List[FileMetadata] = None,
+        metadata: List[DocumentMetadata] = None,
     ) -> CollectionDocumentsResponse:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
@@ -38,7 +38,7 @@ class DocumentsUploadHandler:
                 doc for link in documents for doc in (await self.parser.link_to_docs(link, ignore_urls=ignore_urls))
             ]
         elif isinstance(documents[0], StarletteUploadFile):
-            documents = [(await self.parser.raw_to_doc(doc_w_meta)) for doc_w_meta in zip(documents, files_metadata)]
+            documents = [(await self.parser.raw_to_doc(doc)) for doc in documents]
 
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
@@ -50,8 +50,10 @@ class DocumentsUploadHandler:
         all_summaries = []
         all_timestamps = []
         all_security_groups = []
-        for doc in tqdm(documents):
-            chunks, meta_info, content = self.parser.process_document(doc, project_to_en=project_to_en)
+        for i in tqdm(range(len(documents))):
+            doc = documents[i]
+            meta = metadata[i]
+            chunks, meta_info, content = self.parser.process_document(doc, meta, project_to_en=project_to_en)
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f'doc_id=="{doc_id}"',

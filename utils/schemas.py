@@ -65,11 +65,11 @@ class Chat(BaseModel):
 
 class Doc(BaseModel):
     content: str = Field(description="Content of the document", example="")
-    id: str = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
-    title: str = Field(description="Title of the document", example="Passwords")
-    timestamp: int | None = Field(description="Document last change time in seconds", example=1688474672)
-    summary: str | None = Field(description="Summary of the document", example="Instruction when forget password")
-    security_groups: List[int] | None = Field(description="Security groups of the document", example=[0, 2])
+    # id: str = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
+    # title: str = Field(description="Title of the document", example="Passwords")
+    # timestamp: int | None = Field(description="Document last change time in seconds", example=1688474672)
+    # summary: str | None = Field(description="Summary of the document", example="Instruction when forget password")
+    # security_groups: List[int] | None = Field(description="Security groups of the document", example=[0, 2])
 
 
 class GetCollectionsResponse(BaseModel):
@@ -345,9 +345,10 @@ class GetFiltersResponse(BaseModel):
     )
 
 
-class FileMetadata(BaseModel):
+class DocumentMetadata(BaseModel):
     id: str = Field(description="Id of the respective document")
-    title: str | None = Field(description="Title of the document to override filename", example="Passwords")
+    title: str = Field(description="Title of the document to override filename", example="Passwords")
+    url: str | None = Field(description="URL of this resource")
     timestamp: int | None = Field(
         description="Document last change time in seconds. Default is server receive time", example=1688474672
     )

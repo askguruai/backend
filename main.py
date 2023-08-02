@@ -46,7 +46,7 @@ from utils.schemas import (
     CollectionResponses,
     Doc,
     DocumentRequest,
-    FileMetadata,
+    DocumentMetadata,
     GetAnswerResponse,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
@@ -364,6 +364,7 @@ async def upload_collection_documents(
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
+    metadata: List[DocumentMetadata] = Body(description="List of DocumentMetadata objects for each of the documents/chats provided"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
     # only one of documents, chats or links must be provided
@@ -372,22 +373,29 @@ async def upload_collection_documents(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="One and only one of documents, chats or links must be provided",
         )
+    docs_to_process = documents if documents else chats if chats else links
+    if len(docs_to_process) != len(metadata):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
+        )
     token_data = decode_token(token)
     return await documents_upload_handler.handle_request(
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=documents if documents else chats if chats else links,
+        documents=docs_to_process,
         project_to_en=project_to_en,
         summarize=summarize,
         summary_length=summary_length,
         ignore_urls=ignore_urls,
+        metadata=metadata
     )
 
 
 @app.post(
-    "/{api_version}/collections_files/{collection}",
+    "/{api_version}/collections/{collection}/files",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
 )
@@ -400,7 +408,7 @@ async def upload_collection_documents(
     files: List[UploadFile] = File(
         description="A file or a list of files to be processed. Currently supporting (pdf/md/docx)"
     ),
-    files_metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
+    metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
     project_to_en: bool = Form(
         True, description="Whether to translate uploaded documet into Eng (increases model performance)"
     ),
@@ -413,7 +421,7 @@ async def upload_collection_documents(
 ):
     token_data = decode_token(token)
     try:
-        raw_metadata = json.loads(files_metadata)
+        raw_metadata = json.loads(metadata)
     except Exception as e:
         logger.error(f"Error decoding metadata: {e}")
         raise HTTPException(
@@ -425,10 +433,10 @@ async def upload_collection_documents(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="`files_metadata` must contain a json-dumped list of the same size as the number of files provided",
         )
-    metadata = []
+    processed_metadata = []
     for i, meta in enumerate(raw_metadata):
         try:
-            metadata.append(FileMetadata(**meta))
+            processed_metadata.append(DocumentMetadata(**meta))
         except Exception as e:
             msg = f"Metadata {meta} at index {i} does not satsfy FileMetadata model"
             logger.error(msg)
@@ -445,7 +453,7 @@ async def upload_collection_documents(
         project_to_en=project_to_en,
         summarize=summarize,
         summary_length=summary_length,
-        files_metadata=metadata,
+        metadata=processed_metadata,
     )
 
 
