@@ -31,7 +31,7 @@ class DocumentsParser:
         self.converter.ignore_images = True
 
     def process_document(
-        self, document: Chat | Doc, metadata: DocumentMetadata, project_to_en: bool
+        self, document: Chat | Doc, metadata: DocumentMetadata
     ) -> Tuple[List[str], dict]:
         if isinstance(document, Doc):
             meta = {
@@ -45,7 +45,7 @@ class DocumentsParser:
                 if metadata.security_groups is not None
                 else 2**63 - 1,
             }
-            if project_to_en:
+            if metadata.project_to_en:
                 try:
                     document_language = language_detect(document.content[:512])
                 except Exception as e:
@@ -64,7 +64,7 @@ class DocumentsParser:
             meta = {
                 "doc_id": metadata.id,
                 "doc_title": f"{document.user.name}::{document.user.id}",
-                "doc_summary": "",
+                "doc_summary": metadata.summary if metadata.summary is not None else "",
                 "timestamp": int(metadata.timestamp)
                 if metadata.timestamp is not None
                 else int(datetime.now().timestamp()),

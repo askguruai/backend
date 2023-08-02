@@ -25,9 +25,6 @@ class DocumentsUploadHandler:
         organization: str,
         collection: str,
         documents: List[Doc] | List[Chat] | List[str] | List[UploadFile],
-        project_to_en: bool,
-        summarize: bool,
-        summary_length: int = CONFIG["misc"]["default_summary_length"],
         ignore_urls: bool = True,
         metadata: List[DocumentMetadata] = None,
     ) -> CollectionDocumentsResponse:
@@ -53,7 +50,7 @@ class DocumentsUploadHandler:
         for i in tqdm(range(len(documents))):
             doc = documents[i]
             meta = metadata[i]
-            chunks, meta_info, content = self.parser.process_document(doc, meta, project_to_en=project_to_en)
+            chunks, meta_info, content = self.parser.process_document(doc, meta)
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f'doc_id=="{doc_id}"',
@@ -86,9 +83,9 @@ class DocumentsUploadHandler:
             if len(new_chunks) == 0:
                 # everyting is already in the database
                 continue
-            if summarize:
+            if meta.summary_length > 0:
                 summary = await ml_requests.get_summary(
-                    info=content, max_tokens=summary_length, api_version=api_version
+                    info=content, max_tokens=meta.summary_length, api_version=api_version
                 )
             else:
                 summary = meta_info["doc_summary"]

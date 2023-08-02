@@ -352,15 +352,6 @@ async def upload_collection_documents(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization", example="chats"),
-    project_to_en: bool = Body(
-        True, description="Whether to translate uploaded documet into Eng (increases model performance)"
-    ),
-    summarize: bool = Body(
-        False, description="Whether to summarize documents. Will override `summary` that is passed with the document"
-    ),
-    summary_length: int = Body(
-        CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
-    ),
     documents: List[Doc] = Body(None, description="List of documents to upload"),
     chats: List[Chat] = Body(None, description="List of chats to upload"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
@@ -392,9 +383,6 @@ async def upload_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=docs_to_process,
-        project_to_en=project_to_en,
-        summarize=summarize,
-        summary_length=summary_length,
         ignore_urls=ignore_urls,
         metadata=metadata,
     )
@@ -415,15 +403,6 @@ async def upload_collection_documents(
         description="A file or a list of files to be processed. Currently supporting (pdf/md/docx)"
     ),
     metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
-    project_to_en: bool = Form(
-        True, description="Whether to translate uploaded documet into Eng (increases model performance)"
-    ),
-    summarize: bool = Form(
-        False, description="Whether to summarize documents. Will override `summary` that is passed with the document"
-    ),
-    summary_length: int = Form(
-        CONFIG["misc"]["default_summary_length"], description="Parameter controlling summarization lengt"
-    ),
 ):
     token_data = decode_token(token)
     try:
@@ -456,9 +435,6 @@ async def upload_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=files,
-        project_to_en=project_to_en,
-        summarize=summarize,
-        summary_length=summary_length,
         metadata=processed_metadata,
     )
 
