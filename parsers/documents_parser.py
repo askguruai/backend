@@ -5,8 +5,6 @@ from datetime import datetime
 from typing import List, Tuple
 from urllib.parse import urljoin
 
-import aiofiles
-import fitz
 import html2text
 import tiktoken
 from aiohttp import ClientSession
@@ -16,12 +14,17 @@ from langdetect import detect as language_detect
 from loguru import logger
 from starlette.datastructures import UploadFile as StarletteUploadFile
 
+from parsers.docx_parser_ import DocxParser
+from parsers.markdown_parser import MarkdownParser
 from parsers.pdf_parser import PdfParser
-from utils import GRIDFS, TRANSLATE_CLIENT, hash_string
-from utils.errors import FileProcessingError
+from utils import GRIDFS, TRANSLATE_CLIENT
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc, DocumentMetadata
 from utils.tokenize_ import doc_to_chunks
+
+DOCX_PARSER = DocxParser(1024)
+PDF_PARSER = PdfParser(1024)
+MD_PARSER = MarkdownParser(1024)
 
 
 class DocumentsParser:
@@ -170,11 +173,11 @@ class DocumentsParser:
         contents = await file.read()
         name, format = osp.splitext(file.filename)
         if format == ".pdf":
-            text = PdfParser.stream2text(stream=contents)
+            text = PDF_PARSER.stream2text(stream=contents)
         elif format == ".docx":
-            text = ""
+            text = DOCX_PARSER.stream2text(stream=contents)
         elif format == ".md":
-            text = ""
+            text = MD_PARSER.stream2text(stream=contents)
         else:
             msg = f"Uploading files of type {format} is not supported. Allowed types: pdf, docx, and md"
             logger.error(msg)

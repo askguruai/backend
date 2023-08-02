@@ -1,5 +1,7 @@
+import os.path as osp
 import re
 from copy import deepcopy
+from tempfile import TemporaryDirectory
 from typing import Any, List, Tuple, Union
 
 import marko
@@ -12,6 +14,12 @@ from parsers.general_parser import GeneralParser
 
 
 class MarkdownParser(GeneralParser):
+    def stream2text(self, stream: bytes) -> str:
+        with TemporaryDirectory() as tmp:
+            with open(osp.join(tmp, "document.md"), "wb") as f:
+                f.write(stream)
+            return self.get_text(osp.join(tmp, "document.md"))
+
     def get_text(self, path: str) -> str:
         with open(path, "rt") as f:
             text = f.read()
