@@ -23,7 +23,7 @@ def doc_to_chunks(
     tokenizer_name: str = CONFIG["handlers"]["tokenizer_name"],
     chunk_size: int = int(CONFIG["handlers"]["chunk_size"]),
     overlapping_lines: int = 5,
-    splitter = "\n"
+    splitter="\n",
 ) -> List[str]:
     chunks = []
     encoder = get_tokenizer(tokenizer_name)

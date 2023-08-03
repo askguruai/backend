@@ -201,4 +201,4 @@ class DocumentsParser:
         return doc
 
     def chat_to_chunks(self, text_lines: List[str]) -> List[str]:
-        return doc_to_chunks(content="---***---".join(text_lines), splitter="---***---")
+        return doc_to_chunks(content="---***---".join(text_lines), splitter="---***---", overlapping_lines=10)
