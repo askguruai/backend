@@ -23,6 +23,7 @@ def doc_to_chunks(
     tokenizer_name: str = CONFIG["handlers"]["tokenizer_name"],
     chunk_size: int = int(CONFIG["handlers"]["chunk_size"]),
     overlapping_lines: int = 5,
+    splitter = "\n"
 ) -> List[str]:
     chunks = []
     encoder = get_tokenizer(tokenizer_name)
@@ -32,7 +33,7 @@ def doc_to_chunks(
     maxlen = int(CONFIG["milvus"]["chunk_max_symbols"])
     # TODO: split by lines which are bolded (in case of cars)
     # because they are the titles of the sections
-    for line in content.split("\n"):
+    for line in content.split(splitter):
         if len(encoder.encode(current_content + line + "\n")) > chunk_size and current_content.strip() != "":
             chunks.append(current_content.strip()[:maxlen])
             current_content = f"{' '.join(olap)}\n"
