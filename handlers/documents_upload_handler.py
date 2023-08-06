@@ -45,6 +45,7 @@ class DocumentsUploadHandler:
         all_summaries = []
         all_timestamps = []
         all_security_groups = []
+        all_urls = []
         for i in tqdm(range(len(documents))):
             doc = documents[i]
             meta = metadata[i]
@@ -98,6 +99,7 @@ class DocumentsUploadHandler:
             all_chunk_hashes.extend(new_chunks_hashes)
             all_timestamps.extend([meta_info["timestamp"]] * len(new_chunks))
             all_security_groups.extend([meta_info["security_groups"]] * len(new_chunks))
+            all_urls.extend([meta_info["url"]] * len(new_chunks))
         if len(all_chunks) != 0:
             all_embeddings = []
             for i in tqdm(range(0, len(all_chunks), self.insert_chunk_size)):
@@ -116,6 +118,7 @@ class DocumentsUploadHandler:
                         all_summaries[i : i + self.insert_chunk_size],
                         all_timestamps[i : i + self.insert_chunk_size],
                         all_security_groups[i : i + self.insert_chunk_size],
+                        all_urls[i : i + self.insert_chunk_size]
                     ]
                 )
             logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")

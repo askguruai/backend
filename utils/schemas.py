@@ -355,3 +355,4 @@ class DocumentMetadata(BaseModel):
     security_groups: List[int] | None = Field(
         description="Security groups of the document. Default is full access", example=[0, 2]
     )
+    url: str | None = Field(description="URL to provide with resource")
