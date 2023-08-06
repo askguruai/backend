@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -16,6 +17,11 @@ connections.connect(
     user=os.environ["MILVUS_USERNAME"],
     password=os.environ["MILVUS_PASSWORD"],
 )
+
+
+class MilvusSchema(str, Enum):
+    V0 = "SCHEMA_V0"
+    V1 = "SCHEMA_V1"  # schema with link field
 
 
 class CollectionsManager:
@@ -129,43 +135,67 @@ class CollectionsManager:
             np.array(all_collections)[top_hits].tolist(),
         )  # todo
 
-    def get_or_create_collection(self, collection_name: str) -> Collection:
+    def __get_collection_w_schema(self, collection_name: str, schema: MilvusSchema):
+        if schema == MilvusSchema.V0:
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(
+                    name="chunk_hash",
+                    dtype=DataType.VARCHAR,
+                    max_length=24,
+                ),
+                FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(
+                    name="chunk", dtype=DataType.VARCHAR, max_length=int(CONFIG["milvus"]["chunk_max_symbols"])
+                ),
+                FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+                FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
+                FieldSchema(name="timestamp", dtype=DataType.INT64),
+                FieldSchema(name="security_groups", dtype=DataType.INT64),
+            ]
+        elif schema == MilvusSchema.V1:
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(
+                    name="chunk_hash",
+                    dtype=DataType.VARCHAR,
+                    max_length=24,
+                ),
+                FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(
+                    name="chunk", dtype=DataType.VARCHAR, max_length=int(CONFIG["milvus"]["chunk_max_symbols"])
+                ),
+                FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+                FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
+                FieldSchema(name="timestamp", dtype=DataType.INT64),
+                FieldSchema(name="security_groups", dtype=DataType.INT64),
+                FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024),
+            ]
+        schema = CollectionSchema(fields)
+        m_collection = Collection(collection_name, schema)
+        index_params = {
+            "metric_type": "IP",
+            "index_type": "IVF_FLAT",
+            "params": {"nlist": 1024},
+        }
+        m_collection.create_index(field_name="emb_v1", index_params=index_params)
+        m_collection.create_index(
+            field_name="doc_id",
+            index_name="scalar_index",
+        )
+        # todo: do we need an index on primary key? we do if it is not auto, need to check
+        m_collection.load()
+        return m_collection
+
+    def get_or_create_collection(self, collection_name: str, schema: MilvusSchema = MilvusSchema.V1) -> Collection:
         if collection_name not in self.cache:
             if collection_name in utility.list_collections():
                 m_collection = Collection(collection_name)
                 m_collection.load()
                 self.cache[collection_name] = m_collection
             else:
-                fields = [
-                    FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
-                    FieldSchema(
-                        name="chunk_hash",
-                        dtype=DataType.VARCHAR,
-                        max_length=24,
-                    ),
-                    FieldSchema(name="doc_id", dtype=DataType.VARCHAR, max_length=1024),
-                    FieldSchema(
-                        name="chunk", dtype=DataType.VARCHAR, max_length=int(CONFIG["milvus"]["chunk_max_symbols"])
-                    ),
-                    FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
-                    FieldSchema(name="doc_title", dtype=DataType.VARCHAR, max_length=1024),
-                    FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
-                    FieldSchema(name="timestamp", dtype=DataType.INT64),
-                    FieldSchema(name="security_groups", dtype=DataType.INT64),
-                ]
-                schema = CollectionSchema(fields)
-                m_collection = Collection(collection_name, schema)
-                index_params = {
-                    "metric_type": "IP",
-                    "index_type": "IVF_FLAT",
-                    "params": {"nlist": 1024},
-                }
-                m_collection.create_index(field_name="emb_v1", index_params=index_params)
-                m_collection.create_index(
-                    field_name="doc_id",
-                    index_name="scalar_index",
-                )
-                # todo: do we need an index on primary key? we do if it is not auto, need to check
-                m_collection.load()
+                m_collection = self.__get_collection_w_schema(collection_name, schema)
                 self.cache[collection_name] = m_collection
         return self.cache[collection_name]
