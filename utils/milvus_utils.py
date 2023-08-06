@@ -1,6 +1,6 @@
 import os
-from typing import Dict, List, Tuple
 from enum import Enum
+from typing import Dict, List, Tuple
 
 import numpy as np
 from fastapi import HTTPException, status
@@ -21,7 +21,7 @@ connections.connect(
 
 class MilvusSchema(str, Enum):
     V0 = "SCHEMA_V0"
-    V1 = "SCHEMA_V1" # schema with link field
+    V1 = "SCHEMA_V1"  # schema with link field
 
 
 class CollectionsManager:
@@ -134,7 +134,7 @@ class CollectionsManager:
             np.array(all_summaries)[top_hits].tolist(),
             np.array(all_collections)[top_hits].tolist(),
         )  # todo
-    
+
     def __get_collection_w_schema(self, collection_name: str, schema: MilvusSchema):
         if schema == MilvusSchema.V0:
             fields = [
@@ -171,7 +171,7 @@ class CollectionsManager:
                 FieldSchema(name="doc_summary", dtype=DataType.VARCHAR, max_length=2048),
                 FieldSchema(name="timestamp", dtype=DataType.INT64),
                 FieldSchema(name="security_groups", dtype=DataType.INT64),
-                FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024)
+                FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024),
             ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
@@ -188,7 +188,6 @@ class CollectionsManager:
         # todo: do we need an index on primary key? we do if it is not auto, need to check
         m_collection.load()
         return m_collection
-
 
     def get_or_create_collection(self, collection_name: str, schema: MilvusSchema = MilvusSchema.V1) -> Collection:
         if collection_name not in self.cache:

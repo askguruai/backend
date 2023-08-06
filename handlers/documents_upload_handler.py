@@ -118,7 +118,7 @@ class DocumentsUploadHandler:
                         all_summaries[i : i + self.insert_chunk_size],
                         all_timestamps[i : i + self.insert_chunk_size],
                         all_security_groups[i : i + self.insert_chunk_size],
-                        all_urls[i : i + self.insert_chunk_size]
+                        all_urls[i : i + self.insert_chunk_size],
                     ]
                 )
             logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
