@@ -225,7 +225,7 @@ class CollectionHandler:
             milvus_collection = MILVUS_DB[full_collection_name]
         except DatabaseError:
             logger.error(
-                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
+                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {organization_hash}"
             )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
