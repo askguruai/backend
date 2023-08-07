@@ -78,6 +78,19 @@ class DocumentsParser:
                 "source_language": None,
             }
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
+            raw_content = "\n***---***\n".join(text_lines)
+            if metadata.project_to_en:
+                try:
+                    document_language = language_detect(raw_content[:512])
+                except Exception as e:
+                    logger.error(f"Failed to detect language of {metadata.title}")
+                    document_language = None
+                if document_language != "en":
+                    trans_result = TRANSLATE_CLIENT.translate(raw_content, target_language="en")
+                    translated = trans_result["translatedText"]
+                    text_lines = translated.split("***---***")
+                    text_lines = [line.strip() for line in text_lines]
+                    meta["source_language"] = trans_result["detectedSourceLanguage"]
             content = "\n".join(text_lines)
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta, content
