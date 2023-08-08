@@ -50,6 +50,8 @@ class DocumentsUploadHandler:
             doc = documents[i]
             meta = metadata[i]
             chunks, meta_info, content = self.parser.process_document(doc, meta)
+            if chunks is None:
+                continue
             doc_id = meta_info["doc_id"]
             existing_chunks = collection.query(
                 expr=f'doc_id=="{doc_id}"',
@@ -87,7 +89,9 @@ class DocumentsUploadHandler:
                     info=content, max_tokens=meta.summary_length, api_version=api_version
                 )
                 if meta_info["source_language"] is not None and meta_info["source_language"] != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(summary, target_language=meta_info["source_language"])
+                    trans_result = TRANSLATE_CLIENT.translate(
+                        summary, target_language=meta_info["source_language"], format_="text", model="nmt"
+                    )
                     summary = trans_result["translatedText"]
             else:
                 summary = meta_info["doc_summary"]

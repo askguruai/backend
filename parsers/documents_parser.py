@@ -50,13 +50,10 @@ class DocumentsParser:
                 "source_language": None,
             }
             if metadata.project_to_en:
-                try:
-                    document_language = language_detect(document.content[:512])
-                except Exception as e:
-                    logger.error(f"Failed to detect language of {metadata.title}")
-                    document_language = None
+                detection_result = TRANSLATE_CLIENT.detect_language(document.content[:512])
+                document_language = detection_result["language"]
                 if document_language != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en")
+                    trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en", format_="text")
                     content = trans_result["translatedText"]
                     meta["source_language"] = trans_result["detectedSourceLanguage"]
                 else:
@@ -77,20 +74,20 @@ class DocumentsParser:
                 "url": metadata.url if metadata.url else "",
                 "source_language": None,
             }
+            if len(document.history) == 0:
+                return None, None, None
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
-            raw_content = "\n***---***\n".join(text_lines)
+            raw_lines = [message.content for message in document.history]
             if metadata.project_to_en:
-                try:
-                    document_language = language_detect(raw_content[:512])
-                except Exception as e:
-                    logger.error(f"Failed to detect language of {metadata.title}")
-                    document_language = None
+                detection_result = TRANSLATE_CLIENT.detect_language("\n".join(raw_lines[:5]))
+                document_language = detection_result["language"]
                 if document_language != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(raw_content, target_language="en")
-                    translated = trans_result["translatedText"]
-                    text_lines = translated.split("***---***")
-                    text_lines = [line.strip() for line in text_lines]
-                    meta["source_language"] = trans_result["detectedSourceLanguage"]
+                    trans_result = TRANSLATE_CLIENT.translate(
+                        raw_lines, target_language="en", format_="text", model="nmt"
+                    )
+                    translated_lines = [trans_line["translatedText"] for trans_line in trans_result]
+                    text_lines = [f"{ent[0].role}: {ent[1]}" for ent in zip(document.history, translated_lines)]
+                    meta["source_language"] = trans_result[0]["detectedSourceLanguage"]
             content = "\n".join(text_lines)
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta, content
