@@ -21,9 +21,10 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+    depends_on:
+      - "mongo"
+      - "standalone"
     tty: true
-    # env_file:
-    #   - /etc/environment
 
   ########################################################
   #                       MONGO                          #
