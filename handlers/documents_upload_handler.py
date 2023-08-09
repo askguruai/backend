@@ -6,7 +6,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from tqdm import tqdm
 
 from parsers import DocumentsParser
-from utils import CONFIG, MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
+from utils import GRIDFS, MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
 from utils.errors import DatabaseError
 from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
 
@@ -33,7 +33,10 @@ class DocumentsUploadHandler:
                 doc for link in documents for doc in (await self.parser.link_to_docs(link, ignore_urls=ignore_urls))
             ]
         elif isinstance(documents[0], StarletteUploadFile):
-            documents = [(await self.parser.raw_to_doc(doc, vendor, organization, collection)) for doc in documents]
+            documents = [
+                (await self.parser.raw_to_doc(pair[0], vendor, organization, collection, doc_id=pair[1].id))
+                for pair in zip(documents, metadata)
+            ]
 
         org_hash = hash_string(organization)
         collection = MILVUS_DB.get_or_create_collection(f"{vendor}_{org_hash}_{collection}")
@@ -129,15 +132,9 @@ class DocumentsUploadHandler:
 
         return CollectionDocumentsResponse(n_chunks=len(all_chunks))
 
-    async def delete_documents(
-        self,
-        api_version: str,
-        vendor: str,
-        organization: str,
-        collection: str,
-        documents: List[str],
-    ) -> CollectionDocumentsResponse:
+    async def delete_collection(self, api_version: str, vendor: str, organization: str, collection: str):
         org_hash = hash_string(organization)
+        collection_name = collection
         full_collection_name = f"{vendor}_{org_hash}_{collection}"
         try:
             collection = MILVUS_DB[full_collection_name]
@@ -149,9 +146,46 @@ class DocumentsUploadHandler:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
             )
-        documents = [f"'{doc}'" for doc in documents]
+        data = collection.query(
+            expr=f"pk>=0",
+            output_fields=["doc_id"],
+            consistency_level="Strong",
+        )
+        all_files = {f"{vendor}_{organization}_{collection_name}_{hit['doc_id']}" for hit in data}
+        for filename in all_files:
+            res = GRIDFS.find_one({"filename": filename})
+            if res:
+                GRIDFS.delete(res._id)
+                logger.info(f"Deleted file {filename} from GridFS")
+            else:
+                logger.error(f"File {filename} not found in GridFS for deletion")
+        MILVUS_DB.delete_collection(full_collection_name)
+        return CollectionDocumentsResponse(n_chunks=len(data))
+
+    async def delete_documents(
+        self,
+        api_version: str,
+        vendor: str,
+        organization: str,
+        collection: str,
+        documents: List[str],
+    ) -> CollectionDocumentsResponse:
+        org_hash = hash_string(organization)
+        collection_name = collection
+        full_collection_name = f"{vendor}_{org_hash}_{collection}"
+        try:
+            collection = MILVUS_DB[full_collection_name]
+        except DatabaseError:
+            logger.error(
+                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
+            )
+        documents_ticks = [f"'{doc}'" for doc in documents]
         existing_chunks = collection.query(
-            expr=f'doc_id in [{",".join(documents)}]',
+            expr=f'doc_id in [{",".join(documents_ticks)}]',
             offset=0,
             limit=16384,
             output_fields=["pk"],
@@ -159,5 +193,13 @@ class DocumentsUploadHandler:
         )
         existing_chunks_pks = [str(hit["pk"]) for hit in existing_chunks]
         collection.delete(f"pk in [{','.join(existing_chunks_pks)}]")
+        for doc_id in documents:
+            filename = f"{vendor}_{organization}_{collection_name}_{doc_id}"
+            res = GRIDFS.find_one({"filename": filename})
+            if res:
+                GRIDFS.delete(res._id)
+                logger.info(f"Deleted file {filename} from GridFS")
+            else:
+                logger.error(f"File {filename} not found in GridFS for deletion")
         logger.info(f"Request of {len(documents)} docs deleted from database in {len(existing_chunks_pks)} chunks")
         return CollectionDocumentsResponse(n_chunks=len(existing_chunks_pks))
