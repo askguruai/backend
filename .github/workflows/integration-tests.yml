@@ -15,19 +15,12 @@ jobs:
     - name: Start containers
       run: docker compose up -d --build
     - name: Wait for FastAPI server
-      timeout-minutes: 1
-      run: |
-        url="http://localhost:4000/docs"
-        while true; do
-          status_code=$(curl --write-out '%{http_code}' --silent --output /dev/null "$url")
-          if [ "$status_code" -eq 200 ]; then
-            echo "FastAPI server is up and running."
-            break
-          else
-            echo "FastAPI server is not up yet. Waiting..."
-            sleep 5
-          fi
-        done
+      uses: cygnetdigital/wait_for_response@v2.0.0
+      with:
+        url: 'http://localhost:4000/docs'
+        responseCode: '200'
+        timeout: 30000
+        interval: 1000
     - name: Check logs
       run: docker compose logs backend
     - name: Run tests
