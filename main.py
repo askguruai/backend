@@ -500,7 +500,7 @@ async def upload_collection_links(
 
 
 @app.delete(
-    "/{api_version}/collections/{collection}",
+    "/{api_version}/collections/{collection}/ids",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
@@ -519,6 +519,27 @@ async def delete_collection_documents(
         organization=token_data["organization"],
         collection=collection,
         documents=documents,
+    )
+
+
+@app.delete(
+    "/{api_version}/collections/{collection}",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+)
+@catch_errors
+async def delete_collection_endpoint(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization", example="chats"),
+):
+    token_data = decode_token(token)
+    return await documents_upload_handler.delete_collection(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
     )
 
 

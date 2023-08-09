@@ -58,6 +58,11 @@ class CollectionsManager:
                 self.cache[collection_name] = m_collection
         return self.cache[collection_name]
 
+    def delete_collection(self, collection_name: str):
+        if collection_name in self.cache:
+            del self.cache[collection_name]
+        utility.drop_collection(collection_name, timeout=10)
+
     def __getitem__(self, name: str) -> Collection:
         return self.get_collection(name)
 
