@@ -27,7 +27,9 @@ jobs:
       if: always()
       run: docker compose logs backend
     - name: Run tests
+      if: always()
       run: |
+        curl -X GET http://0.0.0.0:4000/v1/info
         curl -X GET http://localhost:4000/v1/info
     - name: Stop containers
       if: always()
