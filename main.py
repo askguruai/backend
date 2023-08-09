@@ -174,18 +174,18 @@ async def get_collections_answer(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collections: List[str] = Query(None, description="List of collections to search", example=["chats"]),
-    query: str = Query(default=None, description="Query string", example="How to change my password?"),
-    document: str = Query(default=None, description="Document ID", example="1234567890"),
-    document_collection: str = Query(default=None, description="Document collection", example="chats"),
-    stream: bool = Query(default=False, description="Stream results", example=False),
+    collections: List[str] = Query(None, description="List of collections to search", examples=["chats"]),
+    query: str = Query(default=None, description="Query string", examples="How to change my password?"),
+    document: str = Query(default=None, description="Document ID", examples="1234567890"),
+    document_collection: str = Query(default=None, description="Document collection", examples="chats"),
+    stream: bool = Query(default=False, description="Stream results", examples=False),
     project_to_en: bool = Query(default=True, description="Whether to project query into English for better precision"),
     collections_only: bool = Query(
         default=True,
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
-        example=True,
+        examples=True,
     ),
-    user: str = Query(default=None, description="User ID", example="1234567890"),
+    user: str = Query(default=None, description="User ID", examples="1234567890"),
 ):
     if not query and not document:
         raise HTTPException(
@@ -267,14 +267,14 @@ async def get_collections_ranking(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collections: List[str] = Query(None, description="List of collections to search"),
-    query: str = Query(default=None, description="Query string", example="How to change my password?"),
-    document: str = Query(default=None, description="Document ID", example="1234567890"),
-    document_collection: str = Query(default=None, description="Document collection", example="chats"),
-    top_k: int = Query(default=10, description="Number of top documents to return", example=10),
+    query: str = Query(default=None, description="Query string", examples="How to change my password?"),
+    document: str = Query(default=None, description="Document ID", examples="1234567890"),
+    document_collection: str = Query(default=None, description="Document collection", examples="chats"),
+    top_k: int = Query(default=10, description="Number of top documents to return", examples=10),
     similarity_threshold: float = Query(
-        default=0.0, description="Similarity threshold to filter sources", example=0.75
+        default=0.0, description="Similarity threshold to filter sources", examples=0.75
     ),
-    user: str = Query(default=None, description="User ID", example="1234567890"),
+    user: str = Query(default=None, description="User ID", examples="1234567890"),
     project_to_en: bool = Query(default=True, description="Improves model performance at a cost of translation"),
 ):
     # TODO add logging
@@ -331,7 +331,7 @@ async def get_collection(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
+    collection: str = Path(description="Collection within organization", examples="chats"),
 ):
     token_data = decode_token(token)
     return collection_handler.get_collection(
@@ -353,7 +353,7 @@ async def upload_collection_documents(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
+    collection: str = Path(description="Collection within organization", examples="chats"),
     documents: List[Doc] = Body(description="List of documents to upload"),
     metadata: List[DocumentMetadata] = Body(
         description="List of DocumentMetadata objects for each of the documents/chats provided"
@@ -399,7 +399,7 @@ async def upload_collection_files(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
+    collection: str = Path(description="Collection within organization", examples="chats"),
     files: List[UploadFile] = File(
         description="A file or a list of files to be processed. Allowed types: .pdf, .docx and .md"
     ),
@@ -451,7 +451,7 @@ async def upload_collection_chats(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
+    collection: str = Path(description="Collection within organization", examples="chats"),
     chats: List[Chat] = Body(description="List of chats to upload"),
     metadata: List[DocumentMetadata] = Body(
         description="List of DocumentMetadata objects for each of the documents/chats provided"
@@ -484,7 +484,7 @@ async def upload_collection_links(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
+    collection: str = Path(description="Collection within organization", examples="chats"),
     links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
@@ -509,8 +509,8 @@ async def delete_collection_documents(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
-    documents: List[str] = Body(None, description="List of ids of documents to delete", example=["1234567890"]),
+    collection: str = Path(description="Collection within organization", examples="chats"),
+    documents: List[str] = Body(None, description="List of ids of documents to delete", examples=["1234567890"]),
 ):
     token_data = decode_token(token)
     return await documents_upload_handler.delete_documents(
@@ -532,7 +532,7 @@ async def delete_collection_endpoint(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization", example="chats"),
+    collection: str = Path(description="Collection within organization", examples="chats"),
 ):
     token_data = decode_token(token)
     return await documents_upload_handler.delete_collection(
