@@ -49,12 +49,11 @@ class CollectionHandler:
     ) -> GetCollectionAnswerResponse:
         orig_lang = "en"
         if project_to_en:
-            # sometimes makes false positives, maybe investigate other tools...Maybe track such cases and find rate
-            q_lang = language_detect(query)
-            if q_lang != "en":
-                trans_result = TRANSLATE_CLIENT.translate(query, target_language="en")
+            detection_result = TRANSLATE_CLIENT.detect_language(query)
+            orig_lang = detection_result["language"]
+            if orig_lang != "en":
+                trans_result = TRANSLATE_CLIENT.translate(query, target_language="en", format_="text", model="nmt")
                 query = trans_result['translatedText']
-                orig_lang = trans_result["detectedSourceLanguage"]
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
 
         # streaming only able when query was in english
@@ -80,7 +79,9 @@ class CollectionHandler:
             # todo: make a cache or sth
             answer = "Unable to find an anser"
             if orig_lang is not None:
-                answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang)["translatedText"]
+                answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
+                    "translatedText"
+                ]
             return GetCollectionAnswerResponse(answer, sources=[])
 
         context, i = "", 0
@@ -118,7 +119,9 @@ class CollectionHandler:
             return response, context
 
         if orig_lang != "en":
-            answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang)["translatedText"]
+            answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
+                "translatedText"
+            ]
         return GetCollectionAnswerResponse(answer=answer, sources=sources), context
 
     async def get_solution(
@@ -258,10 +261,17 @@ class CollectionHandler:
         document_collection: str = None,
         collections: List[str] = None,
         similarity_threshold=0,
+        project_to_en=True,
     ) -> GetCollectionRankingResponse:
         organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
         if query:
+            if project_to_en:
+                detection_result = TRANSLATE_CLIENT.detect_language(query)
+                document_language = detection_result["language"]
+                if document_language != "en":
+                    trans_result = TRANSLATE_CLIENT.translate(query, target_language="en", format_="text", model="nmt")
+                    query = trans_result["translatedText"]
             embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         elif document:
             document_collection = document_collection or "faq"

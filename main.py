@@ -245,7 +245,7 @@ async def get_collections_answer(
         collections=collections,
         user=user,
     )
-    if stream and "__aiter__" in response.__dict__:
+    if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
         return StreamingResponse(
             stream_and_log(response, request_id),
             media_type="text/event-stream",
@@ -275,6 +275,7 @@ async def get_collections_ranking(
         default=0.0, description="Similarity threshold to filter sources", example=0.75
     ),
     user: str = Query(default=None, description="User ID", example="1234567890"),
+    project_to_en: bool = Query(default=True, description="Improves model performance at a cost of translation"),
 ):
     # TODO add logging
     if bool(document) ^ bool(document_collection):
@@ -304,6 +305,7 @@ async def get_collections_ranking(
         document_collection=document_collection,
         user_security_groups=token_data["security_groups"],
         similarity_threshold=similarity_threshold,
+        project_to_en=project_to_en,
     )
     request_id = log_get_ranking(
         document_ids=[source.id for source in response.sources],
