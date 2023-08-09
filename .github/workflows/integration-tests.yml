@@ -16,6 +16,9 @@ jobs:
       run: docker compose config
     - name: Start containers
       run: docker compose up -d --build
+    - name: Wait for complete startup for 30s
+      run: sleep 30s
+      shell: bash
     - name: Check logs after startup
       if: always()
       run: docker compose logs backend
