@@ -245,7 +245,7 @@ async def get_collections_answer(
         collections=collections,
         user=user,
     )
-    if stream and "__aiter__" in response.__dict__:
+    if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
         return StreamingResponse(
             stream_and_log(response, request_id),
             media_type="text/event-stream",
