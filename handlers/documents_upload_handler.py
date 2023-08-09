@@ -148,8 +148,6 @@ class DocumentsUploadHandler:
             )
         data = collection.query(
             expr=f"pk>=0",
-            offset=0,
-            limit=16383,
             output_fields=["doc_id"],
             consistency_level="Eventually",
         )
