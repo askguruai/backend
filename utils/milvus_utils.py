@@ -23,6 +23,7 @@ try:
         password="Milvus",
     )
 except MilvusException:
+    logger.info("Milvus was already created. Connecting with default credentials...")
     connections.connect(
         "default",
         host=CONFIG["milvus"]["host"],
@@ -31,6 +32,7 @@ except MilvusException:
         password=os.environ["MILVUS_PASSWORD"],
     )
 else:
+    logger.info("Milvus was created for the first time. Changing password to the one provided in environment variables")
     utility.reset_password("root", "Milvus", os.environ["MILVUS_PASSWORD"], using="default")
 
 
