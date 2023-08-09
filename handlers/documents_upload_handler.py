@@ -149,7 +149,7 @@ class DocumentsUploadHandler:
         data = collection.query(
             expr=f"pk>=0",
             output_fields=["doc_id"],
-            consistency_level="Eventually",
+            consistency_level="Strong",
         )
         all_files = {f"{vendor}_{organization}_{collection_name}_{hit['doc_id']}" for hit in data}
         for filename in all_files:
