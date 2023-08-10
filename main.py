@@ -182,7 +182,9 @@ async def get_collections_answer(
     document: str = Query(default=None, description="Document ID"),
     document_collection: str = Query(default=None, description="Document collection"),
     stream: bool = Query(default=False, description="Stream results"),
-    project_to_en: bool = Query(default=False, description="Whether to project query into English for better precision"),
+    project_to_en: bool = Query(
+        default=False, description="Whether to project query into English for better precision"
+    ),
     collections_only: bool = Query(
         default=True,
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
