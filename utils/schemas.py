@@ -40,7 +40,7 @@ class Document(BaseModel):
 
 class Collection(BaseModel):
     name: str = Field(description="Name of the collection", example="tickets")
-    n_documents: int = Field(description="Number of documents in the collection", example=100)
+    n_chunks: int = Field(description="Number of chunks in the collection", example=100)
 
 
 class User(BaseModel):
@@ -70,7 +70,7 @@ class GetCollectionsResponse(BaseModel):
         example=[
             Collection(
                 name="tickets",
-                n_documents=100,
+                n_chunks=100,
             ),
         ],
     )

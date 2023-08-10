@@ -57,10 +57,12 @@ class CollectionsManager:
         collections = []
         for collection_name in utility.list_collections():
             if collection_name.startswith(f"{vendor}_{org_hash}_"):
+                collection = self.get_collection(collection_name)
+                collection.flush()
                 collections.append(
                     {
                         "name": collection_name.split("_")[-1],
-                        "n_documents": self.get_collection(collection_name).num_entities,
+                        "n_chunks": collection.num_entities,
                     }
                 )
         return collections
