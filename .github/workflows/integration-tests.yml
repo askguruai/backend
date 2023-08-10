@@ -15,9 +15,9 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
-    - name: Install pytest
+    - name: Install pytest & requests
       run: |
-        pip install pytest
+        pip install pytest requests
     - uses: actions/checkout@v3
     - name: Check envs in config
       run: docker compose config
