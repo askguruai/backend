@@ -6,6 +6,15 @@ PYTEST_FLAGS=-p no:warnings
 install:
 	pip install -r requirements.txt
 
+install-format:
+	pip install black isort
+
+install-test:
+	pip install pytest requests
+
+test:
+	pytest tests -s
+
 format:
 	isort ${ISORT_FLAGS} --check-only --diff .
 	black ${BLACK_FLAGS} --check --diff .

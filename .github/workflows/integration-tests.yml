@@ -11,14 +11,14 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/checkout@v3
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
         python-version: "3.10"
     - name: Install pytest & requests
       run: |
-        pip install pytest requests
-    - uses: actions/checkout@v3
+        make install-test
     - name: Check envs in config
       run: docker compose config
     - name: Start containers
@@ -30,7 +30,7 @@ jobs:
       run: docker compose logs backend
     - name: Test with pytest
       run: |
-        pytest tests -s
+        make test
     - name: Check logs after tests
       if: always()
       run: docker compose logs backend
