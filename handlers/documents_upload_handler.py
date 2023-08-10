@@ -7,7 +7,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from tqdm import tqdm
 
 from parsers import DocumentsParser
-from utils import GRIDFS, MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, GRIDFS, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DatabaseError
 from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
 
@@ -93,10 +93,10 @@ class DocumentsUploadHandler:
                     info=content, max_tokens=meta.summary_length, api_version=api_version
                 )
                 if meta_info["source_language"] is not None and meta_info["source_language"] != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(
-                        summary, target_language=meta_info["source_language"], format_="text", model="nmt"
+                    translation = AWS_TRANSLATE_CLIENT.translate_text(
+                        text=summary, source_language=meta_info["source_language"], target_language="en"
                     )
-                    summary = trans_result["translatedText"]
+                    summary = translation["translation"]
             else:
                 summary = meta_info["doc_summary"]
 

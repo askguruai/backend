@@ -17,7 +17,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from parsers.docx_parser_ import DocxParser
 from parsers.markdown_parser import MarkdownParser
 from parsers.pdf_parser import PdfParser
-from utils import GRIDFS, TRANSLATE_CLIENT
+from utils import AWS_TRANSLATE_CLIENT, GRIDFS
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc, DocumentMetadata
 from utils.tokenize_ import doc_to_chunks
@@ -50,14 +50,9 @@ class DocumentsParser:
                 "source_language": None,
             }
             if metadata.project_to_en:
-                detection_result = TRANSLATE_CLIENT.detect_language(document.content[:512])
-                document_language = detection_result["language"]
-                if document_language != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(document.content, target_language="en", format_="text")
-                    content = trans_result["translatedText"]
-                    meta["source_language"] = trans_result["detectedSourceLanguage"]
-                else:
-                    content = document.content
+                translation = AWS_TRANSLATE_CLIENT.translate_text(text=document.content)
+                meta["source_language"] = translation["source_language"]
+                content = translation["translation"]
             else:
                 content = document.content
             chunks = doc_to_chunks(content, meta["doc_title"], meta["doc_summary"])
@@ -79,15 +74,9 @@ class DocumentsParser:
             text_lines = [f"{message.role}: {message.content}" for message in document.history]
             raw_lines = [message.content for message in document.history]
             if metadata.project_to_en:
-                detection_result = TRANSLATE_CLIENT.detect_language("\n".join(raw_lines[:5]))
-                document_language = detection_result["language"]
-                if document_language != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(
-                        raw_lines, target_language="en", format_="text", model="nmt"
-                    )
-                    translated_lines = [trans_line["translatedText"] for trans_line in trans_result]
-                    text_lines = [f"{ent[0].role}: {ent[1]}" for ent in zip(document.history, translated_lines)]
-                    meta["source_language"] = trans_result[0]["detectedSourceLanguage"]
+                translation = AWS_TRANSLATE_CLIENT.translate_text(raw_lines)
+                text_lines = [f"{ent[0].role}: {ent[1]}" for ent in zip(document.history, translation['translation'])]
+                meta["source_language"] = translation["source_language"]
             content = "\n".join(text_lines)
             chunks = self.chat_to_chunks(text_lines)
         return chunks, meta, content
