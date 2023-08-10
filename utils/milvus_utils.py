@@ -5,18 +5,35 @@ from typing import Dict, List, Tuple
 import numpy as np
 from fastapi import HTTPException, status
 from loguru import logger
-from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
+from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, MilvusException, connections, utility
 
 from utils import CONFIG, hash_string
 from utils.errors import DatabaseError
 
-connections.connect(
-    "default",
-    host=CONFIG["milvus"]["host"],
-    port=CONFIG["milvus"]["port"],
-    user=os.environ["MILVUS_USERNAME"],
-    password=os.environ["MILVUS_PASSWORD"],
-)
+# If Milvus was created for the first time, then the default
+# credentials are root/Milvus (https://milvus.io/docs/authenticate.md).
+# We want to change password immediately to the credentials provided in the
+# environment variables.
+try:
+    connections.connect(
+        "default",
+        host=CONFIG["milvus"]["host"],
+        port=CONFIG["milvus"]["port"],
+        user="root",
+        password="Milvus",
+    )
+except MilvusException:
+    logger.info("Milvus was already created. Connecting with default credentials...")
+    connections.connect(
+        "default",
+        host=CONFIG["milvus"]["host"],
+        port=CONFIG["milvus"]["port"],
+        user=os.environ["MILVUS_USERNAME"],
+        password=os.environ["MILVUS_PASSWORD"],
+    )
+else:
+    logger.info("Milvus was created for the first time. Changing password to the one provided in environment variables")
+    utility.reset_password("root", "Milvus", os.environ["MILVUS_PASSWORD"], using="default")
 
 
 class MilvusSchema(str, Enum):
@@ -40,10 +57,12 @@ class CollectionsManager:
         collections = []
         for collection_name in utility.list_collections():
             if collection_name.startswith(f"{vendor}_{org_hash}_"):
+                collection = self.get_collection(collection_name)
+                collection.flush()
                 collections.append(
                     {
                         "name": collection_name.split("_")[-1],
-                        "n_documents": self.get_collection(collection_name).num_entities,
+                        "n_chunks": collection.num_entities,
                     }
                 )
         return collections

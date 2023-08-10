@@ -27,8 +27,8 @@ def create_access_token(data: dict):
 
 async def get_organization_token(
     api_version: ApiVersion,
-    vendor: str = Body(description="Vendor name", example="livechat"),
-    organization: str = Body(description="Organization within vendor", example="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
+    vendor: str = Body(description="Vendor name", examples="livechat"),
+    organization: str = Body(description="Organization within vendor", examples="f1ac8408-27b2-465e-89c6-b8708bfc262c"),
     password: str = Body(..., description="This is for staff use"),
     security_groups: List[int] = Body(
         None, description="Security groups associated with token. Leave blank for full access"

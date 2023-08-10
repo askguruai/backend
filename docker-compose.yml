@@ -7,8 +7,6 @@ services:
     container_name: backend
     restart: always
     network_mode: host
-    volumes:
-      - /etc/GOOGLE_DEFAULT_CREDENTIALS.json:/etc/GOOGLE_DEFAULT_CREDENTIALS.json
     environment:
       AUTH_COLLECTION_PASSWORD: ${AUTH_COLLECTION_PASSWORD}
       AUTH_COLLECTION_PASSWORD_TADA: ${AUTH_COLLECTION_PASSWORD_TADA}
@@ -20,10 +18,14 @@ services:
       MILVUS_PASSWORD: ${MILVUS_PASSWORD}
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_QUOTA_PROJECT_ID: ${GOOGLE_QUOTA_PROJECT_ID}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
+    depends_on:
+      - "mongo"
+      - "standalone"
     tty: true
-    # env_file:
-    #   - /etc/environment
 
   ########################################################
   #                       MONGO                          #
@@ -68,7 +70,7 @@ services:
       - ETCD_SNAPSHOT_COUNT=50000
     volumes:
       - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/etcd:/etcd
-      - /etc/milvus.yaml:/milvus/configs/milvus.yaml
+      - ./milvus.yaml:/milvus/configs/milvus.yaml
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     restart: always
 
@@ -80,7 +82,7 @@ services:
       MINIO_SECRET_KEY: minioadmin
     volumes:
       - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/minio:/minio_data
-      - /etc/milvus.yaml:/milvus/configs/milvus.yaml
+      - ./milvus.yaml:/milvus/configs/milvus.yaml
     command: minio server /minio_data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -98,7 +100,7 @@ services:
       MINIO_ADDRESS: minio:9000
     volumes:
       - ${DOCKER_VOLUME_DIRECTORY:-.}/volumes/milvus:/var/lib/milvus
-      - /etc/milvus.yaml:/milvus/configs/milvus.yaml
+      - ./milvus.yaml:/milvus/configs/milvus.yaml
     ports:
       - "19530:19530"
       - "9091:9091"
