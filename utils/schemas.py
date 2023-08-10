@@ -350,7 +350,7 @@ class DocumentMetadata(BaseModel):
         description="If > 0, determines length of summary to be done in tokens (100-200 recommended). Overrides pre-defined summary! ",
     )
     project_to_en: bool = Field(
-        default=True, description="Whether to translate uploaded documet into Eng (increases model performance)"
+        default=False, description="Whether to translate uploaded documet into Eng (increases model performance)"
     )
     security_groups: List[int] | None = Field(
         description="Security groups of the document. Default is full access", example=[0, 2]
