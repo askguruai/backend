@@ -49,5 +49,4 @@ from typing import List
 #                    AWS TRANSLATE                     #
 ########################################################
 from utils.aws import AwsTranslateClient
-
 AWS_TRANSLATE_CLIENT = AwsTranslateClient()
