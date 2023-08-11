@@ -2,6 +2,7 @@ from typing import List
 
 from fastapi import File, HTTPException, UploadFile, status
 from loguru import logger
+from pymilvus.exceptions import DataNotMatchException
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from tqdm import tqdm
 
@@ -115,19 +116,35 @@ class DocumentsUploadHandler:
                         all_chunks[i : i + self.insert_chunk_size], api_version=api_version
                     )
                 )
-                collection.insert(
-                    [
-                        all_chunk_hashes[i : i + self.insert_chunk_size],
-                        all_doc_ids[i : i + self.insert_chunk_size],
-                        all_chunks[i : i + self.insert_chunk_size],
-                        all_embeddings[i : i + self.insert_chunk_size],
-                        all_doc_titles[i : i + self.insert_chunk_size],
-                        all_summaries[i : i + self.insert_chunk_size],
-                        all_timestamps[i : i + self.insert_chunk_size],
-                        all_security_groups[i : i + self.insert_chunk_size],
-                        all_urls[i : i + self.insert_chunk_size],
-                    ]
-                )
+                try:
+                    collection.insert(
+                        [
+                            all_chunk_hashes[i : i + self.insert_chunk_size],
+                            all_doc_ids[i : i + self.insert_chunk_size],
+                            all_chunks[i : i + self.insert_chunk_size],
+                            all_embeddings[i : i + self.insert_chunk_size],
+                            all_doc_titles[i : i + self.insert_chunk_size],
+                            all_summaries[i : i + self.insert_chunk_size],
+                            all_timestamps[i : i + self.insert_chunk_size],
+                            all_security_groups[i : i + self.insert_chunk_size],
+                            all_urls[i : i + self.insert_chunk_size],
+                        ]
+                    )
+                except DataNotMatchException:
+                    logger.warning("Inserting in the old version of schema, ommiting urls")
+                    collection.insert(
+                        [
+                            all_chunk_hashes[i : i + self.insert_chunk_size],
+                            all_doc_ids[i : i + self.insert_chunk_size],
+                            all_chunks[i : i + self.insert_chunk_size],
+                            all_embeddings[i : i + self.insert_chunk_size],
+                            all_doc_titles[i : i + self.insert_chunk_size],
+                            all_summaries[i : i + self.insert_chunk_size],
+                            all_timestamps[i : i + self.insert_chunk_size],
+                            all_security_groups[i : i + self.insert_chunk_size],
+                        ]
+                    )
+
             logger.info(f"Request of {len(documents)} docs inserted in database in {len(all_chunks)} chunks")
 
         return CollectionDocumentsResponse(n_chunks=len(all_chunks))
