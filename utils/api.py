@@ -58,7 +58,7 @@ def log_get_ranking(
 
 def log_get_answer(
     answer: str,
-    context: str,
+    context: List[str],
     document_ids: Union[str, List[str]],
     query: str,
     request: Request,

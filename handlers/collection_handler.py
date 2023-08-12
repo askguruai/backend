@@ -77,12 +77,12 @@ class CollectionHandler:
         mode = "support"
         if len(chunks) == 0:
             # todo: make a cache or sth
-            answer = "Unable to find an anser"
+            answer = "Unable to find an answer :("
             if orig_lang is not None:
                 answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
                     "translatedText"
                 ]
-            return GetCollectionAnswerResponse(answer, sources=[])
+            return GetCollectionAnswerResponse(answer, sources=[]), []
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
@@ -116,13 +116,13 @@ class CollectionHandler:
 
         if stream:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
-            return response, context
+            return response, chunks[:i]
 
         if orig_lang != "en":
             answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
                 "translatedText"
             ]
-        return GetCollectionAnswerResponse(answer=answer, sources=sources), context
+        return GetCollectionAnswerResponse(answer=answer, sources=sources), chunks[:i]
 
     async def get_solution(
         self,
@@ -158,7 +158,7 @@ class CollectionHandler:
             security_code=security_code,
         )
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(answer="Unable to find an anwser", sources=[])
+            return GetCollectionAnswerResponse(answer="Unable to find an anwser", sources=[]), []
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
@@ -185,9 +185,9 @@ class CollectionHandler:
 
         if stream:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
-            return response, context
+            return response, chunks[:i]
 
-        return GetCollectionAnswerResponse(answer=answer, sources=sources), context
+        return GetCollectionAnswerResponse(answer=answer, sources=sources), chunks[:i]
 
     def get_data_from_id(self, document: str, full_collection_name: str, security_code: int) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
