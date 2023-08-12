@@ -90,7 +90,7 @@ class TestAPI:
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?"}
+        params = {"query": "How many patties are in a Big Mac?", "project_to_en": False}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
@@ -100,7 +100,7 @@ class TestAPI:
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?", "stream": True}
+        params = {"query": "How many patties are in a Big Mac?", "project_to_en": False, "stream": True}
         response = requests.get(url, headers=headers, params=params, stream=True)
         response.raise_for_status()
         answer = ""
