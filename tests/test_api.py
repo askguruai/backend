@@ -1,3 +1,4 @@
+import json
 import os
 from configparser import ConfigParser
 
@@ -85,6 +86,36 @@ class TestAPI:
         response.raise_for_status()
         assert response.json()["collections"][0]["name"] == "recipes"
         assert response.json()["collections"][0]["n_chunks"] == manager.test_upload_docs_chunks_inserted
+
+    def test_get_answer(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "How many patties are in a Big Mac?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        manager.request_id = response.json()["request_id"]
+        assert "two" in response.json()["answer"] or "2" in response.json()["answer"]
+        assert "228" in [source["id"] for source in response.json()["sources"]]
+
+    def test_get_answer_stream(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "How many patties are in a Big Mac?", "stream": True}
+        response = requests.get(url, headers=headers, params=params, stream=True)
+        response.raise_for_status()
+        answer = ""
+        for line in response.iter_lines():
+            if line:
+                line = line.decode("utf-8")
+                k, v = line.split(':', 1)
+                if k == 'data':
+                    data = json.loads(v.strip())
+                    answer += data['answer']
+                    request_id = data['request_id']
+                    sources = data['sources']
+        manager.request_id = request_id
+        assert "two" in answer or "2" in answer
+        assert "228" in [source["id"] for source in sources]
 
     def test_remove_collection(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes"
