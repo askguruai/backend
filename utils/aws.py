@@ -14,17 +14,41 @@ boto_session = boto3.Session(
 # NB! We can try to make this async with https://pypi.org/project/aioboto3/, but this is not an official library
 class AwsTranslateClient:
     def __init__(self) -> None:
-        self.client = boto_session.client("translate")
+        self.translate_client = boto_session.client("translate")
+        self.comprehend_client = boto_session.client("comprehend")
 
     def translate_text(self, text: str | List[str], target_language: str = "en", source_language: str = "auto") -> dict:
         source_lines = None
         if isinstance(text, list):
             source_lines = len(text)
             text = "\n***###***\n".join(text)
+        
+        if source_language == "auto":
+            detection = self.comprehend_client.detect_dominant_language(Text=text.ljust(20)[:300])
+            primary_lang = detection["Languages"][0]
+            print(primary_lang)
+            if primary_lang["Score"] > 0.8:
+                source_language = primary_lang["LanguageCode"]
+            else:
+                # there is some weird text or terms or whatever, better not translate and leave it to the model
+                if source_lines is not None:
+                    text = [line.strip() for line in text.split("***###***")]
+                return {
+                    "translation": text,
+                    "source_language": "en"
+                }
+
+        if source_language == target_language:
+            if source_lines is not None:
+                text = [line.strip() for line in text.split("***###***")]
+            return {
+                    "translation": text,
+                    "source_language": source_language
+                }
 
         # recursion
         if len(text) < 9900:
-            response = self.client.translate_text(
+            response = self.translate_client.translate_text(
                 Text=text, SourceLanguageCode=source_language, TargetLanguageCode=target_language
             )
             out = {"translation": response["TranslatedText"], "source_language": response["SourceLanguageCode"]}
