@@ -22,7 +22,7 @@ class AwsTranslateClient:
         if isinstance(text, list):
             source_lines = len(text)
             text = "\n***###***\n".join(text)
-        
+
         if source_language == "auto":
             detection = self.comprehend_client.detect_dominant_language(Text=text.ljust(20)[:300])
             primary_lang = detection["Languages"][0]
@@ -33,18 +33,12 @@ class AwsTranslateClient:
                 # there is some weird text or terms or whatever, better not translate and leave it to the model
                 if source_lines is not None:
                     text = [line.strip() for line in text.split("***###***")]
-                return {
-                    "translation": text,
-                    "source_language": "en"
-                }
+                return {"translation": text, "source_language": "en"}
 
         if source_language == target_language:
             if source_lines is not None:
                 text = [line.strip() for line in text.split("***###***")]
-            return {
-                    "translation": text,
-                    "source_language": source_language
-                }
+            return {"translation": text, "source_language": source_language}
 
         # recursion
         if len(text) < 9900:
