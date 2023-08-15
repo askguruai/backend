@@ -822,10 +822,12 @@ async def archive_filter_rule_epoint(
     return response
 
 import os
+from utils import AwsTranslateClient
 if __name__ == '__main__':
     print("Region: ", os.environ["AWS_REGION"])
     print("ID: ", os.environ["AWS_ACCESS_KEY_ID"])
     print("SECRET: ", os.environ["AWS_SECRET_ACCESS_KEY"])
+    print(AwsTranslateClient.translate_text("че там с деньгами??"))
     options = {
         "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
         "workers": CONFIG["app"]["workers"],
