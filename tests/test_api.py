@@ -76,8 +76,8 @@ class TestAPI:
         }
         response = requests.post(url, headers=headers, json=json)
         response.raise_for_status()
-        manager.test_upload_docs_chunks_inserted = int(response.json()["n_chunks"])
-        assert manager.test_upload_docs_chunks_inserted > 0
+        manager.test_chunks_inserted = int(response.json()["n_chunks"])
+        assert manager.test_chunks_inserted > 0
 
     def test_upload_pdf(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/files"
@@ -97,18 +97,20 @@ class TestAPI:
         response = requests.post(url, headers=headers, files=raw_documents, data=data)
         response.raise_for_status()
         manager.test_file_custom_summary = "Some custom summary"
-        assert response.json()["n_chunks"] > 0
+        assert int(response.json()["n_chunks"]) > 0
+        manager.test_chunks_inserted += int(response.json()["n_chunks"])
 
     def test_get_answer_translation(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "Каково решение проблемы поиска ресурсов в интернете?", "collections": ["recipes"]}
+        params = {"query": "Каково решение проблемы поиска ресурсов для обучения?", "collections": ["recipes"]}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        assert "платформа" in response.json()["answer"].lower() or "2" in response.json()["answer"], response.json()["answer"]
+        assert "платформа" in response.json()["answer"].lower() or "2" in response.json()["answer"], response.json()[
+            "answer"
+        ]
         assert "pdf_file" in [source["id"] for source in response.json()["sources"]]
         assert response.json()["sources"]["pdf_file"]["summary"] == manager.test_file_custom_summary
-        
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
@@ -116,7 +118,7 @@ class TestAPI:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         assert response.json()["collections"][0]["name"] == "recipes"
-        assert response.json()["collections"][0]["n_chunks"] == manager.test_upload_docs_chunks_inserted
+        assert response.json()["collections"][0]["n_chunks"] == manager.test_chunks_inserted
 
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
@@ -153,4 +155,4 @@ class TestAPI:
         headers = {"Authorization": f"Bearer {manager.token}"}
         response = requests.delete(url, headers=headers)
         response.raise_for_status()
-        assert int(response.json()["n_chunks"]) == manager.test_upload_docs_chunks_inserted
+        assert int(response.json()["n_chunks"]) == manager.test_chunks_inserted
