@@ -70,14 +70,33 @@ class TestAPI:
                 },
             ],
             "metadata": [
-                {"id": 228, "title": "Big Mac recipe", "project_to_en": False},
-                {"id": 322, "title": "Twister recipe", "project_to_en": False},
+                {"id": 228, "title": "Big Mac recipe"},
+                {"id": 322, "title": "Twister recipe"},
             ],
         }
         response = requests.post(url, headers=headers, json=json)
         response.raise_for_status()
         manager.test_upload_docs_chunks_inserted = int(response.json()["n_chunks"])
         assert manager.test_upload_docs_chunks_inserted > 0
+
+    def test_upload_pdf(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/files"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+
+        raw_documents = [
+            ('files', open('./tests/files/Brief_Summary.pdf', 'rb')),
+        ]
+        data = {
+            "metadata": json.dumps(
+                [
+                    {"id": "pdf_file", "title": "Brief Summary", "summary": "Some custom summary"},
+                ]
+            )
+        }
+        response = requests.post(url, headers=headers, files=raw_documents, data=data)
+        response.raise_for_status()
+        manager.test_file_custom_summary = "Some custom summary"
+        assert response.json()["n_chunks"] > 0
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
@@ -90,7 +109,7 @@ class TestAPI:
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?", "project_to_en": False}
+        params = {"query": "How many patties are in a Big Mac?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
@@ -100,7 +119,7 @@ class TestAPI:
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?", "project_to_en": False, "stream": True}
+        params = {"query": "How many patties are in a Big Mac?", "stream": True}
         response = requests.get(url, headers=headers, params=params, stream=True)
         response.raise_for_status()
         answer = ""

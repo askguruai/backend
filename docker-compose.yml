@@ -7,8 +7,6 @@ services:
     container_name: backend
     restart: always
     network_mode: host
-    # env_file:
-    #   - .env
     environment:
       AUTH_COLLECTION_PASSWORD: ${AUTH_COLLECTION_PASSWORD}
       AUTH_COLLECTION_PASSWORD_TADA: ${AUTH_COLLECTION_PASSWORD_TADA}

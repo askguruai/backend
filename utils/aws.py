@@ -4,6 +4,8 @@ from typing import List
 import boto3
 from loguru import logger
 
+from utils import CONFIG
+
 boto_session = boto3.Session(
     aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
     aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
@@ -26,8 +28,7 @@ class AwsTranslateClient:
         if source_language == "auto":
             detection = self.comprehend_client.detect_dominant_language(Text=text.ljust(20)[:300])
             primary_lang = detection["Languages"][0]
-            print(primary_lang)
-            if primary_lang["Score"] > 0.8:
+            if primary_lang["Score"] > float(CONFIG["misc"]["language_detection_min_confidence"]):
                 source_language = primary_lang["LanguageCode"]
             else:
                 # there is some weird text or terms or whatever, better not translate and leave it to the model
