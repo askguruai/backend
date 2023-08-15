@@ -112,6 +112,18 @@ class TestAPI:
         pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
         assert pdf_source["summary"] == manager.test_file_custom_summary
 
+    def test_get_answer_translation2(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "What is the solution to a problem of finding educational resources?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "platform" in response.json()["answer"].lower()
+        sources_ids = [source["id"] for source in response.json()["sources"]]
+        assert "pdf_file" in sources_ids
+        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
+        assert pdf_source["summary"] == manager.test_file_custom_summary
+
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
         headers = {"Authorization": f"Bearer {manager.token}"}
