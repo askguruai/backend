@@ -7,7 +7,7 @@ services:
     container_name: backend
     restart: always
     network_mode: host
-    env-file:
+    env_file:
       - .env
     environment:
       # AUTH_COLLECTION_PASSWORD: ${AUTH_COLLECTION_PASSWORD}
