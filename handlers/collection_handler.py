@@ -82,7 +82,7 @@ class CollectionHandler:
                 answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
                     "translatedText"
                 ]
-            return GetCollectionAnswerResponse(answer, sources=[]), []
+            return GetCollectionAnswerResponse(answer=answer, sources=[]), []
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
@@ -158,7 +158,7 @@ class CollectionHandler:
             security_code=security_code,
         )
         if len(chunks) == 0:
-            return GetCollectionAnswerResponse(answer="Unable to find an anwser", sources=[]), []
+            return GetCollectionAnswerResponse(answer="Unable to find an answer :(", sources=[]), []
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
