@@ -82,9 +82,10 @@ class TestAPI:
     def test_upload_pdf(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/files"
         headers = {"Authorization": f"Bearer {manager.token}"}
-
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        test_files_directory = os.path.join(dir_path, "files")
         raw_documents = [
-            ('files', open('./tests/files/Brief_Summary.pdf', 'rb')),
+            ('files', open(os.path.join(test_files_directory, "Brief_Summary.pdf"), 'rb')),
         ]
         data = {
             "metadata": json.dumps(
@@ -97,6 +98,9 @@ class TestAPI:
         response.raise_for_status()
         manager.test_file_custom_summary = "Some custom summary"
         assert response.json()["n_chunks"] > 0
+
+    def test_get_answer_translation(self, manager):
+        pass
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
