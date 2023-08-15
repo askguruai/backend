@@ -1,3 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 
+# Redirect output to stderr.
+exec 1>&2
+
+# Check if make format-fix has any changes
 make format-fix
+git diff --quiet || {
+    echo 'Your code is not formatted correctly. Running `make format-fix` has modified some files.'
+    echo 'Please review and commit the changes.'
+    exit 1
+}
+
+exit 0
