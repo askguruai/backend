@@ -106,9 +106,7 @@ class TestAPI:
         params = {"query": "Каково решение проблемы поиска ресурсов для обучения?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        assert "платформа" in response.json()["answer"].lower() or "2" in response.json()["answer"], response.json()[
-            "answer"
-        ]
+        assert "платформа" in response.json()["answer"].lower()
         sources_ids = [source["id"] for source in response.json()["sources"]]
         assert "pdf_file" in sources_ids
         pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]

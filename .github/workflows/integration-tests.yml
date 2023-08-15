@@ -26,7 +26,7 @@ jobs:
     - name: Check envs in config
       run: docker compose config
     - name: Start containers
-      run: echo $AWS_ACCESS_KEY_ID && docker compose up -d --build
+      run: docker compose up -d --build
     - name: Wait for complete startup for 10s
       run: sleep 10s
       shell: bash
