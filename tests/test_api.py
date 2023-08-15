@@ -100,7 +100,15 @@ class TestAPI:
         assert response.json()["n_chunks"] > 0
 
     def test_get_answer_translation(self, manager):
-        pass
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "Каково решение проблемы поиска ресурсов в интернете?", "collections": ["recipes"]}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "платформа" in response.json()["answer"].lower() or "2" in response.json()["answer"], response.json()["answer"]
+        assert "pdf_file" in [source["id"] for source in response.json()["sources"]]
+        assert response.json()["sources"]["pdf_file"]["summary"] == manager.test_file_custom_summary
+        
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
