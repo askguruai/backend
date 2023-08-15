@@ -25,7 +25,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: docker compose config
     - name: Start containers
-      run: docker compose up -d --build
+      run: echo $AWS_ACCESS_KEY_ID && docker compose up -d --build
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

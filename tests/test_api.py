@@ -30,6 +30,7 @@ class TestAPI:
     API_VERSION = "v1"
 
     def test_aws_creds(self, manager):
+        print("region", os.environ["AWS_REGION"])
         print("key", os.environ["AWS_ACCESS_KEY_ID"])
         print("secret", os.environ["AWS_SECRET_ACCESS_KEY"])
 
