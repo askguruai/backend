@@ -29,6 +29,10 @@ class TestAPI:
     BASE_URL = f"http://{CONFIG['app']['host']}:{CONFIG['app']['port']}"
     API_VERSION = "v1"
 
+    def test_aws_creds(self, manager):
+        print("key", os.environ["AWS_ACCESS_KEY_ID"])
+        print("secret", os.environ["AWS_SECRET_ACCESS_KEY"])
+
     def test_get_token(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/token"
         data = {
