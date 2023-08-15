@@ -821,8 +821,11 @@ async def archive_filter_rule_epoint(
     )
     return response
 
-
+import os
 if __name__ == '__main__':
+    print("Region: ", os.environ["AWS_REGION"])
+    print("ID: ", os.environ["AWS_ACCESS_KEY_ID"])
+    print("SECRET: ", os.environ["AWS_SECRET_ACCESS_KEY"])
     options = {
         "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
         "workers": CONFIG["app"]["workers"],
