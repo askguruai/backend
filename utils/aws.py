@@ -41,6 +41,10 @@ class AwsTranslateClient:
                 text = [line.strip() for line in text.split("***###***")]
             return {"translation": text, "source_language": source_language}
 
+        logger.info(
+            f"Translating from {source_language} into {target_language}\nText: '{text[:100]}' (total length {len(text)})"
+        )
+
         # recursion
         if len(text) < 9900:
             response = self.translate_client.translate_text(
