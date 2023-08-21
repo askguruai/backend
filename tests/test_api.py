@@ -63,7 +63,7 @@ class TestAPI:
         json = {
             "documents": [
                 {
-                    "content": "The Big Mac recipe consists of two all-beef patties, special sauce, lettuce, cheese, pickles, onions, sandwiched between a three-part sesame seed bun."
+                    "content": "The Big Mac recipe consists of two all-beef patties, special sauce, lettuce, cheese, pickles, onions, sandwiched between a three-part sesame seed bun. Bob ate eight of those."
                 },
                 {
                     "content": "Wrap seasoned grilled chicken, lettuce, tomato, and a creamy sauce in a soft flour tortilla for a delicious and easy-to-make Chicken Twister."
@@ -135,17 +135,17 @@ class TestAPI:
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?"}
+        params = {"query": "How many Big Macs did Bob ate?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
-        assert "two" in response.json()["answer"].lower() or "2" in response.json()["answer"].lower()
+        assert "eight" in response.json()["answer"].lower() or "8" in response.json()["answer"].lower()
         assert "228" in [source["id"] for source in response.json()["sources"]]
 
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?", "stream": True}
+        params = {"query": "How many Big Macs did Bob ate?", "stream": True}
         response = requests.get(url, headers=headers, params=params, stream=True)
         response.raise_for_status()
         answer = ""
@@ -160,7 +160,7 @@ class TestAPI:
                     sources = data['sources']
         answer = answer.lower()
         manager.request_id = request_id
-        assert "two" in answer or "2" in answer
+        assert "eight" in answer or "8" in answer
         assert "228" in [source["id"] for source in sources]
 
     def test_remove_collection(self, manager):
