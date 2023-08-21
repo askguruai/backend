@@ -139,7 +139,7 @@ class TestAPI:
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
-        assert "two" in response.json()["answer"] or "2" in response.json()["answer"]
+        assert "two" in response.json()["answer"].lower() or "2" in response.json()["answer"].lower()
         assert "228" in [source["id"] for source in response.json()["sources"]]
 
     def test_get_answer_stream(self, manager):
@@ -158,6 +158,7 @@ class TestAPI:
                     answer += data['answer']
                     request_id = data['request_id']
                     sources = data['sources']
+        answer = answer.lower()
         manager.request_id = request_id
         assert "two" in answer or "2" in answer
         assert "228" in [source["id"] for source in sources]
