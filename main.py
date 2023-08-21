@@ -488,7 +488,7 @@ async def upload_collection_links(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     collection: str = Path(description="Collection within organization"),
-    links: List[str] = Body(None, description="Each link will be recursively crawled and uploaded"),
+    links: List[str] | str = Body(..., description="Each link will be recursively crawled and uploaded"),
     ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
 ):
     token_data = decode_token(token)
@@ -497,7 +497,7 @@ async def upload_collection_links(
         vendor=token_data["vendor"],
         organization=token_data["organization"],
         collection=collection,
-        documents=links,
+        documents=links if type(links) == list else [links],
         ignore_urls=ignore_urls,
     )
 
