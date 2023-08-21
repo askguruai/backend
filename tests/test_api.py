@@ -70,14 +70,59 @@ class TestAPI:
                 },
             ],
             "metadata": [
-                {"id": 228, "title": "Big Mac recipe", "project_to_en": False},
-                {"id": 322, "title": "Twister recipe", "project_to_en": False},
+                {"id": 228, "title": "Big Mac recipe"},
+                {"id": 322, "title": "Twister recipe"},
             ],
         }
         response = requests.post(url, headers=headers, json=json)
         response.raise_for_status()
-        manager.test_upload_docs_chunks_inserted = int(response.json()["n_chunks"])
-        assert manager.test_upload_docs_chunks_inserted > 0
+        manager.test_chunks_inserted = int(response.json()["n_chunks"])
+        assert manager.test_chunks_inserted > 0
+
+    def test_upload_pdf(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/files"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        dir_path = os.path.dirname(os.path.realpath(__file__))
+        test_files_directory = os.path.join(dir_path, "files")
+        raw_documents = [
+            ('files', open(os.path.join(test_files_directory, "Brief_Summary.pdf"), 'rb')),
+        ]
+        data = {
+            "metadata": json.dumps(
+                [
+                    {"id": "pdf_file", "title": "Brief Summary", "summary": "Some custom summary"},
+                ]
+            )
+        }
+        response = requests.post(url, headers=headers, files=raw_documents, data=data)
+        response.raise_for_status()
+        manager.test_file_custom_summary = "Some custom summary"
+        assert int(response.json()["n_chunks"]) > 0
+        manager.test_chunks_inserted += int(response.json()["n_chunks"])
+
+    def test_get_answer_translation(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "Каково решение проблемы поиска ресурсов для обучения?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "платформа" in response.json()["answer"].lower()
+        sources_ids = [source["id"] for source in response.json()["sources"]]
+        assert "pdf_file" in sources_ids
+        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
+        assert pdf_source["summary"] == manager.test_file_custom_summary
+
+    def test_get_answer_translation2(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "What is the solution to a problem of finding educational resources?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "platform" in response.json()["answer"].lower()
+        sources_ids = [source["id"] for source in response.json()["sources"]]
+        assert "pdf_file" in sources_ids
+        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
+        assert pdf_source["summary"] == manager.test_file_custom_summary
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
@@ -85,12 +130,12 @@ class TestAPI:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         assert response.json()["collections"][0]["name"] == "recipes"
-        assert response.json()["collections"][0]["n_chunks"] == manager.test_upload_docs_chunks_inserted
+        assert response.json()["collections"][0]["n_chunks"] == manager.test_chunks_inserted
 
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?", "project_to_en": False}
+        params = {"query": "How many patties are in a Big Mac?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
@@ -100,7 +145,7 @@ class TestAPI:
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "How many patties are in a Big Mac?", "project_to_en": False, "stream": True}
+        params = {"query": "How many patties are in a Big Mac?", "stream": True}
         response = requests.get(url, headers=headers, params=params, stream=True)
         response.raise_for_status()
         answer = ""
@@ -122,4 +167,4 @@ class TestAPI:
         headers = {"Authorization": f"Bearer {manager.token}"}
         response = requests.delete(url, headers=headers)
         response.raise_for_status()
-        assert int(response.json()["n_chunks"]) == manager.test_upload_docs_chunks_inserted
+        assert int(response.json()["n_chunks"]) == manager.test_chunks_inserted

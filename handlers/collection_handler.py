@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from langdetect import detect as language_detect
 from loguru import logger
 
-from utils import MILVUS_DB, TRANSLATE_CLIENT, hash_string, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import int_list_encode
 from utils.schemas import (
@@ -49,11 +49,9 @@ class CollectionHandler:
     ) -> GetCollectionAnswerResponse:
         orig_lang = "en"
         if project_to_en:
-            detection_result = TRANSLATE_CLIENT.detect_language(query)
-            orig_lang = detection_result["language"]
-            if orig_lang != "en":
-                trans_result = TRANSLATE_CLIENT.translate(query, target_language="en", format_="text", model="nmt")
-                query = trans_result['translatedText']
+            translation = AWS_TRANSLATE_CLIENT.translate_text(query)
+            query = translation["translation"]
+            orig_lang = translation["source_language"]
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
 
         # streaming only able when query was in english
@@ -77,10 +75,10 @@ class CollectionHandler:
         mode = "support"
         if len(chunks) == 0:
             # todo: make a cache or sth
-            answer = "Unable to find an answer :("
-            if orig_lang is not None:
-                answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
-                    "translatedText"
+            answer = "Unable to find an answer"
+            if orig_lang != "en":
+                answer = AWS_TRANSLATE_CLIENT.translate_text(answer, target_language=orig_lang, source_language="en")[
+                    "translation"
                 ]
             return GetCollectionAnswerResponse(answer=answer, sources=[]), []
 
@@ -118,9 +116,9 @@ class CollectionHandler:
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
             return response, chunks[:i]
 
-        if orig_lang != "en":
-            answer = TRANSLATE_CLIENT.translate(answer, target_language=orig_lang, format_="text", model="nmt")[
-                "translatedText"
+        if orig_lang != "en" and project_to_en:
+            answer = AWS_TRANSLATE_CLIENT.translate_text(answer, target_language=orig_lang, source_language="en")[
+                "translation"
             ]
         return GetCollectionAnswerResponse(answer=answer, sources=sources), chunks[:i]
 
@@ -267,11 +265,8 @@ class CollectionHandler:
         security_code = int_list_encode(user_security_groups)
         if query:
             if project_to_en:
-                detection_result = TRANSLATE_CLIENT.detect_language(query)
-                document_language = detection_result["language"]
-                if document_language != "en":
-                    trans_result = TRANSLATE_CLIENT.translate(query, target_language="en", format_="text", model="nmt")
-                    query = trans_result["translatedText"]
+                translation = AWS_TRANSLATE_CLIENT.translate_text(text=query)
+                query = translation["translation"]
             embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
         elif document:
             document_collection = document_collection or "faq"

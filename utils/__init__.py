@@ -42,25 +42,12 @@ class ClientSessionWrapper:
 CLIENT_SESSION_WRAPPER = ClientSessionWrapper()
 
 
-########################################################
-#                GOOGLE TRANSLATE                      #
-########################################################
-import json
 import os
+from typing import List
 
-from google.cloud import translate_v2 as translate
+########################################################
+#                    AWS TRANSLATE                     #
+########################################################
+from utils.aws import AwsTranslateClient
 
-GOOGLE_APPLICATION_CREDENTIALS = {
-    "client_id": os.environ["GOOGLE_CLIENT_ID"],
-    "client_secret": os.environ["GOOGLE_CLIENT_SECRET"],
-    "quota_project_id": os.environ["GOOGLE_QUOTA_PROJECT_ID"],
-    "refresh_token": os.environ["GOOGLE_REFRESH_TOKEN"],
-    "type": "authorized_user",
-}
-
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "./google_credentials.json"
-
-with open("./google_credentials.json", "w") as f:
-    json.dump(GOOGLE_APPLICATION_CREDENTIALS, f)
-
-TRANSLATE_CLIENT = translate.Client()
+AWS_TRANSLATE_CLIENT = AwsTranslateClient()

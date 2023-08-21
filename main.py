@@ -182,9 +182,7 @@ async def get_collections_answer(
     document: str = Query(default=None, description="Document ID"),
     document_collection: str = Query(default=None, description="Document collection"),
     stream: bool = Query(default=False, description="Stream results"),
-    project_to_en: bool = Query(
-        default=False, description="Whether to project query into English for better precision"
-    ),
+    project_to_en: bool = Query(default=True, description="Whether to project query into English for better precision"),
     collections_only: bool = Query(
         default=True,
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
@@ -280,7 +278,7 @@ async def get_collections_ranking(
     top_k: int = Query(default=10, description="Number of top documents to return"),
     similarity_threshold: float = Query(default=0.0, description="Similarity threshold to filter sources"),
     user: str = Query(default=None, description="User ID"),
-    project_to_en: bool = Query(default=False, description="Improves model performance at a cost of translation"),
+    project_to_en: bool = Query(default=True, description="Improves model performance at a cost of translation"),
 ):
     # TODO add logging
     if bool(document) ^ bool(document_collection):
@@ -821,6 +819,10 @@ async def archive_filter_rule_epoint(
     )
     return response
 
+
+import os
+
+from utils import AWS_TRANSLATE_CLIENT
 
 if __name__ == '__main__':
     options = {
