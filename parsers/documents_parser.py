@@ -69,9 +69,12 @@ class DocumentsParser:
             link_candidates = [
                 urljoin(link, a["href"]).split("#")[0].split("?")[0].split(" ")[0] for a in soup.find_all(href=True)
             ]
-        else:
+        elif "<?xml" in page_content:
             soup = BeautifulSoup(page_content, "xml")
             link_candidates = [a.text.strip() for a in soup.find_all("loc")]
+        else:
+            logger.warning(f"Unknown content format on link: {link}")
+            return []
 
         links_found = []
         for url in link_candidates:
