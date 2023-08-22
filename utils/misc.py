@@ -10,3 +10,20 @@ def int_list_encode(group_list: list | None) -> int:
             raise SecurityGroupError(f"Invalid security group code: {gr}. Value must be between 0 and 63")
         n |= 1 << gr
     return n
+
+
+class AsyncIterator:
+    def __init__(self, list):
+        self.list = list
+        self.index = 0
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self.index < len(self.list):
+            result = self.list[self.index]
+            self.index += 1
+            return result
+        else:
+            raise StopAsyncIteration
