@@ -29,6 +29,10 @@ class TestAPI:
     BASE_URL = f"http://{CONFIG['app']['host']}:{CONFIG['app']['port']}"
     API_VERSION = "v1"
 
+    ################################################################
+    #                       AUTHORIZATION                          #
+    ################################################################
+
     def test_get_token(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/token"
         data = {
@@ -49,6 +53,10 @@ class TestAPI:
         assert response.json()["vendor"] == "askguru"
         assert response.json()["organization"] == "mcdonalds"
         assert response.json()["security_groups"] == []
+
+    ################################################################
+    #                       UPLOADING                              #
+    ################################################################
 
     def test_retrieve_empty(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
@@ -84,45 +92,32 @@ class TestAPI:
         headers = {"Authorization": f"Bearer {manager.token}"}
         dir_path = os.path.dirname(os.path.realpath(__file__))
         test_files_directory = os.path.join(dir_path, "files")
+        manager.test_file_custom_summary = "Some custom summary"
         raw_documents = [
             ('files', open(os.path.join(test_files_directory, "Brief_Summary.pdf"), 'rb')),
         ]
         data = {
             "metadata": json.dumps(
                 [
-                    {"id": "pdf_file", "title": "Brief Summary", "summary": "Some custom summary"},
+                    {"id": "pdf_file", "title": "Brief Summary", "summary": manager.test_file_custom_summary},
                 ]
             )
         }
         response = requests.post(url, headers=headers, files=raw_documents, data=data)
         response.raise_for_status()
-        manager.test_file_custom_summary = "Some custom summary"
         assert int(response.json()["n_chunks"]) > 0
         manager.test_chunks_inserted += int(response.json()["n_chunks"])
 
-    def test_get_answer_translation(self, manager):
-        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+    def test_upload_links(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/links"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "Каково решение проблемы поиска ресурсов для обучения?"}
-        response = requests.get(url, headers=headers, params=params)
+        json = {
+            "links": ["https://www.askguru.ai/"],
+        }
+        response = requests.post(url, headers=headers, json=json)
         response.raise_for_status()
-        assert "платформа" in response.json()["answer"].lower()
-        sources_ids = [source["id"] for source in response.json()["sources"]]
-        assert "pdf_file" in sources_ids
-        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
-        assert pdf_source["summary"] == manager.test_file_custom_summary
-
-    def test_get_answer_translation2(self, manager):
-        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "What is the solution to a problem of finding educational resources?"}
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        assert "platform" in response.json()["answer"].lower()
-        sources_ids = [source["id"] for source in response.json()["sources"]]
-        assert "pdf_file" in sources_ids
-        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
-        assert pdf_source["summary"] == manager.test_file_custom_summary
+        assert int(response.json()["n_chunks"]) > 0
+        manager.test_chunks_inserted += int(response.json()["n_chunks"])
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
@@ -131,6 +126,10 @@ class TestAPI:
         response.raise_for_status()
         assert response.json()["collections"][0]["name"] == "recipes"
         assert response.json()["collections"][0]["n_chunks"] == manager.test_chunks_inserted
+
+    ################################################################
+    #                       ANSWERING                              #
+    ################################################################
 
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
@@ -162,6 +161,43 @@ class TestAPI:
         manager.request_id = request_id
         assert "eight" in answer or "8" in answer
         assert "228" in [source["id"] for source in sources]
+
+    def test_get_answer_translation(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "Каково решение проблемы поиска ресурсов для обучения?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "платформа" in response.json()["answer"].lower()
+        sources_ids = [source["id"] for source in response.json()["sources"]]
+        assert "pdf_file" in sources_ids
+        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
+        assert pdf_source["summary"] == manager.test_file_custom_summary
+
+    def test_get_answer_translation2(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "What is the solution to a problem of finding educational resources?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "platform" in response.json()["answer"].lower()
+        sources_ids = [source["id"] for source in response.json()["sources"]]
+        assert "pdf_file" in sources_ids
+        pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
+        assert pdf_source["summary"] == manager.test_file_custom_summary
+
+    def test_get_answer_from_parsed_website(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "where askguru is registred?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        manager.request_id = response.json()["request_id"]
+        assert "94121" in response.json()["answer"].lower() or "california" in response.json()["answer"].lower()
+
+    ################################################################
+    #                       CLEANING UP                            #
+    ################################################################
 
     def test_remove_collection(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes"
