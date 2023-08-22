@@ -444,6 +444,32 @@ async def upload_collection_files(
 
 
 @app.post(
+    "/{api_version}/collections/{collection}/links",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+    include_in_schema=False,
+)
+@catch_errors
+async def upload_collection_links(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    links: List[str] = Body(description="Each link will be recursively crawled and uploaded"),
+    ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
+):
+    token_data = decode_token(token)
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=links,
+        ignore_urls=ignore_urls,
+    )
+
+
+@app.post(
     "/{api_version}/collections/{collection}/chats",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
@@ -473,32 +499,6 @@ async def upload_collection_chats(
         collection=collection,
         documents=chats,
         metadata=metadata,
-    )
-
-
-@app.post(
-    "/{api_version}/collections/{collection}/links",
-    response_model=CollectionDocumentsResponse,
-    responses=CollectionResponses,
-    include_in_schema=False,
-)
-@catch_errors
-async def upload_collection_links(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization"),
-    links: List[str] | str = Body(..., description="Each link will be recursively crawled and uploaded"),
-    ignore_urls: bool = Body(True, description="Whether to ignore urls when parsing Links"),
-):
-    token_data = decode_token(token)
-    return await documents_upload_handler.handle_request(
-        api_version=api_version,
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        collection=collection,
-        documents=links if type(links) == list else [links],
-        ignore_urls=ignore_urls,
     )
 
 
