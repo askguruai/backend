@@ -35,7 +35,7 @@ class DocumentsParser:
         self.enc = tiktoken.get_encoding(tokenizer_name)
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
-        self.sitemap_pattern = r'sitemaps/sitemap.*\.xml'
+        self.sitemap_pattern = r'sitemap.*\.xml'
 
     @AsyncTTL(time_to_live=60, maxsize=4096)
     async def get_page_content(self, session: ClientSession, link: str, allow_redirects: bool = True) -> str:
@@ -71,7 +71,7 @@ class DocumentsParser:
             ]
         else:
             soup = BeautifulSoup(page_content, "xml")
-            link_candidates = [a.text for a in soup.find_all("loc")]
+            link_candidates = [a.text.strip() for a in soup.find_all("loc")]
 
         links_found = []
         for url in link_candidates:
