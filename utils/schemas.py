@@ -340,10 +340,6 @@ class GetFiltersResponse(BaseModel):
 class DocumentMetadata(BaseModel):
     id: str = Field(description="Id of the respective document")
     title: str = Field(description="Title of the document to override filename", example="Passwords")
-    url: str | None = Field(description="URL of this resource")
-    timestamp: int | None = Field(
-        description="Document last change time in seconds. Default is server receive time", example=1688474672
-    )
     summary: str | None = Field(description="Pre-defined summary", example="Instruction when forget password")
     summary_length: int = Field(
         default=0,
@@ -352,7 +348,10 @@ class DocumentMetadata(BaseModel):
     project_to_en: bool = Field(
         default=True, description="Whether to translate uploaded documet into Eng (increases model performance)"
     )
+    url: str | None = Field(description="URL of this resource")
+    timestamp: int | None = Field(
+        description="Document last change time in seconds. Default is server receive time", example=1688474672
+    )
     security_groups: List[int] | None = Field(
         description="Security groups of the document. Default is full access", example=[0, 2]
     )
-    url: str | None = Field(description="URL to provide with resource")

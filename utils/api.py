@@ -67,6 +67,7 @@ def log_get_answer(
     organization: str = None,
     collections: List[str] = None,
     user: str = None,
+    stream: bool = None,
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -82,6 +83,7 @@ def log_get_answer(
         "organization": organization,
         "collections": collections,
         "user": user,
+        "stream": stream,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
     logger.info(
