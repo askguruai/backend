@@ -1,5 +1,6 @@
 import asyncio
 import os.path as osp
+import re
 from collections import deque
 from datetime import datetime
 from typing import List, Tuple
@@ -34,6 +35,7 @@ class DocumentsParser:
         self.enc = tiktoken.get_encoding(tokenizer_name)
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
+        self.sitemap_pattern = r'sitemaps/sitemap.*\.xml'
 
     @AsyncTTL(time_to_live=60, maxsize=4096)
     async def get_page_content(self, session: ClientSession, link: str, allow_redirects: bool = True) -> str:
@@ -112,15 +114,13 @@ class DocumentsParser:
         return Doc(content=content), DocumentMetadata(id=link, title=title, url=link), page_content
 
     async def traverse_page(
-        self, root_link: str, max_depth: int = 50, max_total_docs: int = 500, ignore_urls: bool = True
-    ) -> List[Tuple[Doc, DocumentMetadata]]:
+        self, root_link: str, max_depth: int = 50, max_total_docs: int = 500
+    ) -> List[Tuple[Doc, DocumentMetadata, str]]:
         if root_link[-1] != "/":
             root_link += "/"
+
         queue, visited, depth = deque([root_link]), set([root_link]), 0
         docs = []
-
-        default_ignore_links = self.converter.ignore_links
-        self.converter.ignore_links = ignore_urls
 
         async with ClientSession() as session:
             while queue and depth < max_depth and len(docs) < max_total_docs:
@@ -148,15 +148,54 @@ class DocumentsParser:
                 queue.extend([url for extracted_urls_from_one in extracted_urls for url in extracted_urls_from_one])
                 depth += 1
 
-        self.converter.ignore_links = default_ignore_links
-
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
+
+    async def traverse_xml(self, link: str) -> List[Tuple[Doc, DocumentMetadata, str]]:
+        queue, visited, depth = deque([link]), set([link]), 0
+        docs = []
+
+        async with ClientSession() as session:
+            while queue:
+                logger.info(f"Depth: {depth}, total: {len(docs)}, queue size: {len(queue)}, link: {link}")
+                tasks_process_link = []
+                tasks_extract_urls = []
+                for _ in range(len(queue)):
+                    url = queue.popleft()
+                    if re.search(self.sitemap_pattern, url):
+                        logger.info(f"Extracting links from .xml '{url}'")
+                        tasks_extract_urls.append(
+                            self.extract_urls(
+                                session=session,
+                                link=url,
+                                visited=visited,
+                            )
+                        )
+                    else:
+                        tasks_process_link.append(self.process_link(session=session, link=url))
+
+                processed_links = await asyncio.gather(*tasks_process_link)
+                extracted_urls = await asyncio.gather(*tasks_extract_urls)
+
+                docs.extend(processed_links)
+                queue.extend([url for extracted_urls_from_one in extracted_urls for url in extracted_urls_from_one])
+                depth += 1
+
+        logger.info(f"Found {len(docs)} documents on {link}")
+        return docs
 
     async def link_to_docs(
         self, link: str, vendor: str, organization: str, collection: str, ignore_urls: bool = True
     ) -> Tuple[List[Doc], List[DocumentMetadata]]:
-        results = await self.traverse_page(link, ignore_urls=ignore_urls)
+        default_ignore_links = self.converter.ignore_links
+        self.converter.ignore_links = ignore_urls
+
+        # If we face sitemap, we will use links from it for extraction.
+        # Otherwise, we are recursively crawling page.
+        if re.search(self.sitemap_pattern, link):
+            results = await self.traverse_xml(link)
+        else:
+            results = await self.traverse_page(link)
 
         documents, documents_metadata = [], []
         for doc, metadata, content in results:
@@ -174,6 +213,8 @@ class DocumentsParser:
                 filename=filename,
                 content_type="text/html",
             )
+
+        self.converter.ignore_links = default_ignore_links
 
         return documents, documents_metadata
 
