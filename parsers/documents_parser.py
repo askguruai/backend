@@ -9,6 +9,7 @@ import html2text
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
+from cache import AsyncTTL
 from fastapi import HTTPException, status
 from langdetect import detect as language_detect
 from loguru import logger
@@ -34,9 +35,8 @@ class DocumentsParser:
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
 
+    @AsyncTTL(time_to_live=60, maxsize=4096)
     async def get_page_content(self, session: ClientSession, link: str, allow_redirects: bool = True) -> str:
-        # add 1 min ttl cache
-
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
         }
@@ -109,7 +109,7 @@ class DocumentsParser:
         #     logger.error(f"Empty content on {link}")
         #     return None
 
-        return Doc(content=content), DocumentMetadata(id=link, title=title, url=link)
+        return Doc(content=content), DocumentMetadata(id=link, title=title, url=link), page_content
 
     async def traverse_page(
         self, root_link: str, max_depth: int = 50, max_total_docs: int = 500, ignore_urls: bool = True
@@ -153,10 +153,29 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def link_to_docs(self, link: str, ignore_urls: bool) -> Tuple[List[Doc], List[DocumentMetadata]]:
+    async def link_to_docs(
+        self, link: str, vendor: str, organization: str, collection: str, ignore_urls: bool = True
+    ) -> Tuple[List[Doc], List[DocumentMetadata]]:
         results = await self.traverse_page(link, ignore_urls=ignore_urls)
 
-        return [item[0] for item in results], [item[1] for item in results]
+        documents, documents_metadata = [], []
+        for doc, metadata, content in results:
+            documents.append(doc)
+            documents_metadata.append(metadata)
+
+            # Writing plain page content to GridFS
+            filename = f"{vendor}_{organization}_{collection}_{metadata.id}"
+            res = GRIDFS.find_one({"filename": filename})
+            if res:
+                GRIDFS.delete(res._id)
+                logger.info(f"Deleted file {filename} from GridFS")
+            GRIDFS.put(
+                content.encode(),
+                filename=filename,
+                content_type="text/html",
+            )
+
+        return documents, documents_metadata
 
     async def raw_to_doc(
         self, file: StarletteUploadFile, vendor: str, organization: str, collection: str, doc_id: str
