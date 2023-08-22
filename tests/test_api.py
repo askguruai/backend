@@ -112,7 +112,7 @@ class TestAPI:
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/links"
         headers = {"Authorization": f"Bearer {manager.token}"}
         json = {
-            "links": ["https://www.askguru.ai/"],
+            "links": ["https://www.askguru.ai/", "https://yuma.ai/sitemap.xml"],
         }
         response = requests.post(url, headers=headers, json=json)
         response.raise_for_status()
@@ -194,6 +194,15 @@ class TestAPI:
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
         assert "94121" in response.json()["answer"].lower() or "california" in response.json()["answer"].lower()
+
+    def test_get_answer_from_xml_parsed_website(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "in which town Yuma is located?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        manager.request_id = response.json()["request_id"]
+        assert "singapore" in response.json()["answer"].lower()
 
     ################################################################
     #                       CLEANING UP                            #
