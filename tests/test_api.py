@@ -174,6 +174,29 @@ class TestAPI:
         pdf_source = response.json()["sources"][sources_ids.index("pdf_file")]
         assert pdf_source["summary"] == manager.test_file_custom_summary
 
+    def test_get_answer_translation_stream(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "Каково решение проблемы поиска ресурсов для обучения?", "stream": True}
+        response = requests.get(url, headers=headers, params=params, stream=True)
+        response.raise_for_status()
+        answer = ""
+        for line in response.iter_lines():
+            if line:
+                line = line.decode("utf-8")
+                k, v = line.split(':', 1)
+                if k == 'data':
+                    data = json.loads(v.strip())
+                    answer += data['answer']
+                    request_id = data['request_id']
+                    sources = data['sources']
+        answer = answer.lower()
+        assert "платформа" in answer
+        sources_ids = [source["id"] for source in sources]
+        assert "pdf_file" in sources_ids
+        pdf_source = sources[sources_ids.index("pdf_file")]
+        assert pdf_source["summary"] == manager.test_file_custom_summary
+
     def test_get_answer_translation2(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
