@@ -12,7 +12,7 @@ from loguru import logger
 
 from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
-from utils.misc import int_list_encode
+from utils.misc import AsyncIterator, int_list_encode
 from utils.schemas import (
     ApiVersion,
     Collection,
@@ -53,10 +53,6 @@ class CollectionHandler:
             query = translation["translation"]
             orig_lang = translation["source_language"]
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
-
-        # streaming only able when query was in english
-        # todo: try maybe stream by sentences or something or maybe google can receive and return stream
-        stream = stream and (orig_lang == "en")
 
         # org_hash = hash_string(organization)
         # search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
@@ -113,6 +109,17 @@ class CollectionHandler:
                     seen.add(doc_id)
 
         if stream:
+            if orig_lang != "en" and project_to_en:
+                answer_text = ""
+                async for text in answer:
+                    answer_text += text
+
+                answer = AWS_TRANSLATE_CLIENT.translate_text(
+                    answer_text, target_language=orig_lang, source_language="en"
+                )["translation"]
+
+                answer = AsyncIterator([answer])
+
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
             return response, chunks[:i]
 
