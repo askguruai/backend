@@ -30,12 +30,13 @@ class DocumentsUploadHandler:
         if isinstance(documents[0], str):
             # traversing each link, extracting all pages from each link,
             # representing them as docs and flatten the list
-            documents_cp, metadata = [], []
+            documents_tmp, metadata_tmp = [], []
             for link in documents:
-                for document, metadata_i in await self.parser.link_to_docs(link, ignore_urls=ignore_urls):
-                    documents_cp.extend(document)
-                    metadata.extend(metadata_i)
-            documents = documents_cp
+                link_documents, link_documents_metadata = await self.parser.link_to_docs(link, ignore_urls=ignore_urls)
+                documents_tmp.extend(link_documents)
+                metadata_tmp.extend(link_documents_metadata)
+            documents = documents_tmp
+            metadata = metadata_tmp
 
         elif isinstance(documents[0], StarletteUploadFile):
             documents = [

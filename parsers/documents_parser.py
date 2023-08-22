@@ -73,11 +73,10 @@ class DocumentsParser:
 
         links_found = []
         for url in link_candidates:
-            logger.info(url)
             is_file = url.split("/")[-1].count(".") > 0
             if (
                 url not in visited
-                and url.startswith(root_link)
+                and url.startswith(root_url)
                 and "wp-json" not in url
                 and (not is_file or url.endswith(".html") or url.endswith(".htm") or url.endswith(".xml"))
                 and url + "/" not in visited
@@ -114,7 +113,7 @@ class DocumentsParser:
 
     async def traverse_page(
         self, root_link: str, max_depth: int = 50, max_total_docs: int = 500, ignore_urls: bool = True
-    ) -> List[Doc]:
+    ) -> List[Tuple[Doc, DocumentMetadata]]:
         if root_link[-1] != "/":
             root_link += "/"
         queue, visited, depth = deque([root_link]), set([root_link]), 0
@@ -125,10 +124,11 @@ class DocumentsParser:
 
         async with ClientSession() as session:
             while queue and depth < max_depth and len(docs) < max_total_docs:
-                tasks = []
                 logger.info(
                     f"Depth: {depth} / {max_depth}, total: {len(docs)} / {max_total_docs}, queue size: {len(queue)}, link: {root_link}"
                 )
+                tasks_process_link = []
+                tasks_extract_urls = []
                 for _ in range(len(queue)):
                     url = queue.popleft()
                     tasks_process_link.append(self.process_link(session=session, link=url))
@@ -153,47 +153,10 @@ class DocumentsParser:
         logger.info(f"Found {len(docs)} documents on {root_link}")
         return docs[:max_total_docs]
 
-    async def link_to_docs(
-        self, root_link: str, max_depth: int = 50, max_total_docs: int = 500, ignore_urls: bool = True
-    ) -> List[Doc]:
-        # if root_link[-1] != "/":
-        #     root_link += "/"
-        queue, visited, depth = deque([root_link]), set([root_link]), 0
-        docs = []
+    async def link_to_docs(self, link: str, ignore_urls: bool) -> Tuple[List[Doc], List[DocumentMetadata]]:
+        results = await self.traverse_page(link, ignore_urls=ignore_urls)
 
-        default_ignore_links = self.converter.ignore_links
-        self.converter.ignore_links = ignore_urls
-
-        async with ClientSession() as session:
-            while queue and depth < max_depth and len(docs) < max_total_docs:
-                tasks = []
-                logger.info(
-                    f"Depth: {depth} / {max_depth}, total: {len(docs)} / {max_total_docs}, queue size: {len(queue)}, link: {root_link}"
-                )
-                for _ in range(len(queue)):
-                    tasks.append(
-                        self.process_link(
-                            session,
-                            queue.popleft(),
-                            root_link,
-                            queue,
-                            visited,
-                            ignore_urls=ignore_urls,
-                        )
-                    )
-
-                results = await asyncio.gather(*tasks)
-
-                for result in results:
-                    if result:
-                        docs.append(result)
-
-                depth += 1
-
-        self.converter.ignore_links = default_ignore_links
-
-        logger.info(f"Found {len(docs)} documents on {root_link}")
-        return docs[:max_total_docs]
+        return [item[0] for item in results], [item[1] for item in results]
 
     async def raw_to_doc(
         self, file: StarletteUploadFile, vendor: str, organization: str, collection: str, doc_id: str
