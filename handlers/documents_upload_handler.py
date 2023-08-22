@@ -32,7 +32,9 @@ class DocumentsUploadHandler:
             # representing them as docs and flatten the list
             documents_tmp, metadata_tmp = [], []
             for link in documents:
-                link_documents, link_documents_metadata = await self.parser.link_to_docs(link, ignore_urls=ignore_urls)
+                link_documents, link_documents_metadata = await self.parser.link_to_docs(
+                    link, vendor=vendor, organization=organization, collection=collection, ignore_urls=ignore_urls
+                )
                 documents_tmp.extend(link_documents)
                 metadata_tmp.extend(link_documents_metadata)
             documents = documents_tmp
