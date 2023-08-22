@@ -249,6 +249,7 @@ async def get_collections_answer(
         organization=token_data["organization"],
         collections=collections,
         user=user,
+        stream=stream,
     )
     if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
         return StreamingResponse(
