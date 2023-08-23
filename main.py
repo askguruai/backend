@@ -58,6 +58,7 @@ from utils.schemas import (
     LikeStatus,
     LinkRequest,
     Log,
+    Message,
     NotFoundResponse,
     SetReactionRequest,
     TextRequest,
@@ -179,24 +180,51 @@ async def get_collections_answer(
         description="List of collections to search for answer in. If empty, then all available collections will be used.",
     ),
     query: str = Query(default=None, description="Query string"),
-    document: str = Query(default=None, description="Document ID"),
-    document_collection: str = Query(default=None, description="Document collection"),
+    chat: str = Query(default=None, description="Chat history. Serialized instance of a list of `Message` objects"),
     stream: bool = Query(default=False, description="Stream results"),
-    project_to_en: bool = Query(default=True, description="Whether to project query into English for better precision"),
+    project_to_en: bool = Query(
+        default=True, description="Whether to project query into English for better precision", include_in_schema=False
+    ),
     collections_only: bool = Query(
         default=True,
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
     ),
     user: str = Query(default=None, description="User ID", include_in_schema=False),
+    document: str = Query(default=None, description="Document ID", include_in_schema=False),
+    document_collection: str = Query(default=None, description="Document collection", include_in_schema=False),
 ):
     """
     Main endpoint.
     """
-    if not query and not document:
+    if not (bool(query) ^ bool(chat)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Either query or document must be provided",
+            detail="One (and only one) of `query` or `chat` should be provided",
         )
+
+    if chat:
+        try:
+            chat_raw = json.loads(chat)
+        except Exception as e:
+            logger.error(f"Error decoding chat object: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="`chat` must be a valid json string containing a list of `Message` objects",
+            )
+        else:
+            chat_processed = []
+            for i, msg in enumerate(chat_raw):
+                try:
+                    chat_processed.append(Message(**msg))
+                except Exception as e:
+                    msg = f"Message {msg} at index {i} does not satisfy `Message` model"
+                    logger.error(msg)
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=msg,
+                    )
+            chat = chat_processed
+
     if bool(document) ^ bool(document_collection):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -224,7 +252,7 @@ async def get_collections_answer(
             stream=stream,
         )
     else:
-        check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
+        # check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
         response, context = await collection_handler.get_answer(
             vendor=token_data["vendor"],
             organization=token_data["organization"],
@@ -237,6 +265,7 @@ async def get_collections_answer(
             stream=stream,
             collections_only=collections_only,
             project_to_en=project_to_en,
+            chat=chat,
         )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
@@ -250,6 +279,7 @@ async def get_collections_answer(
         collections=collections,
         user=user,
         stream=stream,
+        chat=chat,
     )
     if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
         return StreamingResponse(
@@ -474,7 +504,7 @@ async def upload_collection_links(
     "/{api_version}/collections/{collection}/chats",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
-    include_in_schema=False,
+    include_in_schema=True,
 )
 @catch_errors
 async def upload_collection_chats(
@@ -532,7 +562,7 @@ async def delete_collection_documents(
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
-async def delete_collection_endpoint(
+async def delete_collection(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
