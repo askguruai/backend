@@ -48,15 +48,22 @@ class User(BaseModel):
     name: str = Field(description="Name of the user", example="John Doe")
 
 
+class Role(str, Enum):
+    user = 'user'
+    assistant = 'assistant'
+
+
 class Message(BaseModel):
-    role: str = Field(description="Role of the user", example="assistant")
-    content: str = Field(description="Content of the message", example="Hello, how can I help you?")
+    role: Role = Field(description="Role of the user", example=Role.user)
+    content: str = Field(description="Content of the message", example="How to fix income mail view?")
 
 
 class Chat(BaseModel):
-    user: User = Field(description="User of the chat", example=User(id="7af8c3e548e40aeb984c42dd", name="John Doe"))
+    user: User | None = Field(
+        description="User of the chat", example=User(id="7af8c3e548e40aeb984c42dd", name="John Doe")
+    )
     history: List[Message] = Field(
-        description="History of the chat", example=[Message(role="assistant", content="Hello, how can I help you?")]
+        description="History of the chat", example=[Message(role=Role.user, content="How to fix income mail view?")]
     )
 
 
