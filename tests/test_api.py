@@ -227,6 +227,26 @@ class TestAPI:
         manager.request_id = response.json()["request_id"]
         assert "singapore" in response.json()["answer"].lower()
 
+    def test_get_answer_chat(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {
+            "chat": json.dumps(
+                [
+                    {"role": "user", "content": "whats the pricing for askguru"},
+                    {
+                        "role": "assistant",
+                        "content": "Most common is the scale tier which begins with $5/mo and supports up to 10k workspaces and 1k docs.",
+                    },
+                    {"role": "user", "content": "cheapest option"},
+                ]
+            ),
+        }
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        manager.request_id = response.json()["request_id"]
+        assert "3" in response.json()["answer"].lower()
+
     ################################################################
     #                       CLEANING UP                            #
     ################################################################

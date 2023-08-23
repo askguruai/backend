@@ -4,6 +4,7 @@ from typing import List, Union
 import numpy as np
 import requests
 from fastapi import status
+from fastapi.encoders import jsonable_encoder
 from loguru import logger
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
@@ -48,7 +49,13 @@ async def get_answer(
 ) -> str:
     response = await CLIENT_SESSION_WRAPPER.coreml_session.post(
         f"/{api_version}/completions/",
-        json={"info": context, "query": query, "mode": mode, "chat": chat, "stream": stream},
+        json={
+            "info": context,
+            "query": query,
+            "mode": mode,
+            "chat": jsonable_encoder(chat) if chat else None,
+            "stream": stream,
+        },
     )
     response_status = response.status
     if stream:
