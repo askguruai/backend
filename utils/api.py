@@ -9,6 +9,7 @@ from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from utils import CONFIG, DB
+from utils.schemas import Message
 
 
 async def stream_and_log(generator, request_id):
@@ -68,6 +69,7 @@ def log_get_answer(
     collections: List[str] = None,
     user: str = None,
     stream: bool = None,
+    chat: List[Message] = None,
 ) -> str:
     if isinstance(document_ids, str) == str:
         document_ids = [document_ids]
@@ -84,6 +86,7 @@ def log_get_answer(
         "collections": collections,
         "user": user,
         "stream": stream,
+        "chat": [msg.json() for msg in chat] if chat else None,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
     logger.info(
