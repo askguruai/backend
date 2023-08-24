@@ -40,10 +40,10 @@ async def get_organization_token(
             detail="You are only allowed to access organizations from askgurupublic vendor",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if password == os.environ["AUTH_COLLECTION_PASSWORD_TADA"] and vendor != "tada":
+    if password == os.environ["AUTH_COLLECTION_PASSWORD_CLICKHELP"] and vendor != "clickhelp":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="You are only allowed to access organizations from tada vendor",
+            detail="You are only allowed to access organizations from 'clickhelp' vendor",
             headers={"WWW-Authenticate": "Bearer"},
         )
     if password == os.environ["AUTH_COLLECTION_PASSWORD_ONECLICKCX"] and vendor != "oneclickcx":
@@ -54,7 +54,7 @@ async def get_organization_token(
         )
     if password not in [
         os.environ["AUTH_COLLECTION_PASSWORD"],
-        os.environ["AUTH_COLLECTION_PASSWORD_TADA"],
+        os.environ["AUTH_COLLECTION_PASSWORD_CLICKHELP"],
         os.environ["AUTH_COLLECTION_PASSWORD_ASKGURUPUBLIC"],
         os.environ["AUTH_COLLECTION_PASSWORD_ONECLICKCX"],
     ]:
