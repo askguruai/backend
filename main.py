@@ -478,7 +478,6 @@ async def upload_collection_files(
     "/{api_version}/collections/{collection}/links",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
-    include_in_schema=False,
 )
 @catch_errors
 async def upload_collection_links(
