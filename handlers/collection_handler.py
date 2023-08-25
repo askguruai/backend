@@ -247,17 +247,22 @@ class CollectionHandler:
             )
         chunks = milvus_collection.query(
             expr='pk >= 0',
-            output_fields=["doc_id", "timestamp", "security_groups"],
+            output_fields=["doc_id", "timestamp", "doc_title", "security_groups"],
         )
 
         documents = defaultdict(int)
+        document_titles = {}
         for chunk in chunks:
             if chunk["security_groups"] & security_code:
-                doc_id, timestamp = chunk["doc_id"], chunk["timestamp"]
+                doc_id, timestamp, doc_title = chunk["doc_id"], chunk["timestamp"], chunk["doc_title"]
                 documents[doc_id] = max(documents[doc_id], timestamp)
+                document_titles[doc_id] = doc_title
 
         return GetCollectionResponse(
-            documents=[Document(id=doc_id, timestamp=timestamp) for doc_id, timestamp in documents.items()]
+            documents=[
+                Document(id=doc_id, title=document_titles[doc_id], timestamp=timestamp)
+                for doc_id, timestamp in documents.items()
+            ]
         )
 
     async def get_ranking(

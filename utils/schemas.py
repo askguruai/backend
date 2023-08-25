@@ -35,6 +35,7 @@ AUTH_METHODS = ["org_scope", "default"]
 
 class Document(BaseModel):
     id: str = Field(description="Id of the document", example="7af8c3e548e40aeb984c42dd")
+    title: str | None = Field(description="Title of the document", example="D&D Master book")
     timestamp: int = Field(description="Document last change time", example=1623345600)
 
 
@@ -89,6 +90,7 @@ class GetCollectionResponse(BaseModel):
         example=[
             Document(
                 id="7af8c3e548e40aeb984c42dd",
+                title="D&D playbook",
                 timestamp=1623345600,
             )
         ],
