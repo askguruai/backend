@@ -10,7 +10,7 @@ install-format:
 	pip install black isort
 
 install-test:
-	pip install pytest requests
+	pip install pytest requests aiohttp
 
 test:
 	pytest tests -s
