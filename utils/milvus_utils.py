@@ -42,17 +42,6 @@ class MilvusSchema(str, Enum):
 
 
 class CollectionsManager:
-    def __init__(self, collections_cache_size=20) -> None:
-        self.cache_size = collections_cache_size  # does not do anything just yet
-        self.cache = {}
-        for collection_name in utility.list_collections():
-            if collection_name.endswith("_website"):
-                # not loading these to cache on startup
-                continue
-            col = Collection(collection_name)
-            col.load()
-            self.cache[collection_name] = col
-
     def get_collections(self, vendor: str, org_hash: str) -> List[Dict[str, int]]:
         collections = []
         for collection_name in utility.list_collections():
@@ -68,18 +57,16 @@ class CollectionsManager:
         return collections
 
     def get_collection(self, collection_name: str) -> Collection:
-        if collection_name not in self.cache:
-            if collection_name not in utility.list_collections():
-                raise DatabaseError(f"Colletion {collection_name} not found!")
-            else:
-                m_collection = Collection(collection_name)
-                m_collection.load()
-                self.cache[collection_name] = m_collection
-        return self.cache[collection_name]
+        collection_state = utility.load_state(collection_name)._name_
+        if collection_state == "NotExist":
+            raise DatabaseError(f"Colletion {collection_name} not found!")
+
+        m_collection = Collection(collection_name)
+        if collection_state == "NotLoad":
+            m_collection.load()
+        return m_collection
 
     def delete_collection(self, collection_name: str):
-        if collection_name in self.cache:
-            del self.cache[collection_name]
         utility.drop_collection(collection_name, timeout=10)
 
     def __getitem__(self, name: str) -> Collection:
@@ -214,12 +201,7 @@ class CollectionsManager:
         return m_collection
 
     def get_or_create_collection(self, collection_name: str, schema: MilvusSchema = MilvusSchema.V1) -> Collection:
-        if collection_name not in self.cache:
-            if collection_name in utility.list_collections():
-                m_collection = Collection(collection_name)
-                m_collection.load()
-                self.cache[collection_name] = m_collection
-            else:
-                m_collection = self.__get_collection_w_schema(collection_name, schema)
-                self.cache[collection_name] = m_collection
-        return self.cache[collection_name]
+        collection_state = utility.load_state(collection_name)._name_
+        if collection_state == "NotExist":
+            return self.__get_collection_w_schema(collection_name, schema)
+        return self[collection_name]

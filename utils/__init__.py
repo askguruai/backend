@@ -23,7 +23,7 @@ def hash_string(string: str) -> str:
 from utils.db import DB, GRIDFS
 from utils.milvus_utils import CollectionsManager
 
-MILVUS_DB = CollectionsManager(collections_cache_size=20)
+MILVUS_DB = CollectionsManager()
 
 
 ########################################################

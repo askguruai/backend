@@ -182,7 +182,8 @@ class DocumentsUploadHandler:
                 GRIDFS.delete(res._id)
                 logger.info(f"Deleted file {filename} from GridFS")
             else:
-                logger.error(f"File {filename} not found in GridFS for deletion")
+                logger.warning(f"File {filename} not found in GridFS for deletion")
+        collection.release()
         MILVUS_DB.delete_collection(full_collection_name)
         return CollectionDocumentsResponse(n_chunks=len(data))
 
