@@ -1,9 +1,11 @@
+import asyncio
 import json
 import os
 from configparser import ConfigParser
 
 import pytest
 import requests
+from aiohttp import ClientSession
 
 CONFIG = ConfigParser()
 CONFIG.read("./config.ini")
@@ -257,3 +259,26 @@ class TestAPI:
         response = requests.delete(url, headers=headers)
         response.raise_for_status()
         assert int(response.json()["n_chunks"]) == manager.test_chunks_inserted
+
+    async def __delete_async_request(self, session: ClientSession, url: str, params: dict = {}, headers: dict = {}):
+        async with session.delete(url, headers=headers, params=params) as response:
+            return await response.json(), response.status
+
+    def test_absent_collection(self, manager):
+        async def _multi_requests_404(headers: dict = {}, num_requests=5):
+            session = ClientSession(f"{self.BASE_URL}")
+            results = await asyncio.gather(
+                *[
+                    self.__delete_async_request(session, f"/{self.API_VERSION}/collections/recipes", headers=headers)
+                    for _ in range(num_requests)
+                ]
+            )
+            statuses = [res[1] for res in results]
+            assert statuses == [404] * num_requests
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            asyncio.run(_multi_requests_404(headers={"Authorization": f"Bearer {manager.token}"}))
+        finally:
+            loop.close()
