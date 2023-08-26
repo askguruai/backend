@@ -364,3 +364,16 @@ class DocumentMetadata(BaseModel):
     security_groups: List[int] | None = Field(
         description="Security groups of the document. Default is full access", example=[0, 2]
     )
+
+
+class ClientLogEventType(str, Enum):
+    OTHER = "OTHER"
+    PERMISSIONS_ERROR = "PERMISSIONS_ERROR"
+    LIVECHAT_DATA_ERROR = "LIVECHAT_DATA_ERROR"
+    SERVER_ERROR = "SERVER_ERROR"
+    TEST = "TEST"  # for test purposes
+
+
+class ClinetLogEvent(BaseModel):
+    type: ClientLogEventType = Field(description="Event type")
+    context: dict | None = Field(description="Any additional data/context to provide")

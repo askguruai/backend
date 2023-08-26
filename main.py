@@ -1,3 +1,4 @@
+import datetime
 import json
 import time
 from typing import Any, Dict, List
@@ -42,6 +43,7 @@ from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     Chat,
+    ClinetLogEvent,
     CollectionDocumentsResponse,
     CollectionResponses,
     Doc,
@@ -761,6 +763,31 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
             detail=str(e),
         )
     return Response(status_code=status.HTTP_200_OK)
+
+
+@app.post(
+    "/{api_version}/client_event_log",
+    responses={
+        status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
+    },
+    include_in_schema=False,
+)
+@catch_errors
+async def client_event_log(
+    request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
+):
+    token_data = decode_token(token)
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "vendor": token_data["vendor"],
+        "organization": token_data["organization"],
+        "type": client_event.type,
+        "context": client_event.context,
+    }
+    log_id = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
+    logger.info(f"Client event {client_event.type} saved with id {log_id}")
+    return {"log_id": {log_id}}
 
 
 ######################################################
