@@ -766,7 +766,7 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
 
 
 @app.post(
-    "/{api_version}/client_event_log",
+    "/{api_version}/event",
     responses={
         status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
     },
@@ -786,8 +786,8 @@ async def client_event_log(
         "context": client_event.context,
     }
     log_id = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
-    logger.info(f"Client event {client_event.type} saved with id {log_id}")
-    return {"log_id": {log_id}}
+    logger.info(f"Client event {client_event.type} saved with id {str(log_id)}")
+    return {"log_id": str(log_id)}
 
 
 ######################################################
