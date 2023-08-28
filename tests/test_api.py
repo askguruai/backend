@@ -160,7 +160,6 @@ class TestAPI:
                     request_id = data['request_id']
                     sources = data['sources']
         answer = answer.lower()
-        manager.request_id = request_id
         assert "eight" in answer or "8" in answer
         assert "228" in [source["id"] for source in sources]
 
@@ -217,7 +216,6 @@ class TestAPI:
         params = {"query": "where askguru is registred?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        manager.request_id = response.json()["request_id"]
         assert "94121" in response.json()["answer"].lower() or "california" in response.json()["answer"].lower()
 
     def test_get_answer_from_xml_parsed_website(self, manager):
@@ -226,7 +224,6 @@ class TestAPI:
         params = {"query": "in which town Yuma is located?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        manager.request_id = response.json()["request_id"]
         assert "singapore" in response.json()["answer"].lower()
 
     def test_get_answer_chat(self, manager):
@@ -246,8 +243,54 @@ class TestAPI:
         }
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        manager.request_id = response.json()["request_id"]
+        manager.chat_request_id = response.json()["request_id"]
         assert "3" in response.json()["answer"].lower()
+
+    def test_fix_answer(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/fix_answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        json = {"request_id": manager.request_id, "answer": "Bob ate 8 Big Macs and 1 Big Mac after, total of 9"}
+        response = requests.post(url, headers=headers, json=json)
+        response.raise_for_status()
+        assert int(response.json()["n_chunks"]) > 0
+        manager.test_chunks_inserted += int(response.json()["n_chunks"])
+
+    def test_fix_answer_after_fix(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {"query": "How many Big Macs did Bob ate?"}
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "9" in response.json()["answer"].lower() or "nine" in response.json()["answer"].lower()
+        assert manager.request_id in [source["id"] for source in response.json()["sources"]]
+
+    def test_fix_answer_chat(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/fix_answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        json = {"request_id": manager.chat_request_id, "answer": "Cheapest option for AskGuru is $2/mo"}
+        response = requests.post(url, headers=headers, json=json)
+        response.raise_for_status()
+        assert int(response.json()["n_chunks"]) > 0
+        manager.test_chunks_inserted += int(response.json()["n_chunks"])
+
+    def test_fix_answer_chat_after_fix(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {
+            "chat": json.dumps(
+                [
+                    {"role": "user", "content": "whats the pricing for askguru"},
+                    {
+                        "role": "assistant",
+                        "content": "Most common is the scale tier which begins with $5/mo and supports up to 10k workspaces and 1k docs.",
+                    },
+                    {"role": "user", "content": "cheapest option"},
+                ]
+            ),
+        }
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "2" in response.json()["answer"].lower()
 
     ################################################################
     #                       CLEANING UP                            #
