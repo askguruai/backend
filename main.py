@@ -60,6 +60,7 @@ from utils.schemas import (
     Log,
     Message,
     NotFoundResponse,
+    Role,
     SetReactionRequest,
     TextRequest,
     UploadDocumentResponse,
@@ -529,6 +530,72 @@ async def upload_collection_chats(
         collection=collection,
         documents=chats,
         metadata=metadata,
+    )
+
+
+@app.post(
+    "/{api_version}/collections/{collection}/fix_answer",
+    response_model=CollectionDocumentsResponse,
+    responses=CollectionResponses,
+)
+@catch_errors
+async def upload_collection_fix_answer(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    request_id: str = Body(description="Request ID to find a question which we should fix answer to"),
+    answer: str = Body(description="Correct answer to a question"),
+):
+    token_data = decode_token(token)
+    try:
+        db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one(
+            {"_id": ObjectId(request_id), "vendor": token_data["vendor"], "organization": token_data["organization"]},
+            {"_id": 0, "query": 1, "chat": 1},
+        )
+        if not db_status:
+            logger.error(f"Can't find row with id {request_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Can't find row with id {request_id}",
+            )
+    except bson.errors.InvalidId as e:
+        logger.error(e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    if db_status["chat"]:
+        chat_processed = []
+        for msg in db_status["chat"]:
+            chat_processed.append(Message(**json.loads(msg)))
+        chat = chat_processed
+    query = (
+        db_status["query"] if db_status["query"] else "\n".join([msg.content for msg in chat if msg.role == Role.user])
+    )
+
+    document = Doc(content=f"Query: {query}\nTrue answer: {answer}")
+    doc_metadata = DocumentMetadata(id=request_id, title=f"Fix answer for query {query}")
+
+    filename = f"{token_data['vendor']}_{token_data['organization']}_{collection}_{doc_metadata.id}"
+    res = GRIDFS.find_one({"filename": filename})
+    if res:
+        GRIDFS.delete(res._id)
+        logger.info(f"Deleted file {filename} from GridFS")
+    GRIDFS.put(
+        document.content.encode(),
+        filename=filename,
+        content_type="text/plain",
+    )
+
+    return await documents_upload_handler.handle_request(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        documents=[document],
+        metadata=[doc_metadata],
     )
 
 
