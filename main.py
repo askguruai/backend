@@ -183,7 +183,10 @@ async def get_collections_answer(
     query: str = Query(default=None, description="Query string"),
     chat: str = Query(default=None, description="Chat history. Serialized instance of a list of `Message` objects"),
     stream: bool = Query(default=False, description="Stream results"),
-    include_image_urls: bool = Query(default=False, description="If include image urls in the output answer"),
+    include_image_urls: bool = Query(
+        default=False,
+        description="If include image urls in the output answer. If it is enabled, source docs citations will be disabled on `v2` api version",
+    ),
     project_to_en: bool = Query(
         default=True, description="Whether to project query into English for better precision", include_in_schema=False
     ),
