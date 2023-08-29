@@ -183,12 +183,14 @@ async def get_collections_answer(
     query: str = Query(default=None, description="Query string"),
     chat: str = Query(default=None, description="Chat history. Serialized instance of a list of `Message` objects"),
     stream: bool = Query(default=False, description="Stream results"),
+    include_image_urls: bool = Query(default=False, description="If include image urls in the output answer"),
     project_to_en: bool = Query(
         default=True, description="Whether to project query into English for better precision", include_in_schema=False
     ),
     collections_only: bool = Query(
         default=True,
         description="If True, the answer will be based only on collections in knowledge base. Otherwise, route will try to answer based on collections, but if it will not succeed it will try to generate answer from the model weights themselves.",
+        include_in_schema=False,
     ),
     user: str = Query(default=None, description="User ID", include_in_schema=False),
     document: str = Query(default=None, description="Document ID", include_in_schema=False),
@@ -232,6 +234,10 @@ async def get_collections_answer(
             detail="Both document and document_collection must be provided",
         )
     token_data = decode_token(token)
+
+    if token_data["vendor"] == "oneclickcx":
+        include_image_urls = True
+
     if not collections:
         collections = [
             collection.name
@@ -267,6 +273,7 @@ async def get_collections_answer(
             collections_only=collections_only,
             project_to_en=project_to_en,
             chat=chat,
+            include_image_urls=include_image_urls,
         )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",

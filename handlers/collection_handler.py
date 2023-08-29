@@ -49,6 +49,7 @@ class CollectionHandler:
         stream: bool = False,
         collections_only: bool = True,
         chat: List[Message] = None,
+        include_image_urls: bool = False,
     ) -> GetCollectionAnswerResponse:
         if not query and chat:
             query = "\n".join([msg.content for msg in chat if msg.role == Role.user])
@@ -100,7 +101,15 @@ class CollectionHandler:
             logger.info(f"answer_in_context: {answer_in_context}")
             if not answer_in_context:
                 context, mode = "", "general"
-        answer = await ml_requests.get_answer(context, query, api_version.value, mode=mode, stream=stream, chat=chat)
+        answer = await ml_requests.get_answer(
+            context,
+            query,
+            api_version.value,
+            mode=mode,
+            stream=stream,
+            chat=chat,
+            include_image_urls=include_image_urls,
+        )
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(
