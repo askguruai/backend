@@ -587,8 +587,10 @@ async def upload_collection_fix_answer(
         db_status["query"] if db_status["query"] else "\n".join([msg.content for msg in chat if msg.role == Role.user])
     )
 
-    document = Doc(content=f"Query: {query}\nTrue answer: {answer}")
-    doc_metadata = DocumentMetadata(id=request_id, title=f"Fix answer for query {query}")
+    # Here we put query as a content to retrieve via query
+    # Afterwards if similarity is high we pick actual answer from summary
+    document = Doc(content=query)
+    doc_metadata = DocumentMetadata(id=request_id, title=f"Canned reply for query: '{query}'", summary=f"{answer}")
 
     filename = f"{token_data['vendor']}_{token_data['organization']}_{collection}_{doc_metadata.id}"
     res = GRIDFS.find_one({"filename": filename})
@@ -596,7 +598,8 @@ async def upload_collection_fix_answer(
         GRIDFS.delete(res._id)
         logger.info(f"Deleted file {filename} from GridFS")
     GRIDFS.put(
-        document.content.encode(),
+        # document.content.encode(),
+        doc_metadata.summary.encode(),
         filename=filename,
         content_type="text/plain",
     )
