@@ -1,3 +1,4 @@
+import datetime
 import json
 import time
 from typing import Any, Dict, List
@@ -42,6 +43,7 @@ from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     Chat,
+    ClinetLogEvent,
     CollectionDocumentsResponse,
     CollectionResponses,
     Doc,
@@ -653,6 +655,11 @@ async def delete_collection(
     )
 
 
+######################################################
+#                    FEEDBACK                        #
+######################################################
+
+
 @app.get(
     "/{api_version}/reactions",
     responses=CollectionResponses,
@@ -741,6 +748,24 @@ async def upload_reaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.post("/{api_version}/events", responses=CollectionResponses)
+@catch_errors
+async def upload_event(
+    request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
+):
+    token_data = decode_token(token)
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "vendor": token_data["vendor"],
+        "organization": token_data["organization"],
+        "type": client_event.type,
+        "context": client_event.context,
+    }
+    _ = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
     return Response(status_code=status.HTTP_200_OK)
 
 
