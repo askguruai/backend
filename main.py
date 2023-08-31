@@ -578,6 +578,11 @@ async def delete_collection(
     )
 
 
+######################################################
+#                    FEEDBACK                        #
+######################################################
+
+
 @app.get(
     "/{api_version}/reactions",
     responses=CollectionResponses,
@@ -666,6 +671,24 @@ async def upload_reaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@app.post("/{api_version}/events", responses=CollectionResponses)
+@catch_errors
+async def upload_event(
+    request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
+):
+    token_data = decode_token(token)
+    row = {
+        "ip": request.client.host,
+        "datetime": datetime.datetime.utcnow(),
+        "vendor": token_data["vendor"],
+        "organization": token_data["organization"],
+        "type": client_event.type,
+        "context": client_event.context,
+    }
+    _ = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -763,31 +786,6 @@ async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactio
             detail=str(e),
         )
     return Response(status_code=status.HTTP_200_OK)
-
-
-@app.post(
-    "/{api_version}/event",
-    responses={
-        status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
-    },
-    include_in_schema=False,
-)
-@catch_errors
-async def client_event_log(
-    request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
-):
-    token_data = decode_token(token)
-    row = {
-        "ip": request.client.host,
-        "datetime": datetime.datetime.utcnow(),
-        "vendor": token_data["vendor"],
-        "organization": token_data["organization"],
-        "type": client_event.type,
-        "context": client_event.context,
-    }
-    log_id = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
-    logger.info(f"Client event {client_event.type} saved with id {str(log_id)}")
-    return {"log_id": str(log_id)}
 
 
 ######################################################

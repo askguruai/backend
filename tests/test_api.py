@@ -284,7 +284,7 @@ class TestAPI:
             loop.close()
 
     def test_client_event(self, manager):
-        url = f"{self.BASE_URL}/{self.API_VERSION}/event"
+        url = f"{self.BASE_URL}/{self.API_VERSION}/events"
         headers = {"Authorization": f"Bearer {manager.token}"}
         json = {"type": "TEST", "context": {"hint": "This is a test event", "data": [1, 2, 3]}}
         response = requests.post(url, headers=headers, json=json)
