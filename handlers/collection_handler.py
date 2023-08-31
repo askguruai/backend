@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from langdetect import detect as language_detect
 from loguru import logger
 
-from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, hash_string, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, hash_string, ml_requests, CONFIG
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import AsyncIterator, int_list_encode
 from utils.schemas import (
@@ -61,10 +61,9 @@ class CollectionHandler:
             orig_lang = translation["source_language"]
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
 
-        # org_hash = hash_string(organization)
-        # search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         security_code = int_list_encode(user_security_groups)
-        _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
+
+        similarities, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
             vendor,
             organization,
             collections,
@@ -85,6 +84,21 @@ class CollectionHandler:
                 ]
             return GetCollectionAnswerResponse(answer=answer, sources=[]), []
 
+        if similarities[0] > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]):
+            logger.info(f"Detected canned answer with similarity: {similarities[0]} for query: {query}")
+            # In case of canned replies, we are storing query in context
+            # in order to retrieve only by query similarity, but actual answer
+            # we store in summary
+            similarities = similarities[:1]
+            chunks = chunks[:1]
+            titles = titles[:1]
+            doc_ids = doc_ids[:1]
+            doc_summaries = doc_summaries[:1]
+            doc_collections = doc_collections[:1]
+
+            chunks = doc_summaries
+            answer = chunks[0]
+
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
             if api_version == ApiVersion.v1:
@@ -101,15 +115,17 @@ class CollectionHandler:
             logger.info(f"answer_in_context: {answer_in_context}")
             if not answer_in_context:
                 context, mode = "", "general"
-        answer = await ml_requests.get_answer(
-            context,
-            query,
-            api_version.value,
-            mode=mode,
-            stream=stream,
-            chat=chat,
-            include_image_urls=include_image_urls,
-        )
+
+        if similarities[0] <= float(CONFIG["milvus"]["canned_answer_similarity_threshold"]):
+            answer = await ml_requests.get_answer(
+                context,
+                query,
+                api_version.value,
+                mode=mode,
+                stream=stream,
+                chat=chat,
+                include_image_urls=include_image_urls,
+            )
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection in zip(
@@ -133,6 +149,9 @@ class CollectionHandler:
                     answer_text, target_language=orig_lang, source_language="en"
                 )["translation"]
 
+
+            if type(answer) == str:
+                # this might happen either if we have a canned answer or after translation
                 answer = AsyncIterator([answer])
 
             response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)

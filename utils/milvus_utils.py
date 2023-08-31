@@ -183,6 +183,7 @@ class CollectionsManager:
                 FieldSchema(name="timestamp", dtype=DataType.INT64),
                 FieldSchema(name="security_groups", dtype=DataType.INT64),
                 FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="is_canned", dtype=DataType.BOOL),
             ]
         schema = CollectionSchema(fields)
         m_collection = Collection(collection_name, schema)
