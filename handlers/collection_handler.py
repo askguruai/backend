@@ -10,7 +10,7 @@ from fastapi.responses import StreamingResponse
 from langdetect import detect as language_detect
 from loguru import logger
 
-from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, hash_string, ml_requests, CONFIG
+from utils import AWS_TRANSLATE_CLIENT, CONFIG, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import AsyncIterator, int_list_encode
 from utils.schemas import (
@@ -148,7 +148,6 @@ class CollectionHandler:
                 answer = AWS_TRANSLATE_CLIENT.translate_text(
                     answer_text, target_language=orig_lang, source_language="en"
                 )["translation"]
-
 
             if type(answer) == str:
                 # this might happen either if we have a canned answer or after translation
