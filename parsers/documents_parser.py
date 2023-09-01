@@ -87,6 +87,9 @@ class DocumentsParser:
                 and url + "/" not in visited
                 and url[:-1] not in visited
                 and "<" not in url
+                # and "/de" not in url
+                # and "/de-ch" not in url
+                # and "/fr" not in url
             ):
                 visited.add(url)
                 links_found.append(url)
@@ -102,13 +105,22 @@ class DocumentsParser:
         page_content = await self.get_page_content(session=session, link=link, allow_redirects=allow_redirects)
         soup = BeautifulSoup(page_content, "html.parser")
 
+        for each in ['header', 'footer']:
+            s = soup.find(each)
+            if s:
+                s.extract()
         div_to_remove = soup.find_all('div', class_="kb-footer")
         if div_to_remove:
             div_to_remove[0].extract()
+
         page_content = str(soup)
 
         title = soup.find("title").text if (soup.find("title") and soup.find("title").text) else link
         content = self.converter.handle(page_content)
+
+        if "redirecting" in title.lower():
+            logger.warning(f"Redirecting page on {link}")
+            return None, None, None
 
         # if not content:
         #     logger.error(f"Empty content on {link}")
@@ -147,7 +159,7 @@ class DocumentsParser:
                 processed_links = await asyncio.gather(*tasks_process_link)
                 extracted_urls = await asyncio.gather(*tasks_extract_urls)
 
-                docs.extend(processed_links)
+                docs.extend([link for link in processed_links if link[0] is not None])
                 queue.extend([url for extracted_urls_from_one in extracted_urls for url in extracted_urls_from_one])
                 depth += 1
 
