@@ -221,10 +221,10 @@ class TestAPI:
     def test_get_answer_from_xml_parsed_website(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         headers = {"Authorization": f"Bearer {manager.token}"}
-        params = {"query": "in which town Yuma is located?"}
+        params = {"query": "who is the founder and ceo of Yuma?"}
         response = requests.get(url, headers=headers, params=params)
         response.raise_for_status()
-        assert "singapore" in response.json()["answer"].lower()
+        assert "guillaume" in response.json()["answer"].lower() or "luccisano" in response.json()["answer"].lower()
 
     def test_get_answer_chat(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
