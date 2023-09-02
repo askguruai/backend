@@ -128,12 +128,19 @@ class CollectionHandler:
             )
 
         sources, seen = [], set()
-        for title, doc_id, doc_summary, collection in zip(
-            titles[:i], doc_ids[:i], doc_summaries[:i], doc_collections[:i]
+        for title, doc_id, doc_summary, collection, relevance in zip(
+            titles[:i], doc_ids[:i], doc_summaries[:i], doc_collections[:i], similarities[:i]
         ):
             if doc_id not in seen:
                 sources.append(
-                    Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
+                    Source(
+                        id=doc_id,
+                        title=title,
+                        collection=collection.split("_")[-1],
+                        summary=doc_summary,
+                        relevance=relevance,
+                        is_canned=relevance > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]),
+                    )
                 )
                 # we allow duplicate chunks on v2 because in context we index them as they appear
                 if api_version == ApiVersion.v1:
@@ -347,6 +354,7 @@ class CollectionHandler:
                         title=titles[i],
                         collection=doc_collections[i].split("_")[-1],
                         summary=doc_summaries[i],
+                        relevance=similarities[i],
                     )
                 )
                 seen.add(doc_ids[i])

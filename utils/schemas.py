@@ -120,6 +120,8 @@ class Source(BaseModel):
     id: str = Field(description="Id of the source", example="123456")
     title: str = Field(description="Title of the source", example="Payment")
     collection: str = Field(description="Collection of the source", example="internal")
+    relevance: float = Field(description="Relevance of the source", example=0.9)
+    is_canned: bool = Field(default=False, description="Is source canned", example=False)
     summary: str | None = Field(
         description="Summary of the source",
         example="Payment methods and informaton summary. How to pay for subscription",
@@ -139,6 +141,8 @@ class GetCollectionRankingResponse(BaseModel):
                 title="Payment",
                 collection="internal",
                 summary="Payment methods and informaton summary. How to pay for subscription",
+                relevance=0.9,
+                is_canned=False,
             )
         ],
     )
