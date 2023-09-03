@@ -96,7 +96,8 @@ class CollectionHandler:
             doc_summaries = doc_summaries[:1]
             doc_collections = doc_collections[:1]
 
-            chunks = doc_summaries
+            # we might have a false positive here
+            chunks = doc_summaries if doc_summaries[0] else chunks
             answer = chunks[0]
 
         context, i = "", 0
