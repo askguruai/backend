@@ -58,7 +58,6 @@ services:
       ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
 
-
   ########################################################
   #                       MILVUS                         #
   ########################################################
