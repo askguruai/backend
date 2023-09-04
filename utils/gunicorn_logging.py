@@ -59,12 +59,23 @@ class StandaloneApplication(BaseApplication):
 
 
 def run_gunicorn_loguru(app, options):
+    # `proxy_headers` and `forwarded_allow_ips` are set to "*" to allow
+    # the application to receive real IP addresses from nginx.
+    #
+    # In FastAPI it works seamlessly via request.client.host.
+    #
+    # In nginx we should set following headers:
+    # proxy_set_header Host $host;
+    # proxy_set_header X-Real-IP $remote_addr;
+    # proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     options |= {
         "accesslog": "-",
         "errorlog": "-",
         "worker_class": "uvicorn.workers.UvicornWorker",
         # "worker_connections": 1000,
         "logger_class": StubbedGunicornLogger,
+        "proxy_headers": True,
+        "forwarded_allow_ips": "*",
     }
     intercept_handler = InterceptHandler()
     # logging.basicConfig(handlers=[intercept_handler], level=LOG_LEVEL)
