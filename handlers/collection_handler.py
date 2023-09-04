@@ -149,9 +149,12 @@ class CollectionHandler:
 
         if stream:
             if orig_lang != "en" and project_to_en:
-                answer_text = ""
-                async for text in answer:
-                    answer_text += text
+                if type(answer) != str:
+                    answer_text = ""
+                    async for text in answer:
+                        answer_text += text
+                else:
+                    answer_text = answer
 
                 answer = AWS_TRANSLATE_CLIENT.translate_text(
                     answer_text, target_language=orig_lang, source_language="en"
