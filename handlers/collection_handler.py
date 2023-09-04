@@ -84,7 +84,13 @@ class CollectionHandler:
                 ]
             return GetCollectionAnswerResponse(answer=answer, sources=[]), []
 
-        if similarities[0] > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]):
+        is_canned = (
+            (similarities[0] > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]))
+            and doc_summaries[0]
+            and vendor != "livechat"
+        )
+
+        if is_canned:
             logger.info(f"Detected canned answer with similarity: {similarities[0]} for query: {query}")
             # In case of canned replies, we are storing query in context
             # in order to retrieve only by query similarity, but actual answer
@@ -96,8 +102,6 @@ class CollectionHandler:
             doc_summaries = doc_summaries[:1]
             doc_collections = doc_collections[:1]
 
-            # we might have a false positive here
-            chunks = doc_summaries if doc_summaries[0] else chunks
             answer = chunks[0]
 
         context, i = "", 0
@@ -117,7 +121,7 @@ class CollectionHandler:
             if not answer_in_context:
                 context, mode = "", "general"
 
-        if similarities[0] <= float(CONFIG["milvus"]["canned_answer_similarity_threshold"]):
+        if not is_canned:
             answer = await ml_requests.get_answer(
                 context,
                 query,
@@ -140,7 +144,7 @@ class CollectionHandler:
                         collection=collection.split("_")[-1],
                         summary=doc_summary,
                         relevance=relevance,
-                        is_canned=relevance > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]),
+                        is_canned=is_canned,
                     )
                 )
                 # we allow duplicate chunks on v2 because in context we index them as they appear
