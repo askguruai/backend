@@ -102,7 +102,7 @@ class CollectionHandler:
             doc_summaries = doc_summaries[:1]
             doc_collections = doc_collections[:1]
 
-            answer = chunks[0]
+            answer = doc_summaries[0]
 
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
