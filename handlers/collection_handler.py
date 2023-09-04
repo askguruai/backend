@@ -86,7 +86,7 @@ class CollectionHandler:
 
         is_canned = (
             (similarities[0] > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]))
-            and doc_summaries[0]
+            and doc_summaries[0] != ""
             and vendor != "livechat"
         )
 
