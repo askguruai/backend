@@ -61,7 +61,7 @@ class CollectionHandler:
             # so it's chat
             if project_to_en:
                 chat, orig_lang = AWS_TRANSLATE_CLIENT.translate_chat(chat=chat)
-                query = "\n".join([msg.content for msg in chat if msg.role == Role.user])
+            query = "\n".join([msg.content for msg in chat if msg.role == Role.user])
 
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
 
