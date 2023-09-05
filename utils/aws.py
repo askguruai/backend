@@ -1,10 +1,13 @@
 import os
+from collections import deque
 from typing import List
 
 import boto3
 from loguru import logger
 
 from utils import CONFIG
+from utils.errors import TranslationError
+from utils.schemas import Message, Role
 
 boto_session = boto3.Session(
     aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
@@ -19,6 +22,39 @@ class AwsTranslateClient:
         self.translate_client = boto_session.client("translate")
         self.comprehend_client = boto_session.client("comprehend")
 
+    def translate_chat(self, chat: List[Message], source_language="auto", target_language="en") -> List[Message]:
+        user_last = deque(maxlen=3)
+        chat_contents = []
+        for msg in chat:
+            if msg.role == Role.user:
+                user_last.appendleft(msg.content)
+            chat_contents.append(msg.content)
+        if source_language == "auto":
+            source_language = self.detect_language("\n".join(user_last))
+            if source_language is None:
+                source_language = "en"
+        if source_language == target_language:
+            return chat, source_language
+
+        translated_contents = self.translate_text(
+            chat_contents, source_language=source_language, target_language=target_language
+        )["translation"]
+        if len(chat_contents) != len(translated_contents):
+            raise TranslationError()
+        trans_chat = []
+        for i in range(len(chat)):
+            trans_chat.append(Message(role=chat[i].role, content=translated_contents[i]))
+        return trans_chat, source_language
+
+    def detect_language(self, text: str) -> str:
+        detection = self.comprehend_client.detect_dominant_language(Text=text.ljust(20)[:300])
+        primary_lang = detection["Languages"][0]
+        if primary_lang["Score"] > float(CONFIG["misc"]["language_detection_min_confidence"]):
+            return primary_lang["LanguageCode"]
+        else:
+            # unable to confidently predict language
+            return None
+
     def translate_text(self, text: str | List[str], target_language: str = "en", source_language: str = "auto") -> dict:
         source_lines = None
         if isinstance(text, list):
@@ -26,15 +62,10 @@ class AwsTranslateClient:
             text = "\n***###***\n".join(text)
 
         if source_language == "auto":
-            detection = self.comprehend_client.detect_dominant_language(Text=text.ljust(20)[:300])
-            primary_lang = detection["Languages"][0]
-            if primary_lang["Score"] > float(CONFIG["misc"]["language_detection_min_confidence"]):
-                source_language = primary_lang["LanguageCode"]
-            else:
+            source_language = self.detect_language(text)
+            if source_language is None:
                 # there is some weird text or terms or whatever, better not translate and leave it to the model
-                if source_lines is not None:
-                    text = [line.strip() for line in text.split("***###***")]
-                return {"translation": text, "source_language": "en"}
+                source_language = "en"
 
         if source_language == target_language:
             if source_lines is not None:
