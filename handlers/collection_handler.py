@@ -148,7 +148,7 @@ class CollectionHandler:
                     )
                 )
                 # we allow duplicate chunks on v2 because in context we index them as they appear
-                if api_version == ApiVersion.v1:
+                if api_version == ApiVersion.v1 or vendor == "oneclickcx":
                     seen.add(doc_id)
 
         if stream:
