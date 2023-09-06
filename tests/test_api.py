@@ -246,6 +246,25 @@ class TestAPI:
         manager.chat_request_id = response.json()["request_id"]
         assert "3" in response.json()["answer"].lower()
 
+    def test_get_answer_chat_translation(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        headers = {"Authorization": f"Bearer {manager.token}"}
+        params = {
+            "chat": json.dumps(
+                [
+                    {"role": "user", "content": "С какой проблемой сталкиваются люди, обучающиеся в интернете?"},
+                    {
+                        "role": "assistant",
+                        "content": "С проблемой отсутствия доверия к ресурсам и сложности выбора подходящего ресурса",
+                    },
+                    {"role": "user", "content": "Как решить эту проблему?"},
+                ]
+            ),
+        }
+        response = requests.get(url, headers=headers, params=params)
+        response.raise_for_status()
+        assert "платформ" in response.json()["answer"].lower()
+
     def test_fix_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/fix_answer"
         headers = {"Authorization": f"Bearer {manager.token}"}

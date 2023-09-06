@@ -51,14 +51,18 @@ class CollectionHandler:
         chat: List[Message] = None,
         include_image_urls: bool = False,
     ) -> GetCollectionAnswerResponse:
-        if not query and chat:
+        orig_lang = "en"
+        if query:
+            if project_to_en:
+                translation = AWS_TRANSLATE_CLIENT.translate_text(query)
+                query = translation["translation"]
+                orig_lang = translation["source_language"]
+        else:
+            # so it's chat
+            if project_to_en:
+                chat, orig_lang = AWS_TRANSLATE_CLIENT.translate_chat(chat=chat)
             query = "\n".join([msg.content for msg in chat if msg.role == Role.user])
 
-        orig_lang = "en"
-        if project_to_en:
-            translation = AWS_TRANSLATE_CLIENT.translate_text(query)
-            query = translation["translation"]
-            orig_lang = translation["source_language"]
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
 
         security_code = int_list_encode(user_security_groups)

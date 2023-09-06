@@ -49,3 +49,8 @@ class TokenMalformedError(BasicError):
 class FileProcessingError(BasicError):
     def __init__(self, message: str = "Uploaded file processing error"):
         self.message = message
+
+
+class TranslationError(BasicError):
+    def __init__(self, message: str = "Translation error"):
+        self.message = message
