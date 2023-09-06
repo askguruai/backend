@@ -4,7 +4,7 @@ from typing import List
 
 import requests
 from fastapi import Body, Depends, HTTPException, Path, Query, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from loguru import logger
 from pydantic import Field
@@ -18,7 +18,7 @@ from utils.schemas import (
     VendorCollectionTokenRequest,
 )
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/v1/collections/token")
+oauth2_scheme = HTTPBearer()
 
 
 def create_access_token(data: dict):
@@ -117,7 +117,7 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-def decode_token(token: str) -> dict:
+def decode_token(token: HTTPAuthorizationCredentials) -> dict:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials/token",
@@ -125,7 +125,7 @@ def decode_token(token: str) -> dict:
     )
     try:
         payload = jwt.decode(
-            token,
+            token.credentials,
             os.environ["JWT_SECRET_KEY"],
             algorithms=[os.environ["JWT_ALGORITHM"]],
         )
