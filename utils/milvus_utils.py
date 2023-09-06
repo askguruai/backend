@@ -9,6 +9,7 @@ from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, Milvus
 
 from utils import CONFIG, hash_string
 from utils.errors import DatabaseError
+from utils.schemas import MilvusSchema
 
 # If Milvus was created for the first time, then the default
 # credentials are root/Milvus (https://milvus.io/docs/authenticate.md).
@@ -34,11 +35,6 @@ except MilvusException:
 else:
     logger.info("Milvus was created for the first time. Changing password to the one provided in environment variables")
     utility.reset_password("root", "Milvus", os.environ["MILVUS_PASSWORD"], using="default")
-
-
-class MilvusSchema(str, Enum):
-    V0 = "SCHEMA_V0"
-    V1 = "SCHEMA_V1"  # schema with link field
 
 
 class CollectionsManager:
@@ -69,8 +65,49 @@ class CollectionsManager:
     def delete_collection(self, collection_name: str):
         utility.drop_collection(collection_name, timeout=10)
 
+    def collection_status(self, collection_name: str):
+        return utility.load_state(collection_name)._name_
+
     def __getitem__(self, name: str) -> Collection:
         return self.get_collection(name)
+
+    def search_canned_collections(
+        self, vendor: str, organization: str, collections: List[str], vec: np.ndarray
+    ) -> List[dict]:
+        org_hash = hash_string(organization)
+        search_collections = []
+        for collection in collections:
+            collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+            status = self.collection_status(collection_name)
+            if status == "NotExist":
+                continue
+            search_collections.append(self[collection_name])
+        if len(search_collections) == 0:
+            return None
+
+        search_params = {
+            "metric_type": "IP",
+            "params": {"nprobe": 10},
+        }
+        for collection in search_collections:
+            results = collection.search(
+                [vec],
+                f"emb_v1",
+                # f"emb_{api_version}",
+                search_params,
+                offset=0,
+                limit=1,
+                output_fields=["pk", "question", "answer"],
+            )[0]
+            # returning first hit found
+            if results.distances[0] >= float(CONFIG["milvus"]["canned_answer_similarity_threshold"]):
+                hit = results[0]
+                return {
+                    "id": hit.entity.get("pk"),
+                    "question": hit.entity.get("question"),
+                    "answer": hit.entity.get("answer"),
+                }
+        return None
 
     def search_collections_set(
         self,
@@ -184,7 +221,14 @@ class CollectionsManager:
                 FieldSchema(name="security_groups", dtype=DataType.INT64),
                 FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024),
             ]
-        schema = CollectionSchema(fields)
+        elif schema == MilvusSchema.CANNED_V0:
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(name="question", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="answer", dtype=DataType.VARCHAR, max_length=2048),
+                FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+            ]
+        schema = CollectionSchema(fields, enable_dynamic_field=True)
         m_collection = Collection(collection_name, schema)
         index_params = {
             "metric_type": "IP",
@@ -192,10 +236,11 @@ class CollectionsManager:
             "params": {"nlist": 1024},
         }
         m_collection.create_index(field_name="emb_v1", index_params=index_params)
-        m_collection.create_index(
-            field_name="doc_id",
-            index_name="scalar_index",
-        )
+        if schema == MilvusSchema.V0.value or schema == MilvusSchema.V1.value:
+            m_collection.create_index(
+                field_name="doc_id",
+                index_name="scalar_index",
+            )
         # todo: do we need an index on primary key? we do if it is not auto, need to check
         m_collection.load()
         return m_collection

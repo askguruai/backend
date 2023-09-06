@@ -42,6 +42,7 @@ from utils.filter_rules import archive_filter_rule, check_filters, create_filter
 from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
+    CannedAnswer,
     Chat,
     ClinetLogEvent,
     CollectionDocumentsResponse,
@@ -611,6 +612,27 @@ async def upload_collection_fix_answer(
         collection=collection,
         documents=[document],
         metadata=[doc_metadata],
+    )
+
+
+@app.post("/{api_version}/collections/{collection}/canned_answer", response_model=CannedAnswer)
+@catch_errors
+async def add_canned_answer(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    question: str = Body(description="Question to match against"),
+    answer: str = Body(description="Desired answer"),
+):
+    token_data = decode_token(token)
+    return await collection_handler.add_canned_answer(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        question=question,
+        answer=answer,
     )
 
 

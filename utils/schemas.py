@@ -385,3 +385,15 @@ class ClientLogEventType(str, Enum):
 class ClinetLogEvent(BaseModel):
     type: ClientLogEventType = Field(description="Event type")
     context: dict | None = Field(description="Any additional data/context to provide")
+
+
+class CannedAnswer(BaseModel):
+    id: str | None = Field(description="id of canned answer object. used for updating canned answers")
+    question: str = Field(description="Question to check against")
+    answer: str = Field(description="Desired answer")
+
+
+class MilvusSchema(str, Enum):
+    V0 = "SCHEMA_V0"
+    V1 = "SCHEMA_V1"  # schema with link field
+    CANNED_V0 = "CANNED_V0"

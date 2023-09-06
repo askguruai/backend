@@ -15,6 +15,7 @@ from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumen
 from utils.misc import AsyncIterator, int_list_encode
 from utils.schemas import (
     ApiVersion,
+    CannedAnswer,
     Collection,
     CollectionSolutionRequest,
     Document,
@@ -23,6 +24,7 @@ from utils.schemas import (
     GetCollectionResponse,
     GetCollectionsResponse,
     Message,
+    MilvusSchema,
     Role,
     Source,
 )
@@ -64,6 +66,25 @@ class CollectionHandler:
             query = "\n".join([msg.content for msg in chat if msg.role == Role.user])
 
         query_embedding = (await ml_requests.get_embeddings(query, api_version.value))[0]
+
+        canned = MILVUS_DB.search_canned_collections(
+            vendor=vendor, organization=organization, collections=collections, vec=query_embedding
+        )
+
+        if canned is not None:
+            answer = canned["answer"]
+            if orig_lang != "en" and project_to_en:
+                answer = AWS_TRANSLATE_CLIENT.translate_text(answer, target_language=orig_lang, source_language="en")[
+                    "translation"
+                ]
+            if stream:
+                answer = AsyncIterator([answer])
+                response = (GetCollectionAnswerResponse(answer=text, sources=[]) async for text in answer)
+                return response, []
+            else:
+                return GetCollectionAnswerResponse(answer=answer, sources=[]), []
+
+        raise NotImplemented  # testing canned
 
         security_code = int_list_encode(user_security_groups)
 
@@ -373,3 +394,20 @@ class CollectionHandler:
                 seen_title.add(titles[i])
             i += 1
         return GetCollectionRankingResponse(sources=sources)
+
+    async def add_canned_answer(
+        self, api_version: ApiVersion, vendor: str, organization: str, collection: str, question: str, answer: str
+    ):
+        org_hash = hash_string(organization)
+        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+        if MILVUS_DB.collection_status(f"{vendor}_{org_hash}_{collection}") == "NotExist":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Requested canned answer creation for collection '{collection}', but it does not exist in vendor '{vendor}' and organization '{organization}'!",
+            )
+        collection = MILVUS_DB.get_or_create_collection(collection_name, schema=MilvusSchema.CANNED_V0)
+        # TODO: do translation!!!
+        question_embedding = (await ml_requests.get_embeddings(question, api_version.value))[0]
+        mr = collection.insert([[question], [answer], [question_embedding]])
+        logger.info(f"Canned answer inserted")
+        return CannedAnswer(question=question, answer=answer, id=str(mr.primary_keys[0]))
