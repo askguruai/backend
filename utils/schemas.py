@@ -397,6 +397,10 @@ class CannedAnswer(BaseModel):
     answer: str = Field(description="Desired answer")
 
 
+class CannedAnswersCollection(BaseModel):
+    canned_answers: List[CannedAnswer] = Field(description="List of all canned answers in collection")
+
+
 class MilvusSchema(str, Enum):
     V0 = "SCHEMA_V0"
     V1 = "SCHEMA_V1"  # schema with link field

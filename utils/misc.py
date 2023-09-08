@@ -12,6 +12,12 @@ def int_list_encode(group_list: list | None) -> int:
     return n
 
 
+def decode_security_code(n):
+    if n == 2**63 - 1:
+        return None  # idk if that's misleading though
+    return [i for i, b in enumerate(bin(n)[:1:-1]) if b == '1']
+
+
 class AsyncIterator:
     def __init__(self, list):
         self.list = list

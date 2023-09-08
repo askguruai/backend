@@ -27,6 +27,7 @@ from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from handlers import (
+    CannedHandler,
     CollectionHandler,
     DocumentHandler,
     DocumentsUploadHandler,
@@ -43,6 +44,7 @@ from utils.gunicorn_logging import run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     CannedAnswer,
+    CannedAnswersCollection,
     Chat,
     ClinetLogEvent,
     CollectionDocumentsResponse,
@@ -85,7 +87,7 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, CLIENT_SESSION_WRAPPER
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler, CLIENT_SESSION_WRAPPER
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
@@ -116,6 +118,7 @@ async def init_handlers():
             chunk_size=int(CONFIG["handlers"]["chunk_size"]), tokenizer_name=CONFIG["handlers"]["tokenizer_name"]
         ),
     )
+    canned_handler = CannedHandler()
 
 
 @app.get("/", include_in_schema=False)
@@ -615,38 +618,6 @@ async def upload_collection_fix_answer(
     )
 
 
-@app.post("/{api_version}/collections/{collection}/canned_answer", response_model=CannedAnswer)
-@catch_errors
-async def add_canned_answer(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization"),
-    question: str = Body(description="Question to match against"),
-    answer: str = Body(description="Desired answer"),
-    # security_groups: List[int] | None = Body(default=None,  description="Security groups of the answer. Default is full access"),
-    timestamp: int | None = Body(default=None,
-        description="Document last change time in seconds. Default is server receive time", example=1688474672
-    ),
-    project_to_en: bool = Body(
-        default=True, description="Whether to project query into English for better precision"
-    )
-
-):
-    token_data = decode_token(token)
-    return await collection_handler.add_canned_answer(
-        api_version=api_version,
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        collection=collection,
-        question=question,
-        answer=answer,
-        security_groups=None, # future todo
-        timestamp=timestamp,
-        project_to_en=project_to_en
-    )
-
-
 @app.delete(
     "/{api_version}/collections/{collection}/ids",
     response_model=CollectionDocumentsResponse,
@@ -684,6 +655,132 @@ async def delete_collection(
 ):
     token_data = decode_token(token)
     return await documents_upload_handler.delete_collection(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+    )
+
+
+######################################################
+#                     CANNED                         #
+######################################################
+
+
+@app.post("/{api_version}/canned/{collection}/", response_model=CannedAnswer)
+@catch_errors
+async def add_canned_answer(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    question: str = Body(description="Question to match against"),
+    answer: str = Body(description="Desired answer"),
+    # security_groups: List[int] | None = Body(default=None,  description="Security groups of the answer. Default is full access"),
+    timestamp: int
+    | None = Body(
+        default=None,
+        description="Document last change time in seconds. Default is server receive time",
+        example=1688474672,
+    ),
+    project_to_en: bool = Body(default=True, description="Whether to project query into English for better precision"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.add_canned_answer(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        question=question,
+        answer=answer,
+        security_groups=None,  # future todo
+        timestamp=timestamp,
+        project_to_en=project_to_en,
+    )
+
+
+@app.get("/{api_version}/canned/{collection}/{canned_id}", response_model=CannedAnswer)
+@catch_errors
+async def get_canned_by_id(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    canned_id: str = Path(description="Canned answer id"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.get_canned_by_id(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        canned_id=canned_id,
+    )
+
+
+@app.delete("/{api_version}/canned/{collection}/{canned_id}")
+@catch_errors
+async def delete_canned_by_id(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    canned_id: str = Path(description="Canned answer id"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.delete_canned_by_id(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        canned_id=canned_id,
+    )
+
+
+@app.patch("/{api_version}/canned/{collection}/{canned_id}")
+@catch_errors
+async def delete_canned_by_id(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    canned_id: str = Path(description="Canned answer id"),
+    question: str | None = Body(default=None, description="Question to match against"),
+    answer: str | None = Body(default=None, description="Desired answer"),
+    # security_groups: List[int] | None = Body(default=None,  description="Security groups of the answer. Default is full access"),
+    timestamp: int
+    | None = Body(
+        default=None,
+        description="Document last change time in seconds. Default is server receive time",
+        example=1688474672,
+    ),
+    project_to_en: bool = Body(default=True, description="Whether to project query into English for better precision"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.update_canned_by_id(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        canned_id=canned_id,
+        collection=collection,
+        question=question,
+        answer=answer,
+        security_groups=None,  # future todo
+        timestamp=timestamp,
+        project_to_en=project_to_en,
+    )
+
+
+@app.get("/{api_version}/canned/{collection}", response_model=CannedAnswersCollection)
+@catch_errors
+async def get_canned_collection(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.get_canned_collection(
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],

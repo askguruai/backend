@@ -1,3 +1,4 @@
+from handlers.canned_handler import CannedHandler
 from handlers.collection_handler import CollectionHandler
 from handlers.document_handler import DocumentHandler
 from handlers.documents_upload_handler import DocumentsUploadHandler

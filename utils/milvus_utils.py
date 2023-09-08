@@ -106,6 +106,8 @@ class CollectionsManager:
                     "id": hit.entity.get("pk"),
                     "question": hit.entity.get("question"),
                     "answer": hit.entity.get("answer"),
+                    "similarity": results.distances[0],
+                    "collection": collection.name.rsplit("_", maxsplit=2)[-2],
                 }
         return None
 

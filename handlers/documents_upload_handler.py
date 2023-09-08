@@ -170,6 +170,7 @@ class DocumentsUploadHandler:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
             )
+        # deleting documents in gridfs
         data = collection.query(
             expr=f"pk>=0",
             output_fields=["doc_id"],
@@ -183,8 +184,13 @@ class DocumentsUploadHandler:
                 logger.info(f"Deleted file {filename} from GridFS")
             else:
                 logger.warning(f"File {filename} not found in GridFS for deletion")
+        # deleting collection itself
         collection.release()
         MILVUS_DB.delete_collection(full_collection_name)
+
+        if MILVUS_DB.collection_status(f"{full_collection_name}_canned") != "NotExist":
+            MILVUS_DB.delete_collection(f"{full_collection_name}_canned")
+
         return CollectionDocumentsResponse(n_chunks=len(data))
 
     async def delete_documents(

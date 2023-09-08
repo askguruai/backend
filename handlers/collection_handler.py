@@ -1,19 +1,16 @@
-import hashlib
-import pickle
+import time
 from collections import defaultdict
 from typing import List, Tuple
-import time
 
 import numpy as np
 import tiktoken
 from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
-from langdetect import detect as language_detect
 from loguru import logger
 
 from utils import AWS_TRANSLATE_CLIENT, CONFIG, MILVUS_DB, hash_string, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
-from utils.misc import AsyncIterator, int_list_encode
+from utils.misc import AsyncIterator, decode_security_code, int_list_encode
 from utils.schemas import (
     ApiVersion,
     CannedAnswer,
@@ -78,14 +75,19 @@ class CollectionHandler:
                 answer = AWS_TRANSLATE_CLIENT.translate_text(answer, target_language=orig_lang, source_language="en")[
                     "translation"
                 ]
+            source = Source(
+                id=canned["id"],
+                title=canned["question"],
+                relevance=canned["similarity"],
+                collection=canned["collection"],
+                is_canned=True,
+            )
             if stream:
                 answer = AsyncIterator([answer])
-                response = (GetCollectionAnswerResponse(answer=text, sources=[]) async for text in answer)
+                response = (GetCollectionAnswerResponse(answer=text, sources=[source]) async for text in answer)
                 return response, []
             else:
-                return GetCollectionAnswerResponse(answer=answer, sources=[]), []
-
-        raise NotImplemented  # testing canned
+                return GetCollectionAnswerResponse(answer=answer, sources=[source]), []
 
         security_code = int_list_encode(user_security_groups)
 
@@ -110,26 +112,6 @@ class CollectionHandler:
                 ]
             return GetCollectionAnswerResponse(answer=answer, sources=[]), []
 
-        is_canned = (
-            (similarities[0] > float(CONFIG["milvus"]["canned_answer_similarity_threshold"]))
-            and doc_summaries[0] != ""
-            and vendor != "livechat"
-        )
-
-        if is_canned:
-            logger.info(f"Detected canned answer with similarity: {similarities[0]} for query: {query}")
-            # In case of canned replies, we are storing query in context
-            # in order to retrieve only by query similarity, but actual answer
-            # we store in summary
-            similarities = similarities[:1]
-            chunks = chunks[:1]
-            titles = titles[:1]
-            doc_ids = doc_ids[:1]
-            doc_summaries = doc_summaries[:1]
-            doc_collections = doc_collections[:1]
-
-            answer = doc_summaries[0]
-
         context, i = "", 0
         while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
             if api_version == ApiVersion.v1:
@@ -147,16 +129,15 @@ class CollectionHandler:
             if not answer_in_context:
                 context, mode = "", "general"
 
-        if not is_canned:
-            answer = await ml_requests.get_answer(
-                context,
-                query,
-                api_version.value,
-                mode=mode,
-                stream=stream,
-                chat=chat,
-                include_image_urls=include_image_urls,
-            )
+        answer = await ml_requests.get_answer(
+            context,
+            query,
+            api_version.value,
+            mode=mode,
+            stream=stream,
+            chat=chat,
+            include_image_urls=include_image_urls,
+        )
 
         sources, seen = [], set()
         for title, doc_id, doc_summary, collection, relevance in zip(
@@ -170,7 +151,7 @@ class CollectionHandler:
                         collection=collection.split("_")[-1],
                         summary=doc_summary,
                         relevance=relevance,
-                        is_canned=is_canned,
+                        is_canned=False,
                     )
                 )
                 # we allow duplicate chunks on v2 because in context we index them as they appear
@@ -395,25 +376,3 @@ class CollectionHandler:
                 seen_title.add(titles[i])
             i += 1
         return GetCollectionRankingResponse(sources=sources)
-
-    async def add_canned_answer(
-        self, api_version: ApiVersion, vendor: str, organization: str, collection: str, question: str, answer: str,
-        security_groups: List[int] | None, timestamp: int | None, project_to_en: bool = True
-    ):
-        org_hash = hash_string(organization)
-        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
-        if MILVUS_DB.collection_status(f"{vendor}_{org_hash}_{collection}") == "NotExist":
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Requested canned answer creation for collection '{collection}', but it does not exist in vendor '{vendor}' and organization '{organization}'!",
-            )
-        collection = MILVUS_DB.get_or_create_collection(collection_name, schema=MilvusSchema.CANNED_V0)
-        # TODO: do translation!!!
-        if project_to_en:
-            question, answer = AWS_TRANSLATE_CLIENT.translate_text([question, answer])["translation"]
-        question_embedding = (await ml_requests.get_embeddings(question, api_version.value))[0]
-        security_code = int_list_encode(security_groups)
-        timestamp = timestamp if timestamp is not None else int(time.time())
-        mr = collection.insert([[question], [answer], [question_embedding], [timestamp], [security_code]])
-        logger.info(f"Canned answer inserted with id {str(mr.primary_keys[0])}")
-        return CannedAnswer(question=question, answer=answer, id=str(mr.primary_keys[0]), timestamp=timestamp, security_groups=security_groups)
