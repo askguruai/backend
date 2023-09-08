@@ -389,6 +389,10 @@ class ClinetLogEvent(BaseModel):
 
 class CannedAnswer(BaseModel):
     id: str | None = Field(description="id of canned answer object. used for updating canned answers")
+    security_groups: List[int] | None = Field(
+        description="Security groups of the document. Default is full access", example=[0, 2]
+    )
+    timestamp: int | None = Field(description="Document last change time", example=1623345600)
     question: str = Field(description="Question to check against")
     answer: str = Field(description="Desired answer")
 

@@ -227,9 +227,11 @@ class CollectionsManager:
                 FieldSchema(name="question", dtype=DataType.VARCHAR, max_length=1024),
                 FieldSchema(name="answer", dtype=DataType.VARCHAR, max_length=2048),
                 FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+                FieldSchema(name="timestamp", dtype=DataType.INT64),
+                FieldSchema(name="security_groups", dtype=DataType.INT64),
             ]
-        schema = CollectionSchema(fields, enable_dynamic_field=True)
-        m_collection = Collection(collection_name, schema)
+        collection_schema = CollectionSchema(fields, enable_dynamic_field=True)
+        m_collection = Collection(collection_name, collection_schema)
         index_params = {
             "metric_type": "IP",
             "index_type": "IVF_FLAT",

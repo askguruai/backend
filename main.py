@@ -624,6 +624,14 @@ async def add_canned_answer(
     collection: str = Path(description="Collection within organization"),
     question: str = Body(description="Question to match against"),
     answer: str = Body(description="Desired answer"),
+    # security_groups: List[int] | None = Body(default=None,  description="Security groups of the answer. Default is full access"),
+    timestamp: int | None = Body(default=None,
+        description="Document last change time in seconds. Default is server receive time", example=1688474672
+    ),
+    project_to_en: bool = Body(
+        default=True, description="Whether to project query into English for better precision"
+    )
+
 ):
     token_data = decode_token(token)
     return await collection_handler.add_canned_answer(
@@ -633,6 +641,9 @@ async def add_canned_answer(
         collection=collection,
         question=question,
         answer=answer,
+        security_groups=None, # future todo
+        timestamp=timestamp,
+        project_to_en=project_to_en
     )
 
 

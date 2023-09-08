@@ -2,6 +2,7 @@ import hashlib
 import pickle
 from collections import defaultdict
 from typing import List, Tuple
+import time
 
 import numpy as np
 import tiktoken
@@ -396,7 +397,8 @@ class CollectionHandler:
         return GetCollectionRankingResponse(sources=sources)
 
     async def add_canned_answer(
-        self, api_version: ApiVersion, vendor: str, organization: str, collection: str, question: str, answer: str
+        self, api_version: ApiVersion, vendor: str, organization: str, collection: str, question: str, answer: str,
+        security_groups: List[int] | None, timestamp: int | None, project_to_en: bool = True
     ):
         org_hash = hash_string(organization)
         collection_name = f"{vendor}_{org_hash}_{collection}_canned"
@@ -407,7 +409,11 @@ class CollectionHandler:
             )
         collection = MILVUS_DB.get_or_create_collection(collection_name, schema=MilvusSchema.CANNED_V0)
         # TODO: do translation!!!
+        if project_to_en:
+            question, answer = AWS_TRANSLATE_CLIENT.translate_text([question, answer])["translation"]
         question_embedding = (await ml_requests.get_embeddings(question, api_version.value))[0]
-        mr = collection.insert([[question], [answer], [question_embedding]])
-        logger.info(f"Canned answer inserted")
-        return CannedAnswer(question=question, answer=answer, id=str(mr.primary_keys[0]))
+        security_code = int_list_encode(security_groups)
+        timestamp = timestamp if timestamp is not None else int(time.time())
+        mr = collection.insert([[question], [answer], [question_embedding], [timestamp], [security_code]])
+        logger.info(f"Canned answer inserted with id {str(mr.primary_keys[0])}")
+        return CannedAnswer(question=question, answer=answer, id=str(mr.primary_keys[0]), timestamp=timestamp, security_groups=security_groups)
