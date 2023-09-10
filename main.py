@@ -1092,9 +1092,9 @@ import os
 
 from utils import AWS_TRANSLATE_CLIENT
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     options = {
-        "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
+        "bind": CONFIG["app"]["host"] + ":" + CONFIG["app"]["port"],
         "workers": CONFIG["app"]["workers"],
         "timeout": CONFIG["app"]["timeout"],
     }

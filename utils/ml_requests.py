@@ -62,7 +62,7 @@ async def get_answer(
     response_status = response.status
     if stream:
         answer = (
-            json.loads(data.decode('utf-8'))["data"] if data else "" async for data, _ in response.content.iter_chunks()
+            json.loads(data.decode("utf-8"))["data"] if data else "" async for data, _ in response.content.iter_chunks()
         )
     else:
         response_json = await response.json()
@@ -113,7 +113,7 @@ async def get_summary(
     response_status = response.status
     if stream:
         answer = (
-            json.loads(data.decode('utf-8'))["data"] if data else "" async for data, _ in response.content.iter_chunks()
+            json.loads(data.decode("utf-8"))["data"] if data else "" async for data, _ in response.content.iter_chunks()
         )
     else:
         response_json = await response.json()

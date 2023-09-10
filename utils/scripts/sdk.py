@@ -130,12 +130,12 @@ class Api:
             text += f"- `{collection['name']}` ({collection['n_documents']} документов)"
             text += (
                 f" — {self.collections_mapping[collection['name']]}"
-                if collection['name'] in self.collections_mapping
+                if collection["name"] in self.collections_mapping
                 else ""
             )
             text += "\n"
         display(Markdown(text))
-        self.collections = [collection['name'] for collection in response["collections"]]
+        self.collections = [collection["name"] for collection in response["collections"]]
         return response["collections"]
 
     def upload_collection_documents(self, collection: str, documents: list):
@@ -154,7 +154,7 @@ class Api:
             # text += f" ({source['summary'].split('>')[0]})" if '>' in source['summary'] else ""
             text += (
                 f" ({self.collections_mapping[source['collection']]})"
-                if source['collection'] in self.collections_mapping
+                if source["collection"] in self.collections_mapping
                 else ""
             )
             text += "\n"
@@ -187,15 +187,15 @@ class Api:
             answer = ""
             generated_sources = []
             for line in response.iter_lines():
-                if line.startswith(b'event: '):
-                    event = line[len(b'event: ') :].decode()
-                elif line.startswith(b'data: '):
-                    data_str = line[len(b'data: ') :].decode()
+                if line.startswith(b"event: "):
+                    event = line[len(b"event: ") :].decode()
+                elif line.startswith(b"data: "):
+                    data_str = line[len(b"data: ") :].decode()
                     data = json.loads(data_str)
-                    if event == 'message':
-                        sources = data['sources']
-                        request_id = data['request_id']
-                        answer += data['answer']
+                    if event == "message":
+                        sources = data["sources"]
+                        request_id = data["request_id"]
+                        answer += data["answer"]
                         match = re.findall(self.source_pattern, answer)
                         if match:
                             idx = int(match[0])
@@ -210,7 +210,7 @@ class Api:
                             clear_output(wait=True)
                             display(Markdown(answer))
                         else:
-                            print(answer, end='\r')
+                            print(answer, end="\r")
             answer = Api.postprocess_output(answer)
             clear_output(wait=True)
             display(Markdown(answer))

@@ -50,8 +50,8 @@ class User(BaseModel):
 
 
 class Role(str, Enum):
-    user = 'user'
-    assistant = 'assistant'
+    user = "user"
+    assistant = "assistant"
 
 
 class Message(BaseModel):

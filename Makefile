@@ -1,6 +1,6 @@
 LINE_WIDTH=120
 ISORT_FLAGS=--line-width=${LINE_WIDTH} --profile black
-BLACK_FLAGS=--skip-string-normalization --line-length=${LINE_WIDTH}
+BLACK_FLAGS=--line-length=${LINE_WIDTH}
 PYTEST_FLAGS=-p no:warnings
 
 install:

@@ -59,7 +59,7 @@ class CannedHandler:
             )
         collection = MILVUS_DB[collection_name]
         res = collection.query(
-            expr=f'pk=={canned_id}',
+            expr=f"pk=={canned_id}",
             offset=0,
             limit=1,
             output_fields=["pk", "question", "answer", "timestamp", "security_groups"],
@@ -131,7 +131,7 @@ class CannedHandler:
             )
         collection = MILVUS_DB[collection_name]
         results = collection.query(
-            expr=f'pk>0',
+            expr=f"pk>0",
             offset=0,
             output_fields=["pk", "question", "answer", "timestamp", "security_groups"],
             consistency_level="Strong",

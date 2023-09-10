@@ -173,7 +173,7 @@ class DocumentsUploadHandler:
             output_fields=["doc_id"],
             consistency_level="Strong",
         )
-        all_files = {full_collection_name(vendor, organization, collection) + "_" + hit['doc_id'] for hit in data}
+        all_files = {full_collection_name(vendor, organization, collection) + "_" + hit["doc_id"] for hit in data}
         for filename in all_files:
             res = GRIDFS.find_one({"filename": filename})
             if res:

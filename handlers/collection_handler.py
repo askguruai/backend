@@ -228,7 +228,7 @@ class CollectionHandler:
                 detail=msg,
             )
         chunks = milvus_collection.query(
-            expr='pk >= 0',
+            expr="pk >= 0",
             output_fields=["doc_id", "timestamp", "doc_title", "security_groups"],
         )
 

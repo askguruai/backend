@@ -14,8 +14,8 @@ if not "AUTH_COLLECTION_PASSWORD" in os.environ:
     print("Password not found in environment -> Probably running in github actions -> Using default password")
     with open(".env") as f:
         for line in f:
-            if line.startswith('AUTH_COLLECTION_PASSWORD='):
-                os.environ["AUTH_COLLECTION_PASSWORD"] = line.strip().split('=', 1)[1]
+            if line.startswith("AUTH_COLLECTION_PASSWORD="):
+                os.environ["AUTH_COLLECTION_PASSWORD"] = line.strip().split("=", 1)[1]
 
 
 @pytest.fixture(name="manager", scope="class")
@@ -44,7 +44,7 @@ class TestAPI:
         }
         response = requests.post(url, json=data)
         response.raise_for_status()
-        manager.token = response.json().get('access_token')
+        manager.token = response.json().get("access_token")
         manager.headers = {"Authorization": f"Bearer {manager.token}"}
         assert manager.token, "Failed to get token"
 
@@ -93,7 +93,7 @@ class TestAPI:
         test_files_directory = os.path.join(dir_path, "files")
         manager.test_file_custom_summary = "Some custom summary"
         raw_documents = [
-            ('files', open(os.path.join(test_files_directory, "Brief_Summary.pdf"), 'rb')),
+            ("files", open(os.path.join(test_files_directory, "Brief_Summary.pdf"), "rb")),
         ]
         data = {
             "metadata": json.dumps(
@@ -146,12 +146,12 @@ class TestAPI:
         for line in response.iter_lines():
             if line:
                 line = line.decode("utf-8")
-                k, v = line.split(':', 1)
-                if k == 'data':
+                k, v = line.split(":", 1)
+                if k == "data":
                     data = json.loads(v.strip())
-                    answer += data['answer']
-                    request_id = data['request_id']
-                    sources = data['sources']
+                    answer += data["answer"]
+                    request_id = data["request_id"]
+                    sources = data["sources"]
         answer = answer.lower()
         assert "eight" in answer or "8" in answer
         assert "228" in [source["id"] for source in sources]
@@ -176,12 +176,12 @@ class TestAPI:
         for line in response.iter_lines():
             if line:
                 line = line.decode("utf-8")
-                k, v = line.split(':', 1)
-                if k == 'data':
+                k, v = line.split(":", 1)
+                if k == "data":
                     data = json.loads(v.strip())
-                    answer += data['answer']
-                    request_id = data['request_id']
-                    sources = data['sources']
+                    answer += data["answer"]
+                    request_id = data["request_id"]
+                    sources = data["sources"]
         answer = answer.lower()
         assert "платформа" in answer
         sources_ids = [source["id"] for source in sources]

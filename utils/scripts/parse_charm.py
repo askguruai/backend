@@ -55,7 +55,7 @@ def extract_info(core_url: str, target_folder: str) -> Tuple[List[str], List[str
             # html to md does not takes into account
             # class "indent-x" on sublists, e.g.
             # https://charm.li/Ford%20Truck/2013/F%20150%204WD%20V8-6.2L/Repair%20and%20Diagnosis/Relays%20and%20Modules/Relays%20and%20Modules%20-%20Restraints%20and%20Safety%20Systems/Air%20Bag%20Control%20Module/Service%20and%20Repair/
-            content = re.sub(r'!\[.*?\]\(.*?\)', '', converter.handle(str(main_div))).strip()
+            content = re.sub(r"!\[.*?\]\(.*?\)", "", converter.handle(str(main_div))).strip()
 
             # docs with only title, e.g some dealer
             # letters or attachments-only

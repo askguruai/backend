@@ -35,12 +35,12 @@ class DocumentsParser:
         self.enc = tiktoken.get_encoding(tokenizer_name)
         self.converter = html2text.HTML2Text()
         self.converter.ignore_images = True
-        self.sitemap_pattern = r'sitemap.*\.xml'
+        self.sitemap_pattern = r"sitemap.*\.xml"
 
     @AsyncTTL(time_to_live=60, maxsize=4096)
     async def get_page_content(self, session: ClientSession, link: str, allow_redirects: bool = True) -> str:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
         }
         link_clickhelp_adjusted = link.replace("articles/#!", "article/")
         try:
@@ -105,11 +105,11 @@ class DocumentsParser:
         page_content = await self.get_page_content(session=session, link=link, allow_redirects=allow_redirects)
         soup = BeautifulSoup(page_content, "html.parser")
 
-        for each in ['header', 'footer']:
+        for each in ["header", "footer"]:
             s = soup.find(each)
             if s:
                 s.extract()
-        div_to_remove = soup.find_all('div', class_="kb-footer")
+        div_to_remove = soup.find_all("div", class_="kb-footer")
         if div_to_remove:
             div_to_remove[0].extract()
 
@@ -310,7 +310,7 @@ class DocumentsParser:
             raw_lines = [message.content for message in document.history]
             if metadata.project_to_en:
                 translation = AWS_TRANSLATE_CLIENT.translate_text(raw_lines)
-                text_lines = [f"{ent[0].role}: {ent[1]}" for ent in zip(document.history, translation['translation'])]
+                text_lines = [f"{ent[0].role}: {ent[1]}" for ent in zip(document.history, translation["translation"])]
                 meta["source_language"] = translation["source_language"]
             content = "\n".join(text_lines)
             chunks = self.chat_to_chunks(text_lines)
