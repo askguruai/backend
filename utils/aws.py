@@ -16,6 +16,10 @@ boto_session = boto3.Session(
 )
 
 
+def utf8len(s: str) -> int:
+    return len(s.encode("utf-8"))
+
+
 # NB! We can try to make this async with https://pypi.org/project/aioboto3/, but this is not an official library
 class AwsTranslateClient:
     def __init__(self) -> None:
@@ -77,7 +81,7 @@ class AwsTranslateClient:
         )
 
         # recursion
-        if len(text) < 9900:
+        if utf8len(text) < 10000:
             response = self.translate_client.translate_text(
                 Text=text, SourceLanguageCode=source_language, TargetLanguageCode=target_language
             )
