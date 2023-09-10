@@ -670,7 +670,7 @@ async def delete_collection(
 ######################################################
 
 
-@app.post("/{api_version}/canned/{collection}/", response_model=CannedAnswer)
+@app.post("/{api_version}/collections/{collection}/canned", response_model=CannedAnswer)
 @catch_errors
 async def add_canned_answer(
     request: Request,
@@ -702,7 +702,7 @@ async def add_canned_answer(
     )
 
 
-@app.get("/{api_version}/canned/{collection}/{canned_id}", response_model=CannedAnswer)
+@app.get("/{api_version}/collections/{collection}/canned/{canned_id}", response_model=CannedAnswer)
 @catch_errors
 async def get_canned_by_id(
     request: Request,
@@ -721,7 +721,7 @@ async def get_canned_by_id(
     )
 
 
-@app.delete("/{api_version}/canned/{collection}/{canned_id}")
+@app.delete("/{api_version}/collections/{collection}/canned/{canned_id}")
 @catch_errors
 async def delete_canned_by_id(
     request: Request,
@@ -740,9 +740,9 @@ async def delete_canned_by_id(
     )
 
 
-@app.patch("/{api_version}/canned/{collection}/{canned_id}")
+@app.patch("/{api_version}/collections/{collection}/canned/{canned_id}")
 @catch_errors
-async def delete_canned_by_id(
+async def update_canned_by_id(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
@@ -774,9 +774,9 @@ async def delete_canned_by_id(
     )
 
 
-@app.get("/{api_version}/canned/{collection}", response_model=CannedAnswersCollection)
+@app.get("/{api_version}/collections/{collection}/canned", response_model=CannedAnswersCollection)
 @catch_errors
-async def get_canned_collection(
+async def get_collection_canned(
     request: Request,
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
