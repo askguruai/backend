@@ -69,6 +69,16 @@ class CollectionHandler:
             vendor=vendor, organization=organization, collections=collections, vec=query_embedding
         )
 
+        # In case of chat as input, search in canned not only by concatenated user messages
+        # but also by last user message as well, because topic might change heavily
+        if not canned and not query:
+            canned = MILVUS_DB.search_canned_collections(
+                vendor=vendor,
+                organization=organization,
+                collections=collections,
+                vec=(await ml_requests.get_embeddings(chat[-1].content, api_version.value))[0],
+            )
+
         if canned is not None:
             answer = canned["answer"]
             if orig_lang != "en" and project_to_en:
