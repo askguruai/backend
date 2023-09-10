@@ -45,12 +45,12 @@ class TestAPI:
         response = requests.post(url, json=data)
         response.raise_for_status()
         manager.token = response.json().get('access_token')
+        manager.headers = {"Authorization": f"Bearer {manager.token}"}
         assert manager.token, "Failed to get token"
 
     def test_get_info(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/info"
-        headers = {"Authorization": f"Bearer {manager.token}"}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
         assert response.json()["vendor"] == "askguru"
         assert response.json()["organization"] == "mcdonalds"
@@ -62,14 +62,12 @@ class TestAPI:
 
     def test_retrieve_empty(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
-        headers = {"Authorization": f"Bearer {manager.token}"}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
         assert response.json()["collections"] == []
 
     def test_upload_docs(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/docs"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         json = {
             "documents": [
                 {
@@ -84,14 +82,13 @@ class TestAPI:
                 {"id": 322, "title": "Twister recipe"},
             ],
         }
-        response = requests.post(url, headers=headers, json=json)
+        response = requests.post(url, headers=manager.headers, json=json)
         response.raise_for_status()
         manager.test_chunks_inserted = int(response.json()["n_chunks"])
         assert manager.test_chunks_inserted > 0
 
     def test_upload_pdf(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/files"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         dir_path = os.path.dirname(os.path.realpath(__file__))
         test_files_directory = os.path.join(dir_path, "files")
         manager.test_file_custom_summary = "Some custom summary"
@@ -105,26 +102,24 @@ class TestAPI:
                 ]
             )
         }
-        response = requests.post(url, headers=headers, files=raw_documents, data=data)
+        response = requests.post(url, headers=manager.headers, files=raw_documents, data=data)
         response.raise_for_status()
         assert int(response.json()["n_chunks"]) > 0
         manager.test_chunks_inserted += int(response.json()["n_chunks"])
 
     def test_upload_links(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/links"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         json = {
             "links": ["https://www.askguru.ai/", "https://yuma.ai/sitemap.xml"],
         }
-        response = requests.post(url, headers=headers, json=json)
+        response = requests.post(url, headers=manager.headers, json=json)
         response.raise_for_status()
         assert int(response.json()["n_chunks"]) > 0
         manager.test_chunks_inserted += int(response.json()["n_chunks"])
 
     def test_retrieve_collections(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
-        headers = {"Authorization": f"Bearer {manager.token}"}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
         assert response.json()["collections"][0]["name"] == "recipes"
         assert response.json()["collections"][0]["n_chunks"] == manager.test_chunks_inserted
@@ -135,9 +130,8 @@ class TestAPI:
 
     def test_get_answer(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "How many Big Macs did Bob ate?"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         manager.request_id = response.json()["request_id"]
         assert "eight" in response.json()["answer"].lower() or "8" in response.json()["answer"].lower()
@@ -145,9 +139,8 @@ class TestAPI:
 
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "How many Big Macs did Bob ate?", "stream": True}
-        response = requests.get(url, headers=headers, params=params, stream=True)
+        response = requests.get(url, headers=manager.headers, params=params, stream=True)
         response.raise_for_status()
         answer = ""
         for line in response.iter_lines():
@@ -165,9 +158,8 @@ class TestAPI:
 
     def test_get_answer_translation(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "Каково решение проблемы поиска ресурсов для обучения?"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert "платформа" in response.json()["answer"].lower()
         sources_ids = [source["id"] for source in response.json()["sources"]]
@@ -177,9 +169,8 @@ class TestAPI:
 
     def test_get_answer_translation_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "Каково решение проблемы поиска ресурсов для обучения?", "stream": True}
-        response = requests.get(url, headers=headers, params=params, stream=True)
+        response = requests.get(url, headers=manager.headers, params=params, stream=True)
         response.raise_for_status()
         answer = ""
         for line in response.iter_lines():
@@ -200,9 +191,8 @@ class TestAPI:
 
     def test_get_answer_translation2(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "What is the solution to a problem of finding educational resources?"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert "platform" in response.json()["answer"].lower()
         sources_ids = [source["id"] for source in response.json()["sources"]]
@@ -212,23 +202,20 @@ class TestAPI:
 
     def test_get_answer_from_parsed_website(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "where askguru is registred?"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert "94121" in response.json()["answer"].lower() or "california" in response.json()["answer"].lower()
 
     def test_get_answer_from_xml_parsed_website(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {"query": "who is the founder and ceo of Yuma?"}
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert "guillaume" in response.json()["answer"].lower() or "luccisano" in response.json()["answer"].lower()
 
     def test_get_answer_chat(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {
             "chat": json.dumps(
                 [
@@ -241,14 +228,13 @@ class TestAPI:
                 ]
             ),
         }
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         manager.chat_request_id = response.json()["request_id"]
         assert "3" in response.json()["answer"].lower()
 
     def test_get_answer_chat_translation(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         params = {
             "chat": json.dumps(
                 [
@@ -261,7 +247,7 @@ class TestAPI:
                 ]
             ),
         }
-        response = requests.get(url, headers=headers, params=params)
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert "платформ" in response.json()["answer"].lower()
 
@@ -269,7 +255,6 @@ class TestAPI:
         canned_question = "What if i multiply 2 by 2?"
         canned_answer = "The answer to this is 5 (five)"
         canned_object = {"question": canned_question, "answer": canned_answer}
-        headers = {"Authorization": f"Bearer {manager.token}"}
 
         # posting canned
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
@@ -285,8 +270,8 @@ class TestAPI:
 
         # asking canned
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        params = {"query": "What if I multiply two by two?"}
-        response = requests.get(url, headers=headers, params=params)
+        params = {"query": "how many big macs did bob eat"}
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert response.json()["answer"] == canned_answer
 
@@ -305,8 +290,8 @@ class TestAPI:
 
         # asking again
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
-        params = {"query": "What if I multiply two by two?"}
-        response = requests.get(url, headers=headers, params=params)
+        params = {"query": "how many big macs did bob eat"}
+        response = requests.get(url, headers=manager.headers, params=params)
         response.raise_for_status()
         assert response.json()["answer"] == new_canned_answer
 
@@ -321,14 +306,42 @@ class TestAPI:
         response.raise_for_status()
         assert len(response.json()["canned_answers"]) == 0
 
+    def test_canned_answer_chat(self, manager):
+        canned_question = "What is the cheapest option for AskGuru?"
+        canned_answer = "Cheapest option for AskGuru is $2/mo"
+        canned_object = {"question": canned_question, "answer": canned_answer}
+
+        # posting canned
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
+        response = requests.post(url, headers=manager.headers, json=canned_object)
+        response.raise_for_status()
+        canned_id = response.json()["id"]
+
+        # asking canned
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        params = {
+            "chat": json.dumps(
+                [
+                    {"role": "user", "content": "whats the pricing for askguru"},
+                    {
+                        "role": "assistant",
+                        "content": "Most common is the scale tier which begins with $5/mo and supports up to 10k workspaces and 1k docs.",
+                    },
+                    {"role": "user", "content": "cheapest option"},
+                ]
+            ),
+        }
+        response = requests.get(url, headers=manager.headers, params=params)
+        response.raise_for_status()
+        assert response.json()["answer"] == canned_answer
+
     ################################################################
     #                       CLEANING UP                            #
     ################################################################
 
     def test_remove_collection(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes"
-        headers = {"Authorization": f"Bearer {manager.token}"}
-        response = requests.delete(url, headers=headers)
+        response = requests.delete(url, headers=manager.headers)
         response.raise_for_status()
         assert int(response.json()["n_chunks"]) == manager.test_chunks_inserted
 
@@ -351,7 +364,7 @@ class TestAPI:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            asyncio.run(_multi_requests_404(headers={"Authorization": f"Bearer {manager.token}"}))
+            asyncio.run(_multi_requests_404(headers=manager.headers))
         finally:
             loop.close()
 
@@ -363,7 +376,6 @@ class TestAPI:
 
     def test_client_event(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/events"
-        headers = {"Authorization": f"Bearer {manager.token}"}
         json = {"type": "TEST", "context": {"hint": "This is a test event", "data": [1, 2, 3]}}
-        response = requests.post(url, headers=headers, json=json)
+        response = requests.post(url, headers=manager.headers, json=json)
         response.raise_for_status()
