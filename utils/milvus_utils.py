@@ -7,8 +7,9 @@ from fastapi import HTTPException, status
 from loguru import logger
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, MilvusException, connections, utility
 
-from utils import CONFIG, hash_string
+from utils import CONFIG, full_collection_name, get_collection_name
 from utils.errors import DatabaseError
+from utils.schemas import MilvusSchema
 
 # If Milvus was created for the first time, then the default
 # credentials are root/Milvus (https://milvus.io/docs/authenticate.md).
@@ -23,7 +24,7 @@ try:
         password="Milvus",
     )
 except MilvusException:
-    logger.info("Milvus was already created. Connecting with default credentials...")
+    logger.info("Milvus was already created. Connecting with credentials provided in environments...")
     connections.connect(
         "default",
         host=CONFIG["milvus"]["host"],
@@ -32,28 +33,28 @@ except MilvusException:
         password=os.environ["MILVUS_PASSWORD"],
     )
 else:
-    logger.info("Milvus was created for the first time. Changing password to the one provided in environment variables")
+    logger.info(
+        "Milvus was created for the first time. Changing password to the one provided in environment variables..."
+    )
     utility.reset_password("root", "Milvus", os.environ["MILVUS_PASSWORD"], using="default")
 
 
-class MilvusSchema(str, Enum):
-    V0 = "SCHEMA_V0"
-    V1 = "SCHEMA_V1"  # schema with link field
-
-
 class CollectionsManager:
-    def get_collections(self, vendor: str, org_hash: str) -> List[Dict[str, int]]:
-        collections = []
+    def get_collections(self, vendor: str, organization: str) -> List[Dict[str, int]]:
+        collections, seen = [], set()
         for collection_name in utility.list_collections():
-            if collection_name.startswith(f"{vendor}_{org_hash}_"):
+            if collection_name.startswith(full_collection_name(vendor, organization, "")):
                 collection = self.get_collection(collection_name)
                 collection.flush()
-                collections.append(
-                    {
-                        "name": collection_name.split("_")[-1],
-                        "n_chunks": collection.num_entities,
-                    }
-                )
+                # We make this check in order to NOT return canned collection
+                if get_collection_name(collection_name) not in seen:
+                    seen.add(get_collection_name(collection_name))
+                    collections.append(
+                        {
+                            "name": get_collection_name(collection_name),
+                            "n_chunks": collection.num_entities,
+                        }
+                    )
         return collections
 
     def get_collection(self, collection_name: str) -> Collection:
@@ -69,8 +70,49 @@ class CollectionsManager:
     def delete_collection(self, collection_name: str):
         utility.drop_collection(collection_name, timeout=10)
 
+    def collection_status(self, collection_name: str):
+        return utility.load_state(collection_name)._name_
+
     def __getitem__(self, name: str) -> Collection:
         return self.get_collection(name)
+
+    def search_canned_collections(
+        self, vendor: str, organization: str, collections: List[str], vec: np.ndarray
+    ) -> List[dict]:
+        search_collections = []
+        for collection in collections:
+            collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
+            status = self.collection_status(collection_name)
+            if status != "NotExist":
+                search_collections.append(self[collection_name])
+        if len(search_collections) == 0:
+            return None
+
+        search_params = {
+            "metric_type": "IP",
+            "params": {"nprobe": 10},
+        }
+        for collection in search_collections:
+            results = collection.search(
+                [vec],
+                f"emb_v1",
+                # f"emb_{api_version}",
+                search_params,
+                offset=0,
+                limit=1,
+                output_fields=["pk", "question", "answer"],
+            )[0]
+            # returning first hit found
+            if results.distances[0] >= float(CONFIG["milvus"]["canned_answer_similarity_threshold"]):
+                hit = results[0]
+                return {
+                    "id": hit.entity.get("pk"),
+                    "question": hit.entity.get("question"),
+                    "answer": hit.entity.get("answer"),
+                    "similarity": results.distances[0],
+                    "collection": get_collection_name(collection.name),
+                }
+        return None
 
     def search_collections_set(
         self,
@@ -84,21 +126,17 @@ class CollectionsManager:
         document_collection: str = None,
         security_code: int = 2**63 - 1,  # full access by default
     ) -> Tuple[List[str]]:
-        org_hash = hash_string(organization)
-        # search_collections = [self[col] for col in collections]
-        # collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         search_collections = []
         for collection in collections:
-            collection_name = f"{vendor}_{org_hash}_{collection}"
+            collection_name = full_collection_name(vendor, organization, collection)
             try:
                 search_collections.append(self.get_collection(collection_name))
             except DatabaseError as e:
-                logger.error(
-                    f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
-                )
+                msg = f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!"
+                logger.error(msg)
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
+                    detail=msg,
                 )
 
         search_params = {
@@ -184,18 +222,28 @@ class CollectionsManager:
                 FieldSchema(name="security_groups", dtype=DataType.INT64),
                 FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024),
             ]
-        schema = CollectionSchema(fields)
-        m_collection = Collection(collection_name, schema)
+        elif schema == MilvusSchema.CANNED_V0:
+            fields = [
+                FieldSchema(name="pk", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                FieldSchema(name="question", dtype=DataType.VARCHAR, max_length=1024),
+                FieldSchema(name="answer", dtype=DataType.VARCHAR, max_length=2048),
+                FieldSchema(name="emb_v1", dtype=DataType.FLOAT_VECTOR, dim=1536),
+                FieldSchema(name="timestamp", dtype=DataType.INT64),
+                FieldSchema(name="security_groups", dtype=DataType.INT64),
+            ]
+        collection_schema = CollectionSchema(fields, enable_dynamic_field=True)
+        m_collection = Collection(collection_name, collection_schema)
         index_params = {
             "metric_type": "IP",
             "index_type": "IVF_FLAT",
             "params": {"nlist": 1024},
         }
         m_collection.create_index(field_name="emb_v1", index_params=index_params)
-        m_collection.create_index(
-            field_name="doc_id",
-            index_name="scalar_index",
-        )
+        if schema == MilvusSchema.V0.value or schema == MilvusSchema.V1.value:
+            m_collection.create_index(
+                field_name="doc_id",
+                index_name="scalar_index",
+            )
         # todo: do we need an index on primary key? we do if it is not auto, need to check
         m_collection.load()
         return m_collection

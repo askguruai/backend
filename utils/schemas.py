@@ -50,8 +50,8 @@ class User(BaseModel):
 
 
 class Role(str, Enum):
-    user = 'user'
-    assistant = 'assistant'
+    user = "user"
+    assistant = "assistant"
 
 
 class Message(BaseModel):
@@ -385,3 +385,23 @@ class ClientLogEventType(str, Enum):
 class ClinetLogEvent(BaseModel):
     type: ClientLogEventType = Field(description="Event type")
     context: dict | None = Field(description="Any additional data/context to provide")
+
+
+class CannedAnswer(BaseModel):
+    id: str | None = Field(description="id of canned answer object. used for updating canned answers")
+    security_groups: List[int] | None = Field(
+        description="Security groups of the document. Default is full access", example=[0, 2]
+    )
+    timestamp: int | None = Field(description="Document last change time", example=1623345600)
+    question: str = Field(description="Question to check against")
+    answer: str = Field(description="Desired answer")
+
+
+class CannedAnswersCollection(BaseModel):
+    canned_answers: List[CannedAnswer] = Field(description="List of all canned answers in collection")
+
+
+class MilvusSchema(str, Enum):
+    V0 = "SCHEMA_V0"
+    V1 = "SCHEMA_V1"  # schema with link field
+    CANNED_V0 = "CANNED_V0"

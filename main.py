@@ -27,6 +27,7 @@ from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from handlers import (
+    CannedHandler,
     CollectionHandler,
     DocumentHandler,
     DocumentsUploadHandler,
@@ -39,9 +40,11 @@ from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
-from utils.gunicorn_logging import run_gunicorn_loguru
+from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
+    CannedAnswer,
+    CannedAnswersCollection,
     Chat,
     ClinetLogEvent,
     CollectionDocumentsResponse,
@@ -67,7 +70,6 @@ from utils.schemas import (
     TextRequest,
     UploadDocumentResponse,
 )
-from utils.uvicorn_logging import RequestLoggerMiddleware
 
 app = FastAPI()
 
@@ -84,7 +86,7 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, CLIENT_SESSION_WRAPPER
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler, CLIENT_SESSION_WRAPPER
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
@@ -115,6 +117,7 @@ async def init_handlers():
             chunk_size=int(CONFIG["handlers"]["chunk_size"]), tokenizer_name=CONFIG["handlers"]["tokenizer_name"]
         ),
     )
+    canned_handler = CannedHandler()
 
 
 @app.get("/", include_in_schema=False)
@@ -137,10 +140,14 @@ async def get_info(
     return token_data
 
 
-@app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
-@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False)(
-    get_livechat_token
+@app.post("/{api_version}/token", responses=CollectionResponses)(get_organization_token)
+@app.post("/{api_version}/token_livechat", responses=CollectionResponses, include_in_schema=False)(get_livechat_token)
+@app.post("/{api_version}/collections/token", responses=CollectionResponses, include_in_schema=False, deprecated=True)(
+    get_organization_token
 )
+@app.post(
+    "/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False, deprecated=True
+)(get_livechat_token)
 
 
 ######################################################
@@ -252,34 +259,34 @@ async def get_collections_answer(
                 api_version=api_version,
             ).collections
         ]
-    if document and not query:
-        response, context = await collection_handler.get_solution(
-            vendor=token_data["vendor"],
-            organization=token_data["organization"],
-            collections=collections,
-            document=document,
-            document_collection=document_collection,
-            api_version=api_version,
-            user_security_groups=token_data["security_groups"],
-            stream=stream,
-        )
-    else:
-        # check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
-        response, context = await collection_handler.get_answer(
-            vendor=token_data["vendor"],
-            organization=token_data["organization"],
-            collections=collections,
-            query=query,
-            api_version=api_version,
-            user_security_groups=token_data["security_groups"],
-            document=document,
-            document_collection=document_collection,
-            stream=stream,
-            collections_only=collections_only,
-            project_to_en=project_to_en,
-            chat=chat,
-            include_image_urls=include_image_urls,
-        )
+    # if document and not query:
+    #     response, context = await collection_handler.get_solution(
+    #         vendor=token_data["vendor"],
+    #         organization=token_data["organization"],
+    #         collections=collections,
+    #         document=document,
+    #         document_collection=document_collection,
+    #         api_version=api_version,
+    #         user_security_groups=token_data["security_groups"],
+    #         stream=stream,
+    #     )
+    # else:
+    # check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
+    response, context = await collection_handler.get_answer(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collections=collections,
+        query=query,
+        api_version=api_version,
+        user_security_groups=token_data["security_groups"],
+        document=document,
+        document_collection=document_collection,
+        stream=stream,
+        collections_only=collections_only,
+        project_to_en=project_to_en,
+        chat=chat,
+        include_image_urls=include_image_urls,
+    )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
         context=context,
@@ -659,6 +666,132 @@ async def delete_collection(
 
 
 ######################################################
+#                     CANNED                         #
+######################################################
+
+
+@app.post("/{api_version}/collections/{collection}/canned", response_model=CannedAnswer)
+@catch_errors
+async def add_canned_answer(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    question: str = Body(description="Question to match against"),
+    answer: str = Body(description="Desired answer"),
+    # security_groups: List[int] | None = Body(default=None,  description="Security groups of the answer. Default is full access"),
+    timestamp: int
+    | None = Body(
+        default=None,
+        description="Document last change time in seconds. Default is server receive time",
+        example=1688474672,
+    ),
+    project_to_en: bool = Body(default=True, description="Whether to project query into English for better precision"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.add_canned_answer(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        question=question,
+        answer=answer,
+        security_groups=None,  # future todo
+        timestamp=timestamp,
+        project_to_en=project_to_en,
+    )
+
+
+@app.get("/{api_version}/collections/{collection}/canned/{canned_id}", response_model=CannedAnswer)
+@catch_errors
+async def get_canned_by_id(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    canned_id: str = Path(description="Canned answer id"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.get_canned_by_id(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        canned_id=canned_id,
+    )
+
+
+@app.delete("/{api_version}/collections/{collection}/canned/{canned_id}")
+@catch_errors
+async def delete_canned_by_id(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    canned_id: str = Path(description="Canned answer id"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.delete_canned_by_id(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+        canned_id=canned_id,
+    )
+
+
+@app.patch("/{api_version}/collections/{collection}/canned/{canned_id}")
+@catch_errors
+async def update_canned_by_id(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    canned_id: str = Path(description="Canned answer id"),
+    question: str | None = Body(default=None, description="Question to match against"),
+    answer: str | None = Body(default=None, description="Desired answer"),
+    # security_groups: List[int] | None = Body(default=None,  description="Security groups of the answer. Default is full access"),
+    timestamp: int
+    | None = Body(
+        default=None,
+        description="Document last change time in seconds. Default is server receive time",
+        example=1688474672,
+    ),
+    project_to_en: bool = Body(default=True, description="Whether to project query into English for better precision"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.update_canned_by_id(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        canned_id=canned_id,
+        collection=collection,
+        question=question,
+        answer=answer,
+        security_groups=None,  # future todo
+        timestamp=timestamp,
+        project_to_en=project_to_en,
+    )
+
+
+@app.get("/{api_version}/collections/{collection}/canned", response_model=CannedAnswersCollection)
+@catch_errors
+async def get_collection_canned(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+):
+    token_data = decode_token(token)
+    return await canned_handler.get_canned_collection(
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collection=collection,
+    )
+
+
+######################################################
 #                    FEEDBACK                        #
 ######################################################
 
@@ -959,9 +1092,9 @@ import os
 
 from utils import AWS_TRANSLATE_CLIENT
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     options = {
-        "bind": CONFIG["app"]["host"] + ':' + CONFIG["app"]["port"],
+        "bind": CONFIG["app"]["host"] + ":" + CONFIG["app"]["port"],
         "workers": CONFIG["app"]["workers"],
         "timeout": CONFIG["app"]["timeout"],
     }

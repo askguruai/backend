@@ -17,13 +17,13 @@ from utils.errors import CoreMLError
 
 def process_single_file(milvus_collection: Collection, path: str, parser: MarkdownParser, api_version: str):
     chunks, title = parser.process_file(path)
-    doc_id = title.lower().replace(' ', '-')
+    doc_id = title.lower().replace(" ", "-")
     new_chunks = []
     id_hashes = []
     for chunk in chunks:
         text_hash = hashlib.sha256(chunk.encode()).hexdigest()[:24]
         res = milvus_collection.query(
-            expr=f"chunk_hash==\"{text_hash}\"",
+            expr=f'chunk_hash=="{text_hash}"',
             offset=0,
             limit=1,
             output_fields=["chunk_hash"],

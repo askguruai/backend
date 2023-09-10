@@ -8,7 +8,6 @@ import docx
 from simplify_docx import simplify
 
 from parsers.general_parser import GeneralParser
-from utils import hash_string
 from utils.tokenize_ import doc_to_chunks
 
 # from docx_parser import DocumentParser
