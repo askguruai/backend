@@ -252,8 +252,8 @@ class TestAPI:
         assert "платформ" in response.json()["answer"].lower()
 
     def test_canned_answer(self, manager):
-        canned_question = "What if i multiply 2 by 2?"
-        canned_answer = "The answer to this is 5 (five)"
+        canned_question = "How many Big Macs did Bob ate?"
+        canned_answer = "Bob ate 8 Big Macs and 1 Big Mac after, total of 9"
         canned_object = {"question": canned_question, "answer": canned_answer}
 
         # posting canned
