@@ -140,10 +140,14 @@ async def get_info(
     return token_data
 
 
-@app.post("/{api_version}/collections/token", responses=CollectionResponses)(get_organization_token)
-@app.post("/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False)(
-    get_livechat_token
+@app.post("/{api_version}/token", responses=CollectionResponses)(get_organization_token)
+@app.post("/{api_version}/token_livechat", responses=CollectionResponses, include_in_schema=False)(get_livechat_token)
+@app.post("/{api_version}/collections/token", responses=CollectionResponses, include_in_schema=False, deprecated=True)(
+    get_organization_token
 )
+@app.post(
+    "/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False, deprecated=True
+)(get_livechat_token)
 
 
 ######################################################
