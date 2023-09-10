@@ -259,34 +259,34 @@ async def get_collections_answer(
                 api_version=api_version,
             ).collections
         ]
-    if document and not query:
-        response, context = await collection_handler.get_solution(
-            vendor=token_data["vendor"],
-            organization=token_data["organization"],
-            collections=collections,
-            document=document,
-            document_collection=document_collection,
-            api_version=api_version,
-            user_security_groups=token_data["security_groups"],
-            stream=stream,
-        )
-    else:
-        # check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
-        response, context = await collection_handler.get_answer(
-            vendor=token_data["vendor"],
-            organization=token_data["organization"],
-            collections=collections,
-            query=query,
-            api_version=api_version,
-            user_security_groups=token_data["security_groups"],
-            document=document,
-            document_collection=document_collection,
-            stream=stream,
-            collections_only=collections_only,
-            project_to_en=project_to_en,
-            chat=chat,
-            include_image_urls=include_image_urls,
-        )
+    # if document and not query:
+    #     response, context = await collection_handler.get_solution(
+    #         vendor=token_data["vendor"],
+    #         organization=token_data["organization"],
+    #         collections=collections,
+    #         document=document,
+    #         document_collection=document_collection,
+    #         api_version=api_version,
+    #         user_security_groups=token_data["security_groups"],
+    #         stream=stream,
+    #     )
+    # else:
+    # check_filters(vendor=token_data["vendor"], organization=token_data["organization"], query=query)
+    response, context = await collection_handler.get_answer(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collections=collections,
+        query=query,
+        api_version=api_version,
+        user_security_groups=token_data["security_groups"],
+        document=document,
+        document_collection=document_collection,
+        stream=stream,
+        collections_only=collections_only,
+        project_to_en=project_to_en,
+        chat=chat,
+        include_image_urls=include_image_urls,
+    )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
         context=context,
