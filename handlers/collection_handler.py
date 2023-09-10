@@ -184,71 +184,6 @@ class CollectionHandler:
             ]
         return GetCollectionAnswerResponse(answer=answer, sources=sources), chunks[:i]
 
-    async def get_solution(
-        self,
-        vendor: str,
-        organization: str,
-        collections: List[str],
-        document: str,
-        document_collection: str,
-        api_version: ApiVersion,
-        user_security_groups: List[int],
-        stream: bool = False,
-        collection_only: bool = True,
-    ) -> GetCollectionAnswerResponse:
-        org_hash = hash_string(organization)
-        security_code = int_list_encode(user_security_groups)
-        embedding, query = self.get_data_from_id(
-            document=document,
-            full_collection_name=f"{vendor}_{org_hash}_{document_collection}",
-            security_code=security_code,
-        )
-
-        # search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
-
-        _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
-            vendor,
-            organization,
-            collections,
-            embedding,
-            self.top_k_chunks,
-            api_version,
-            document_id_to_exclude=document,
-            document_collection=document_collection,
-            security_code=security_code,
-        )
-        if len(chunks) == 0:
-            return GetCollectionAnswerResponse(answer="Unable to find an answer :(", sources=[]), []
-
-        context, i = "", 0
-        while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
-            if api_version == ApiVersion.v1:
-                context += f"{chunks[i]}\n{'=' * 20}\n"
-            elif api_version == ApiVersion.v2:
-                context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
-                # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
-            i += 1
-
-        answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
-
-        sources, seen = [], set()
-        for title, doc_id, doc_summary, collection in zip(
-            titles[:i], doc_ids[:i], doc_summaries[:i], doc_collections[:i]
-        ):
-            if doc_id not in seen:
-                sources.append(
-                    Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
-                )
-                # we allow duplicate chunks on v2 because in context we index them as they appear
-                if api_version == ApiVersion.v1:
-                    seen.add(doc_id)
-
-        if stream:
-            response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
-            return response, chunks[:i]
-
-        return GetCollectionAnswerResponse(answer=answer, sources=sources), chunks[:i]
-
     def get_data_from_id(self, document: str, full_collection_name: str, security_code: int) -> np.ndarray:
         collection = MILVUS_DB[full_collection_name]
         res = collection.query(
@@ -373,3 +308,68 @@ class CollectionHandler:
                 seen_title.add(titles[i])
             i += 1
         return GetCollectionRankingResponse(sources=sources)
+
+    # async def get_solution(
+    #     self,
+    #     vendor: str,
+    #     organization: str,
+    #     collections: List[str],
+    #     document: str,
+    #     document_collection: str,
+    #     api_version: ApiVersion,
+    #     user_security_groups: List[int],
+    #     stream: bool = False,
+    #     collection_only: bool = True,
+    # ) -> GetCollectionAnswerResponse:
+    #     org_hash = hash_string(organization)
+    #     security_code = int_list_encode(user_security_groups)
+    #     embedding, query = self.get_data_from_id(
+    #         document=document,
+    #         full_collection_name=f"{vendor}_{org_hash}_{document_collection}",
+    #         security_code=security_code,
+    #     )
+
+    #     # search_collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
+
+    #     _, chunks, titles, doc_ids, doc_summaries, doc_collections = MILVUS_DB.search_collections_set(
+    #         vendor,
+    #         organization,
+    #         collections,
+    #         embedding,
+    #         self.top_k_chunks,
+    #         api_version,
+    #         document_id_to_exclude=document,
+    #         document_collection=document_collection,
+    #         security_code=security_code,
+    #     )
+    #     if len(chunks) == 0:
+    #         return GetCollectionAnswerResponse(answer="Unable to find an answer :(", sources=[]), []
+
+    #     context, i = "", 0
+    #     while i < len(chunks) and len(self.enc.encode(context + chunks[i])) < self.max_tokens_in_context:
+    #         if api_version == ApiVersion.v1:
+    #             context += f"{chunks[i]}\n{'=' * 20}\n"
+    #         elif api_version == ApiVersion.v2:
+    #             context += f"---\ndoc_idx: {i}\n---\n{chunks[i]}\n{'=' * 20}\n"
+    #             # context += f"---\ndoc_id: {i}\ndoc_collection: {doc_collections[i].split('_')[-1]}\n---\n{chunks[i]}\n{'=' * 20}\n"
+    #         i += 1
+
+    #     answer = await ml_requests.get_answer(context, query, api_version, stream=stream)
+
+    #     sources, seen = [], set()
+    #     for title, doc_id, doc_summary, collection in zip(
+    #         titles[:i], doc_ids[:i], doc_summaries[:i], doc_collections[:i]
+    #     ):
+    #         if doc_id not in seen:
+    #             sources.append(
+    #                 Source(id=doc_id, title=title, collection=collection.split("_")[-1], summary=doc_summary)
+    #             )
+    #             # we allow duplicate chunks on v2 because in context we index them as they appear
+    #             if api_version == ApiVersion.v1:
+    #                 seen.add(doc_id)
+
+    #     if stream:
+    #         response = (GetCollectionAnswerResponse(answer=text, sources=sources) async for text in answer)
+    #         return response, chunks[:i]
+
+    #     return GetCollectionAnswerResponse(answer=answer, sources=sources), chunks[:i]
