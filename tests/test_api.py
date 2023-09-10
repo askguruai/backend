@@ -36,7 +36,7 @@ class TestAPI:
     ################################################################
 
     def test_get_token(self, manager):
-        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/token"
+        url = f"{self.BASE_URL}/{self.API_VERSION}/token"
         data = {
             "vendor": "askguru",
             "organization": "mcdonalds",
@@ -272,14 +272,14 @@ class TestAPI:
         headers = {"Authorization": f"Bearer {manager.token}"}
 
         # posting canned
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes/"
-        response = requests.post(url, headers=headers, json=canned_object)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
+        response = requests.post(url, headers=manager.headers, json=canned_object)
         response.raise_for_status()
         canned_id = response.json()["id"]
 
         # gettting canned
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes/{canned_id}"
-        response = requests.get(url, headers=headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned/{canned_id}"
+        response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
         assert response.json()["question"] == canned_question
 
@@ -291,15 +291,15 @@ class TestAPI:
         assert response.json()["answer"] == canned_answer
 
         # checking canned collection
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes"
-        response = requests.get(url, headers=headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
+        response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
         assert len(response.json()["canned_answers"]) == 1
 
         # updating canned
-        new_canned_answer = "The answer is actually 6 (six)!!!"
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes/{canned_id}"
-        response = requests.patch(url, headers=headers, json={"answer": new_canned_answer})
+        new_canned_answer = "Bob ate 8 Big Macs and 2 Big Mac after, total of 10"
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned/{canned_id}"
+        response = requests.patch(url, headers=manager.headers, json={"answer": new_canned_answer})
         response.raise_for_status()
         upd_id = response.json()["id"]
 
@@ -311,13 +311,13 @@ class TestAPI:
         assert response.json()["answer"] == new_canned_answer
 
         # deleting canned
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes/{upd_id}"
-        response = requests.delete(url, headers=headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned/{upd_id}"
+        response = requests.delete(url, headers=manager.headers)
         response.raise_for_status()
 
         # checking canned collection again
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes"
-        response = requests.get(url, headers=headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
+        response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
         assert len(response.json()["canned_answers"]) == 0
 
@@ -357,9 +357,8 @@ class TestAPI:
 
     def test_absent_canned_collection(self, manager):
         # this is not a 100% cause endpoint also checks if master collection exists, but still
-        headers = {"Authorization": f"Bearer {manager.token}"}
-        url = f"{self.BASE_URL}/{self.API_VERSION}/canned/recipes"
-        response = requests.get(url, headers=headers)
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
+        response = requests.get(url, headers=manager.headers)
         assert response.status_code == 404
 
     def test_client_event(self, manager):
