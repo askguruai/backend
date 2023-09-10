@@ -4,7 +4,7 @@ from typing import List
 from fastapi import HTTPException, status
 from loguru import logger
 
-from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, hash_string, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, full_collection_name, ml_requests
 from utils.misc import decode_security_code, int_list_encode
 from utils.schemas import ApiVersion, CannedAnswer, MilvusSchema
 
@@ -22,9 +22,8 @@ class CannedHandler:
         timestamp: int | None,
         project_to_en: bool = True,
     ):
-        org_hash = hash_string(organization)
-        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
-        if MILVUS_DB.collection_status(f"{vendor}_{org_hash}_{collection}") == "NotExist":
+        collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
+        if MILVUS_DB.collection_status(full_collection_name(vendor, organization, collection)) == "NotExist":
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Requested canned answer creation for collection '{collection}', but it does not exist in vendor '{vendor}' and organization '{organization}'!",
@@ -49,10 +48,9 @@ class CannedHandler:
     async def get_canned_by_id(
         self, api_version: ApiVersion, vendor: str, organization: str, collection: str, canned_id: str
     ):
-        org_hash = hash_string(organization)
-        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+        collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
         if (
-            MILVUS_DB.collection_status(f"{vendor}_{org_hash}_{collection}") == "NotExist"
+            MILVUS_DB.collection_status(full_collection_name(vendor, organization, collection)) == "NotExist"
             or MILVUS_DB.collection_status(collection_name) == "NotExist"
         ):
             raise HTTPException(
@@ -87,8 +85,7 @@ class CannedHandler:
         # here are all the checks that collections exist and stuff
         existing_canned = await self.get_canned_by_id(api_version, vendor, organization, collection, canned_id)
 
-        org_hash = hash_string(organization)
-        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+        collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
         collection = MILVUS_DB[collection_name]
         collection.delete(f"pk in [{existing_canned.id}]")
 
@@ -109,8 +106,7 @@ class CannedHandler:
     ):
         existing_canned = await self.get_canned_by_id(api_version, vendor, organization, collection, canned_id)
 
-        org_hash = hash_string(organization)
-        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+        collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
         m_collection = MILVUS_DB[collection_name]
         m_collection.delete(f"pk in [{existing_canned.id}]")
 
@@ -124,10 +120,9 @@ class CannedHandler:
         )
 
     async def get_canned_collection(self, api_version: ApiVersion, vendor: str, organization: str, collection: str):
-        org_hash = hash_string(organization)
-        collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+        collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
         if (
-            MILVUS_DB.collection_status(f"{vendor}_{org_hash}_{collection}") == "NotExist"
+            MILVUS_DB.collection_status(full_collection_name(vendor, organization, collection)) == "NotExist"
             or MILVUS_DB.collection_status(collection_name) == "NotExist"
         ):
             raise HTTPException(

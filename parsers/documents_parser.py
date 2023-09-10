@@ -19,7 +19,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from parsers.docx_parser_ import DocxParser
 from parsers.markdown_parser import MarkdownParser
 from parsers.pdf_parser import PdfParser
-from utils import AWS_TRANSLATE_CLIENT, GRIDFS
+from utils import AWS_TRANSLATE_CLIENT, GRIDFS, full_collection_name
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc, DocumentMetadata
 from utils.tokenize_ import doc_to_chunks
@@ -218,7 +218,7 @@ class DocumentsParser:
             documents_metadata.append(metadata)
 
             # Writing plain page content to GridFS
-            filename = f"{vendor}_{organization}_{collection}_{metadata.id}"
+            filename = full_collection_name(vendor, organization, collection) + "_" + metadata.id
             res = GRIDFS.find_one({"filename": filename})
             if res:
                 GRIDFS.delete(res._id)
@@ -254,7 +254,7 @@ class DocumentsParser:
 
         doc = Doc(content=text)
 
-        filename = f"{vendor}_{organization}_{collection}_{doc_id}"
+        filename = full_collection_name(vendor, organization, collection) + "_" + doc_id
         res = GRIDFS.find_one({"filename": filename})
         if res:
             GRIDFS.delete(res._id)

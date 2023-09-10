@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
-from utils import AWS_TRANSLATE_CLIENT, CONFIG, MILVUS_DB, hash_string, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, CONFIG, MILVUS_DB, full_collection_name, get_collection_name, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
 from utils.misc import AsyncIterator, decode_security_code, int_list_encode
 from utils.schemas import (
@@ -274,25 +274,23 @@ class CollectionHandler:
         return emb, query
 
     def get_collections(self, vendor: str, organization: str, api_version: ApiVersion) -> GetCollectionResponse:
-        organization_hash = hash_string(organization)
-        collections = MILVUS_DB.get_collections(vendor, organization_hash)
+        collections = MILVUS_DB.get_collections(vendor, organization)
         return GetCollectionsResponse(collections=[Collection(**collection) for collection in collections])
 
     def get_collection(
         self, vendor: str, organization: str, collection: str, api_version: ApiVersion, user_security_groups: List[int]
     ) -> GetCollectionResponse:
-        organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
-        full_collection_name = f"{vendor}_{organization_hash}_{collection}"
         try:
-            milvus_collection = MILVUS_DB[full_collection_name]
+            milvus_collection = MILVUS_DB[full_collection_name(vendor, organization, collection)]
         except DatabaseError:
-            logger.error(
-                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {organization_hash}"
+            msg = (
+                f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!"
             )
+            logger.error(msg)
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
+                detail=msg,
             )
         chunks = milvus_collection.query(
             expr='pk >= 0',
@@ -328,7 +326,6 @@ class CollectionHandler:
         similarity_threshold=0,
         project_to_en=True,
     ) -> GetCollectionRankingResponse:
-        organization_hash = hash_string(organization)
         security_code = int_list_encode(user_security_groups)
         if query:
             if project_to_en:
@@ -339,7 +336,7 @@ class CollectionHandler:
             document_collection = document_collection or "faq"
             embedding, _ = self.get_data_from_id(
                 document=document,
-                full_collection_name=f"{vendor}_{organization_hash}_{document_collection}",
+                full_collection_name=full_collection_name(vendor, organization, document_collection),
                 security_code=security_code,
             )
 

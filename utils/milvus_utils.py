@@ -7,7 +7,7 @@ from fastapi import HTTPException, status
 from loguru import logger
 from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, MilvusException, connections, utility
 
-from utils import CONFIG, hash_string
+from utils import CONFIG, full_collection_name, get_collection_name
 from utils.errors import DatabaseError
 from utils.schemas import MilvusSchema
 
@@ -38,18 +38,21 @@ else:
 
 
 class CollectionsManager:
-    def get_collections(self, vendor: str, org_hash: str) -> List[Dict[str, int]]:
-        collections = []
+    def get_collections(self, vendor: str, organization: str) -> List[Dict[str, int]]:
+        collections, seen = [], set()
         for collection_name in utility.list_collections():
-            if collection_name.startswith(f"{vendor}_{org_hash}_"):
+            if collection_name.startswith(full_collection_name(vendor, organization, "")):
                 collection = self.get_collection(collection_name)
                 collection.flush()
-                collections.append(
-                    {
-                        "name": collection_name.split("_")[-1],
-                        "n_chunks": collection.num_entities,
-                    }
-                )
+                # We make this check in order to NOT return canned collection
+                if get_collection_name(collection_name) not in seen:
+                    seen.add(get_collection_name(collection_name))
+                    collections.append(
+                        {
+                            "name": get_collection_name(collection_name),
+                            "n_chunks": collection.num_entities,
+                        }
+                    )
         return collections
 
     def get_collection(self, collection_name: str) -> Collection:
@@ -74,14 +77,12 @@ class CollectionsManager:
     def search_canned_collections(
         self, vendor: str, organization: str, collections: List[str], vec: np.ndarray
     ) -> List[dict]:
-        org_hash = hash_string(organization)
         search_collections = []
         for collection in collections:
-            collection_name = f"{vendor}_{org_hash}_{collection}_canned"
+            collection_name = full_collection_name(vendor, organization, collection, is_canned=True)
             status = self.collection_status(collection_name)
-            if status == "NotExist":
-                continue
-            search_collections.append(self[collection_name])
+            if status != "NotExist":
+                search_collections.append(self[collection_name])
         if len(search_collections) == 0:
             return None
 
@@ -107,7 +108,7 @@ class CollectionsManager:
                     "question": hit.entity.get("question"),
                     "answer": hit.entity.get("answer"),
                     "similarity": results.distances[0],
-                    "collection": collection.name.rsplit("_", maxsplit=2)[-2],
+                    "collection": get_collection_name(collection.name),
                 }
         return None
 
@@ -123,21 +124,17 @@ class CollectionsManager:
         document_collection: str = None,
         security_code: int = 2**63 - 1,  # full access by default
     ) -> Tuple[List[str]]:
-        org_hash = hash_string(organization)
-        # search_collections = [self[col] for col in collections]
-        # collections = [f"{vendor}_{org_hash}_{collection}" for collection in collections]
         search_collections = []
         for collection in collections:
-            collection_name = f"{vendor}_{org_hash}_{collection}"
+            collection_name = full_collection_name(vendor, organization, collection)
             try:
                 search_collections.append(self.get_collection(collection_name))
             except DatabaseError as e:
-                logger.error(
-                    f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'! Organization hash: {org_hash}"
-                )
+                msg = f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!"
+                logger.error(msg)
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!",
+                    detail=msg,
                 )
 
         search_params = {
