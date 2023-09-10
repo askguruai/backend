@@ -40,7 +40,7 @@ from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
-from utils.gunicorn_logging import run_gunicorn_loguru
+from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
     CannedAnswer,
@@ -70,7 +70,6 @@ from utils.schemas import (
     TextRequest,
     UploadDocumentResponse,
 )
-from utils.uvicorn_logging import RequestLoggerMiddleware
 
 app = FastAPI()
 
