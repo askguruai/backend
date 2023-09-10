@@ -7,10 +7,22 @@ import sys
 from gunicorn.app.base import BaseApplication
 from gunicorn.glogging import Logger
 from loguru import logger
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from utils import CONFIG
 
 LOG_LEVEL = logging.getLevelName(CONFIG["app"]["log_level"].upper())
+
+
+class RequestLoggerMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # logger.info(f"{request.client.host}:{request.client.port} - {request.method} {request.url.path} {request.url.query} - {request.headers.get('user-agent', 'N/A')}")
+        logger.info(
+            f"{request.client.host}:{request.client.port} - {request.method} {request.url.path} {request.url.query}"
+        )
+        response = await call_next(request)
+        return response
 
 
 class InterceptHandler(logging.Handler):
