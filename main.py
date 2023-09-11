@@ -398,31 +398,6 @@ async def get_collection(
     )
 
 
-@app.get(
-    "/{api_version}/collections/{collection}/{doc_id}",
-    response_class=Response,
-    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
-)
-@catch_errors
-async def get_collection_document(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-    collection: str = Path(description="Collection within organization"),
-    doc_id: str = Path(
-        description="Document ID. Get available documents via `GET /{api_version}/collections/{collection}`"
-    ),
-):
-    token_data = decode_token(token)
-    filename = full_collection_name(token_data["vendor"], token_data["organization"], collection) + "_" + doc_id
-    res = GRIDFS.find_one({"filename": filename})
-    if not res:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Document {doc_id} not found in collection {collection}"
-        )
-    return StreamingResponse(io.BytesIO(res.read()), media_type="application/octet-stream")
-
-
 @app.post(
     "/{api_version}/collections/{collection}/docs",
     response_model=CollectionDocumentsResponse,
@@ -746,6 +721,36 @@ async def get_collection_canned(
         organization=token_data["organization"],
         collection=collection,
     )
+
+
+######################################################
+#                   DOC RETRIEVAL                    #
+######################################################
+
+
+@app.get(
+    "/{api_version}/collections/{collection}/{doc_id}",
+    response_class=Response,
+    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+)
+@catch_errors
+async def get_collection_document(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    doc_id: str = Path(
+        description="Document ID. Get available documents via `GET /{api_version}/collections/{collection}`"
+    ),
+):
+    token_data = decode_token(token)
+    filename = full_collection_name(token_data["vendor"], token_data["organization"], collection) + "_" + doc_id
+    res = GRIDFS.find_one({"filename": filename})
+    if not res:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Document {doc_id} not found in collection {collection}"
+        )
+    return StreamingResponse(io.BytesIO(res.read()), media_type="application/octet-stream")
 
 
 ######################################################
