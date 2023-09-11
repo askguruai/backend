@@ -400,7 +400,7 @@ async def get_collection(
 
 @app.get(
     "/{api_version}/collections/{collection}/{doc_id}",
-    response_model=Response,
+    response_class=Response,
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
 )
 @catch_errors
