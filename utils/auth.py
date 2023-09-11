@@ -64,12 +64,6 @@ async def get_organization_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if not (vendor.isalnum() and organization.isalnum()):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Vendor and organization must be alphanumeric",
-        )
-
     security_groups = [] if security_groups is None else security_groups
     access_token = create_access_token(
         {"vendor": vendor, "organization": organization, "security_groups": tuple(security_groups)}
@@ -116,6 +110,8 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
     )
 
     logger.info(f"Livechat user {agent_identifier} is in security groups {security_groups}")
+
+    organization = organization.replace("-", "")
 
     access_token = create_access_token(
         data={"vendor": "livechat", "organization": organization, "security_groups": security_groups}
