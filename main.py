@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 import time
 from typing import Any, Dict, List
@@ -36,7 +37,7 @@ from handlers import (
     TextHandler,
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
-from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS
+from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
@@ -395,6 +396,31 @@ async def get_collection(
         api_version,
         user_security_groups=token_data["security_groups"],
     )
+
+
+@app.get(
+    "/{api_version}/collections/{collection}/{doc_id}",
+    response_model=Response,
+    responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+)
+@catch_errors
+async def get_collection_document(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    collection: str = Path(description="Collection within organization"),
+    doc_id: str = Path(
+        description="Document ID. Get available documents via `GET /{api_version}/collections/{collection}`"
+    ),
+):
+    token_data = decode_token(token)
+    filename = full_collection_name(token_data["vendor"], token_data["organization"], collection) + "_" + doc_id
+    res = GRIDFS.find_one({"filename": filename})
+    if not res:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Document {doc_id} not found in collection {collection}"
+        )
+    return StreamingResponse(io.BytesIO(res.read()), media_type="application/octet-stream")
 
 
 @app.post(
