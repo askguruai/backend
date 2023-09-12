@@ -50,6 +50,7 @@ class CollectionHandler:
         collections_only: bool = True,
         chat: List[Message] = None,
         include_image_urls: bool = False,
+        apply_formatting: bool = False,
     ) -> GetCollectionAnswerResponse:
         orig_lang = "en"
         if query:
@@ -147,6 +148,7 @@ class CollectionHandler:
             stream=stream,
             chat=chat,
             include_image_urls=include_image_urls,
+            apply_formatting=apply_formatting,
         )
 
         sources, seen = [], set()

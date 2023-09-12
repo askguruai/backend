@@ -47,6 +47,7 @@ async def get_answer(
     chat: Union[list, None] = None,
     stream: bool = False,
     include_image_urls: bool = False,
+    apply_formatting: bool = False,
 ) -> str:
     response = await CLIENT_SESSION_WRAPPER.coreml_session.post(
         f"/{api_version}/completions/",
@@ -57,6 +58,7 @@ async def get_answer(
             "chat": jsonable_encoder(chat) if chat else None,
             "stream": stream,
             "include_image_urls": include_image_urls,
+            "apply_formatting": apply_formatting,
         },
     )
     response_status = response.status

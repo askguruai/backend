@@ -197,6 +197,10 @@ async def get_collections_answer(
         default=False,
         description="If include image urls in the output answer. If it is enabled, source docs citations will be disabled on `v2` api version",
     ),
+    apply_formatting: bool = Query(
+        default=False,
+        description="If apply formatting to the answer. Makes model highlight with bold.",
+    ),
     project_to_en: bool = Query(
         default=True, description="Whether to project query into English for better precision", include_in_schema=False
     ),
@@ -250,6 +254,8 @@ async def get_collections_answer(
 
     if token_data["vendor"] == "oneclickcx":
         include_image_urls = True
+        if collections and "OPPO" in collections:
+            apply_formatting = True
 
     if not collections:
         collections = [
@@ -287,6 +293,7 @@ async def get_collections_answer(
         project_to_en=project_to_en,
         chat=chat,
         include_image_urls=include_image_urls,
+        apply_formatting=apply_formatting,
     )
     request_id = log_get_answer(
         answer=response.answer if not stream else "",
