@@ -405,3 +405,20 @@ class MilvusSchema(str, Enum):
     V0 = "SCHEMA_V0"
     V1 = "SCHEMA_V1"  # schema with link field
     CANNED_V0 = "CANNED_V0"
+
+
+class AudioRequestMetadata(BaseModel):
+    collections: List[str] = Field("List of collections within organization to search in")
+    project_to_en: bool = Field(
+        default=True, description="Whether to translate uploaded documet into Eng (increases model performance)"
+    )
+    stream: bool = Field(description="Whether to stream answer")
+    include_image_urls: bool = Field(
+        default=False,
+        description="If include image urls in the output answer. If it is enabled, source docs citations will be disabled on `v2` api version",
+    )
+
+
+class QueryType(int, Enum):
+    TEXT = 0
+    AUDIO = 1

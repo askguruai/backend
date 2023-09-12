@@ -12,6 +12,25 @@ from utils import CLIENT_SESSION_WRAPPER, CONFIG
 from utils.errors import CoreMLError
 
 
+# @retry(
+#     stop=stop_after_attempt(3),
+#     wait=wait_exponential(multiplier=1, min=1, max=120),
+#     before_sleep=before_sleep_log(logger, "WARNING"),
+# )
+async def get_transcript_from_audio(filepath: str, api_version: str) -> str:
+    # todo: call coreml
+    with open(filepath, "rb") as f:
+        async with CLIENT_SESSION_WRAPPER.coreml_session.post(
+            f"/{api_version}/speech2text/",
+            data={"file": f},
+        ) as response:
+            response_status = response.status
+            response_json = await response.json()
+            if response_status == status.HTTP_500_INTERNAL_SERVER_ERROR:
+                raise CoreMLError(response_json["detail"])
+            return response_json["data"]
+
+
 @retry(
     stop=stop_after_attempt(8),
     wait=wait_exponential(multiplier=1, min=1, max=120),
