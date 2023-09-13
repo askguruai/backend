@@ -178,75 +178,6 @@ async def get_collections(
     return response
 
 
-@app.post(
-    "/{api_version}/collections/answer/audio", response_model=GetCollectionAnswerResponse, responses=CollectionResponses
-)
-@catch_errors
-async def get_collection_answer_audio(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-    audio_file: UploadFile = File(...),
-    audio_request_metadata: str = Form(description="Metadata for audio request. Must be a json-dumped string"),
-):
-    token_data = decode_token(token)
-    try:
-        raw_metadata = json.loads(audio_request_metadata)
-        metadata = AudioRequestMetadata(**raw_metadata)
-    except Exception as e:
-        logger.error(f"Error decoding metadata: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="`files_metadata` must be a valid json string representing AudioRequestMetadata object",
-        )
-    if not metadata.collections:
-        collections = [
-            collection.name
-            for collection in collection_handler.get_collections(
-                vendor=token_data["vendor"],
-                organization=token_data["organization"],
-                api_version=api_version,
-            ).collections
-        ]
-    else:
-        collections = metadata.collections
-    response, context, query = await collection_handler.get_answer_audio(
-        audio_file=audio_file,
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        collections=collections,
-        api_version=api_version,
-        user_security_groups=token_data["security_groups"],
-        project_to_en=metadata.project_to_en,
-        include_image_urls=metadata.include_image_urls,
-        stream=metadata.stream,
-    )
-    request_id = log_get_answer(
-        answer=response.answer if not metadata.stream else "",
-        context=context,
-        document_ids=[source.id for source in response.sources] if not metadata.stream else [],
-        query=query,
-        query_type=QueryType.AUDIO,
-        request=request,
-        api_version=api_version,
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        collections=collections,
-        stream=metadata.stream,
-    )
-    if metadata.stream and not isinstance(
-        response, GetCollectionAnswerResponse
-    ):  # checking if it actually is a generator
-        return StreamingResponse(
-            stream_and_log(response, request_id),
-            media_type="text/event-stream",
-            headers={"X-Accel-Buffering": "no"},
-        )
-    else:
-        response.request_id = request_id
-        return response
-
-
 @app.get(
     "/{api_version}/collections/answer",
     response_model=GetCollectionAnswerResponse,
@@ -382,6 +313,75 @@ async def get_collections_answer(
         chat=chat,
     )
     if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
+        return StreamingResponse(
+            stream_and_log(response, request_id),
+            media_type="text/event-stream",
+            headers={"X-Accel-Buffering": "no"},
+        )
+    else:
+        response.request_id = request_id
+        return response
+
+
+@app.post(
+    "/{api_version}/collections/answer/audio", response_model=GetCollectionAnswerResponse, responses=CollectionResponses
+)
+@catch_errors
+async def get_collection_answer_audio(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    audio_file: UploadFile = File(...),
+    audio_request_metadata: str = Form(description="Metadata for audio request. Must be a json-dumped string"),
+):
+    token_data = decode_token(token)
+    try:
+        raw_metadata = json.loads(audio_request_metadata)
+        metadata = AudioRequestMetadata(**raw_metadata)
+    except Exception as e:
+        logger.error(f"Error decoding metadata: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="`files_metadata` must be a valid json string representing AudioRequestMetadata object",
+        )
+    if not metadata.collections:
+        collections = [
+            collection.name
+            for collection in collection_handler.get_collections(
+                vendor=token_data["vendor"],
+                organization=token_data["organization"],
+                api_version=api_version,
+            ).collections
+        ]
+    else:
+        collections = metadata.collections
+    response, context, query = await collection_handler.get_answer_audio(
+        audio_file=audio_file,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collections=collections,
+        api_version=api_version,
+        user_security_groups=token_data["security_groups"],
+        project_to_en=metadata.project_to_en,
+        include_image_urls=metadata.include_image_urls,
+        stream=metadata.stream,
+    )
+    request_id = log_get_answer(
+        answer=response.answer if not metadata.stream else "",
+        context=context,
+        document_ids=[source.id for source in response.sources] if not metadata.stream else [],
+        query=query,
+        query_type=QueryType.AUDIO,
+        request=request,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        collections=collections,
+        stream=metadata.stream,
+    )
+    if metadata.stream and not isinstance(
+        response, GetCollectionAnswerResponse
+    ):  # checking if it actually is a generator
         return StreamingResponse(
             stream_and_log(response, request_id),
             media_type="text/event-stream",
