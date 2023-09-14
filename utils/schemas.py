@@ -249,6 +249,13 @@ class GetCollectionAnswerResponse(BaseModel):
     )
 
 
+class GetTranscriptionResponse(BaseModel):
+    text: str = Field(
+        description="Transcribtion of the audio",
+        example="I used to play drums.",
+    )
+
+
 class UploadDocumentResponse(BaseModel):
     document_id: str = Field(description="ID of an uploaded document.", example="7af8c3e548e40aeb984c42dd")
 

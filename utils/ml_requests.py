@@ -3,13 +3,33 @@ from typing import List, Union
 
 import numpy as np
 import requests
-from fastapi import status
+from aiohttp import FormData
+from fastapi import UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
 from utils import CLIENT_SESSION_WRAPPER, CONFIG
 from utils.errors import CoreMLError
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=120),
+    before_sleep=before_sleep_log(logger, "WARNING"),
+)
+async def get_transcript_from_file(file: UploadFile, api_version: str) -> str:
+    data = FormData()
+    data.add_field("file", await file.read(), filename=file.filename)
+    async with CLIENT_SESSION_WRAPPER.coreml_session.post(
+        f"/{api_version}/transcribe/",
+        data=data,
+    ) as response:
+        response_status = response.status
+        response_json = await response.json()
+        if response_status == status.HTTP_500_INTERNAL_SERVER_ERROR:
+            raise CoreMLError(response_json["detail"])
+        return response_json["data"]
 
 
 @retry(

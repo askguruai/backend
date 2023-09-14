@@ -137,6 +137,21 @@ class TestAPI:
         assert "eight" in response.json()["answer"].lower() or "8" in response.json()["answer"].lower()
         assert "228" in [source["id"] for source in response.json()["sources"]]
 
+    def test_get_answer_audio(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/transcribe"
+        filename = "How_many_patties.m4a"
+        files = {"file": open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "files", filename), "rb")}
+        response = requests.post(url, headers=manager.headers, files=files)
+        response.raise_for_status()
+        query = response.json()["text"]
+
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
+        params = {"query": query}
+        response = requests.get(url, headers=manager.headers, params=params)
+        response.raise_for_status()
+        answer = response.json()["answer"]
+        assert "2" in answer or "two" in answer
+
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         params = {"query": "How many Big Macs did Bob ate?", "stream": True}
