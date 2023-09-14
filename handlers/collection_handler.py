@@ -1,13 +1,10 @@
-import os
-import os.path as osp
 import time
 from collections import defaultdict
-from tempfile import TemporaryDirectory
 from typing import List, Tuple
 
 import numpy as np
 import tiktoken
-from fastapi import HTTPException, UploadFile, status
+from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from loguru import logger
 
@@ -37,44 +34,6 @@ class CollectionHandler:
         self.chunk_size = chunk_size
         self.enc = tiktoken.get_encoding(tokenizer_name)
         self.max_tokens_in_context = max_tokens_in_context
-
-    async def get_answer_audio(
-        self,
-        audio_file: UploadFile,
-        vendor: str,
-        organization: str,
-        collections: List[str],
-        api_version: ApiVersion,
-        user_security_groups: List[int],
-        project_to_en: bool,
-        stream: bool = False,
-        include_image_urls: bool = False,
-    ):
-        _, format = osp.splitext(audio_file.filename)
-        if format not in [".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"]:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Audio file supported formats are mp3, mp4, mpeg, mpga, m4a, wav and webm. Provided is {format}",
-            )
-        with TemporaryDirectory() as tmpdir:
-            content = await audio_file.read()
-            with open(osp.join(tmpdir, audio_file.filename), "wb") as f:
-                f.write(content)
-            query = await ml_requests.get_transcript_from_audio(
-                filepath=osp.join(tmpdir, audio_file.filename), api_version=api_version.value
-            )
-        response, context = await self.get_answer(
-            vendor=vendor,
-            organization=organization,
-            collections=collections,
-            api_version=api_version,
-            user_security_groups=user_security_groups,
-            project_to_en=project_to_en,
-            query=query,
-            stream=stream,
-            include_image_urls=include_image_urls,
-        )
-        return response, context, query
 
     async def get_answer(
         self,
