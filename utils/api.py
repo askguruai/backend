@@ -9,7 +9,7 @@ from loguru import logger
 from pymongo.collection import ReturnDocument
 
 from utils import CONFIG, DB
-from utils.schemas import Message, QueryType
+from utils.schemas import Message
 
 
 async def stream_and_log(generator, request_id):
@@ -62,7 +62,6 @@ def log_get_answer(
     context: List[str],
     document_ids: Union[str, List[str]],
     query: str,
-    query_type: QueryType,
     request: Request,
     api_version: str,
     vendor: str = None,
@@ -79,7 +78,6 @@ def log_get_answer(
         "datetime": datetime.datetime.utcnow(),
         "document_id": document_ids,
         "query": query,
-        "query_type": query_type.value,
         "model_context": context,
         "answer": answer,
         "api_version": api_version,
