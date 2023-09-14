@@ -1,6 +1,7 @@
 import datetime
 import io
 import json
+import os
 import time
 from typing import Any, Dict, List
 
@@ -37,14 +38,13 @@ from handlers import (
     TextHandler,
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
-from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name
+from utils import AWS_TRANSLATE_CLIENT, CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name, ml_requests
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
 from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
 from utils.schemas import (
     ApiVersion,
-    AudioRequestMetadata,
     CannedAnswer,
     CannedAnswersCollection,
     Chat,
@@ -61,13 +61,13 @@ from utils.schemas import (
     GetCollectionsResponse,
     GetFiltersResponse,
     GetReactionsResponse,
+    GetTranscriptionResponse,
     HTTPExceptionResponse,
     LikeStatus,
     LinkRequest,
     Log,
     Message,
     NotFoundResponse,
-    QueryType,
     Role,
     SetReactionRequest,
     TextRequest,
@@ -302,7 +302,6 @@ async def get_collections_answer(
         context=context,
         document_ids=[source.id for source in response.sources] if not stream else [],
         query=query,
-        query_type=QueryType.TEXT,
         request=request,
         api_version=api_version,
         vendor=token_data["vendor"],
@@ -313,75 +312,6 @@ async def get_collections_answer(
         chat=chat,
     )
     if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
-        return StreamingResponse(
-            stream_and_log(response, request_id),
-            media_type="text/event-stream",
-            headers={"X-Accel-Buffering": "no"},
-        )
-    else:
-        response.request_id = request_id
-        return response
-
-
-@app.post(
-    "/{api_version}/collections/answer/audio", response_model=GetCollectionAnswerResponse, responses=CollectionResponses
-)
-@catch_errors
-async def get_collection_answer_audio(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-    audio_file: UploadFile = File(...),
-    audio_request_metadata: str = Form(description="Metadata for audio request. Must be a json-dumped string"),
-):
-    token_data = decode_token(token)
-    try:
-        raw_metadata = json.loads(audio_request_metadata)
-        metadata = AudioRequestMetadata(**raw_metadata)
-    except Exception as e:
-        logger.error(f"Error decoding metadata: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="`files_metadata` must be a valid json string representing AudioRequestMetadata object",
-        )
-    if not metadata.collections:
-        collections = [
-            collection.name
-            for collection in collection_handler.get_collections(
-                vendor=token_data["vendor"],
-                organization=token_data["organization"],
-                api_version=api_version,
-            ).collections
-        ]
-    else:
-        collections = metadata.collections
-    response, context, query = await collection_handler.get_answer_audio(
-        audio_file=audio_file,
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        collections=collections,
-        api_version=api_version,
-        user_security_groups=token_data["security_groups"],
-        project_to_en=metadata.project_to_en,
-        include_image_urls=metadata.include_image_urls,
-        stream=metadata.stream,
-    )
-    request_id = log_get_answer(
-        answer=response.answer if not metadata.stream else "",
-        context=context,
-        document_ids=[source.id for source in response.sources] if not metadata.stream else [],
-        query=query,
-        query_type=QueryType.AUDIO,
-        request=request,
-        api_version=api_version,
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        collections=collections,
-        stream=metadata.stream,
-    )
-    if metadata.stream and not isinstance(
-        response, GetCollectionAnswerResponse
-    ):  # checking if it actually is a generator
         return StreamingResponse(
             stream_and_log(response, request_id),
             media_type="text/event-stream",
@@ -833,6 +763,31 @@ async def get_collection_document(
 
 
 ######################################################
+#                  AUDIO                             #
+######################################################
+
+
+@app.post("/{api_version}/transcribe", response_model=GetTranscriptionResponse, responses=CollectionResponses)
+@catch_errors
+async def get_transcription(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    file: UploadFile = File(...),
+):
+    token_data = decode_token(token)
+    _, format = os.path.splitext(file.filename)
+    if format not in [".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Audio file supported formats are mp3, mp4, mpeg, mpga, m4a, wav and webm. Provided is {format}",
+        )
+    # TODO: maybe save source of audio to GridFS
+    text = await ml_requests.get_transcript_from_file(file=file, api_version=api_version.value)
+    return GetTranscriptionResponse(text=text)
+
+
+######################################################
 #                    FEEDBACK                        #
 ######################################################
 
@@ -1128,10 +1083,6 @@ async def archive_filter_rule_epoint(
     )
     return response
 
-
-import os
-
-from utils import AWS_TRANSLATE_CLIENT
 
 if __name__ == "__main__":
     options = {
