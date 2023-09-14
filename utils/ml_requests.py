@@ -20,7 +20,7 @@ from utils.errors import CoreMLError
 )
 async def get_transcript_from_file(file: UploadFile, api_version: str) -> str:
     data = FormData()
-    data.add_field("file", file.file.read(), filename=file.filename)
+    data.add_field("file", await file.read(), filename=file.filename)
     async with CLIENT_SESSION_WRAPPER.coreml_session.post(
         f"/{api_version}/transcribe/",
         data=data,
