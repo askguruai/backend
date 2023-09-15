@@ -152,6 +152,17 @@ class TestAPI:
         answer = response.json()["answer"]
         assert "2" in answer or "two" in answer
 
+    def test_trascribe_romanize_audio(self, manager):
+        url = f"{self.BASE_URL}/{self.API_VERSION}/transcribe"
+        filename = "hindi_f21_details.m4a"
+        files = {"file": open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "files", filename), "rb")}
+        data = {"romanize": True}
+        response = requests.post(url, headers=manager.headers, files=files, data=data)
+        response.raise_for_status()
+        assert (
+            response.json()["text"].replace(" ", "").isalnum()
+        )  # doesn't work in general, but works for this test's logic
+
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         params = {"query": "How many Big Macs did Bob ate?", "stream": True}
