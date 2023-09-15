@@ -141,7 +141,8 @@ class TestAPI:
         url = f"{self.BASE_URL}/{self.API_VERSION}/transcribe"
         filename = "How_many_patties.m4a"
         files = {"file": open(os.path.join(os.path.dirname(os.path.realpath(__file__)), "files", filename), "rb")}
-        response = requests.post(url, headers=manager.headers, files=files)
+        data = {"romanize": False}
+        response = requests.post(url, headers=manager.headers, files=files, data=data)
         response.raise_for_status()
         query = response.json()["text"]
 
