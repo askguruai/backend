@@ -160,9 +160,8 @@ class TestAPI:
         data = {"romanize": True}
         response = requests.post(url, headers=manager.headers, files=files, data=data)
         response.raise_for_status()
-        assert (
-            response.json()["text"].replace(" ", "").isalnum()
-        )  # doesn't work in general, but works for this test's logic
+        assert "mujhe" in response.json()["text"].lower()
+        assert response.json()["text"].replace(" ", "").isalnum()
 
     def test_get_answer_stream(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
