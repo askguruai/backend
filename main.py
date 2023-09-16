@@ -43,6 +43,7 @@ from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
 from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
+from utils.misc import romanize_hindi
 from utils.schemas import (
     ApiVersion,
     CannedAnswer,
@@ -774,6 +775,9 @@ async def get_transcription(
     api_version: ApiVersion,
     token: str = Depends(oauth2_scheme),
     file: UploadFile = File(...),
+    romanize: bool = Form(
+        defaul=False, description="Whether to romanize transcribed text e.g. hindi with eng alphabet"
+    ),
 ):
     token_data = decode_token(token)
     _, format = os.path.splitext(file.filename)
@@ -784,6 +788,8 @@ async def get_transcription(
         )
     # TODO: maybe save source of audio to GridFS
     text = await ml_requests.get_transcript_from_file(file=file, api_version=api_version.value)
+    if romanize:
+        text = romanize_hindi(text)
     return GetTranscriptionResponse(text=text)
 
 
