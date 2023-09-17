@@ -115,10 +115,10 @@ def log_get_answer(
     return str(request_id)
 
 
-def log_request(datetime, ip, api_version, vendor, organization, request_type, data):
+def log_request(request, api_version, vendor, organization, request_type, data):
     row = {
-        "datetime": datetime,
-        "ip": ip,
+        "datetime": datetime.datetime.utcnow(),
+        "ip": request.client.host,
         "api_version": api_version,
         "vendor": vendor,
         "organization": organization,
