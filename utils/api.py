@@ -53,6 +53,15 @@ def log_get_ranking(
     request_id = (
         DB[CONFIG["mongo"]["requests_ranking_collection"]].insert_one(row).inserted_id
     )
+    log_request(
+        datetime.datetime.utcnow(),
+        request.client.host,
+        api_version,
+        vendor,
+        organization,
+        "get_ranking",
+        row,
+    )
     logger.info(
         f"RANKING: {vendor}:{organization} over collections: {collections}, query: {query}, api_version: {api_version}, docs: {document_ids}"
     )
@@ -91,6 +100,15 @@ def log_get_answer(
         "chat": [msg.json() for msg in chat] if chat else None,
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
+    log_request(
+        datetime.datetime.utcnow(),
+        request.client.host,
+        api_version,
+        vendor,
+        organization,
+        "get_answer",
+        row,
+    )
     logger.info(
         f"vendor: {vendor}, organization: {organization}, collections: {collections}, query: {query}, api_version: {api_version}"
     )
