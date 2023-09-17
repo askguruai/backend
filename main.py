@@ -39,7 +39,7 @@ from handlers import (
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
 from utils import AWS_TRANSLATE_CLIENT, CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name, ml_requests
-from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
+from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log, log_request
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
 from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
 from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
@@ -141,6 +141,15 @@ async def get_info(
     token: str = Depends(oauth2_scheme),
 ):
     token_data = decode_token(token)
+    log_request(
+        datetime=datetime.datetime.utcnow(),
+        ip=request.client.host,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        request_type="get_info",
+        data={},
+    )
     return token_data
 
 
@@ -431,6 +440,19 @@ async def upload_collection_documents(
         )
 
     token_data = decode_token(token)
+    log_request(
+        datetime=datetime.datetime.utcnow(),
+        ip=request.client.host,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        request_type="upload_collection_documents",
+        data={
+            "collection": collection,
+            "documents": [doc.dict() for doc in documents],
+            "metadata": [meta.dict() for meta in metadata],
+        },
+    )
 
     for doc_metadata, document in zip(metadata, documents):
         filename = f"{token_data['vendor']}_{token_data['organization']}_{collection}_{doc_metadata.id}"
@@ -471,6 +493,20 @@ async def upload_collection_files(
     metadata: str = Form(description="Metadata for each of the files in `files`. Must be a json-dumped string"),
 ):
     token_data = decode_token(token)
+    log_request(
+        datetime=datetime.datetime.utcnow(),
+        ip=request.client.host,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        request_type="upload_collection_files",
+        data={
+            "collection": collection,
+            "files": [file.filename for file in files],
+            "metadata": metadata,
+        },
+    )
+    
     try:
         raw_metadata = json.loads(metadata)
     except Exception as e:
@@ -805,6 +841,7 @@ async def get_transcription(
 )
 async def get_reactions(request: Request, api_version: ApiVersion, token: str = Depends(oauth2_scheme)):
     token_data = decode_token(token)
+    log_request(datetime.datetime.utcnow(), request.client.host, api_version, token_data["vendor"], token_data["organization"], "get_reactions", {})
     result = DB[CONFIG["mongo"]["requests_collection"]].find(
         {"vendor": token_data["vendor"], "organization": token_data["organization"]},
         {
@@ -853,6 +890,7 @@ async def upload_reaction(
     comment: str = Body(None, description="Comment to set."),
 ):
     token_data = decode_token(token)
+    log_request(datetime.datetime.utcnow(), request.client.host, api_version, token_data["vendor"], token_data["organization"], "upload_reaction", {"request_id": request_id, "rating": rating, "like_status": like_status, "answer_copied": answer_copied, "comment": comment})
     if not (bool(rating) or bool(like_status) or bool(comment) or (answer_copied is not None)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
