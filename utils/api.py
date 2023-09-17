@@ -50,7 +50,9 @@ def log_get_ranking(
         "collections": collections,
         "user": user,
     }
-    request_id = DB[CONFIG["mongo"]["requests_ranking_collection"]].insert_one(row).inserted_id
+    request_id = (
+        DB[CONFIG["mongo"]["requests_ranking_collection"]].insert_one(row).inserted_id
+    )
     logger.info(
         f"RANKING: {vendor}:{organization} over collections: {collections}, query: {query}, api_version: {api_version}, docs: {document_ids}"
     )
@@ -93,6 +95,19 @@ def log_get_answer(
         f"vendor: {vendor}, organization: {organization}, collections: {collections}, query: {query}, api_version: {api_version}"
     )
     return str(request_id)
+
+
+def log_request(datetime, ip, api_version, vendor, organization, request_type, data):
+    row = {
+        "datetime": datetime,
+        "ip": ip,
+        "api_version": api_version,
+        "vendor": vendor,
+        "organization": organization,
+        "request_type": request_type,
+        "data": data,
+    }
+    DB["logs"].insert_one(row)
 
 
 def catch_errors(func):
