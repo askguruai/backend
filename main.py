@@ -71,23 +71,14 @@ from utils.schemas import (
     NotFoundResponse,
     Role,
     SetReactionRequest,
-    TextRequest,
-    UploadDocumentResponse,
-)
-
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.add_middleware(RequestLoggerMiddleware)
-
-
+    log_request(
+        request=request,
+        api_version=api_version,
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        request_type="get_answer",
+        data=row,
+    )
 @app.on_event("startup")
 async def init_handlers():
     global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler, CLIENT_SESSION_WRAPPER
@@ -142,32 +133,13 @@ async def get_info(
 ):
     token_data = decode_token(token)
     log_request(
-        datetime=datetime.datetime.utcnow(),
-        ip=request.client.host,
+        request=request,
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],
-        request_type="get_info",
-        data={},
+        request_type="get_ranking",
+        data=row,
     )
-    return token_data
-
-
-@app.post("/{api_version}/token", responses=CollectionResponses)(get_organization_token)
-@app.post("/{api_version}/token_livechat", responses=CollectionResponses, include_in_schema=False)(get_livechat_token)
-@app.post("/{api_version}/collections/token", responses=CollectionResponses, include_in_schema=False, deprecated=True)(
-    get_organization_token
-)
-@app.post(
-    "/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False, deprecated=True
-)(get_livechat_token)
-
-
-######################################################
-#                   COLLECTIONS                      #
-######################################################
-
-
 @app.get(
     "/{api_version}/collections",
     response_model=GetCollectionsResponse,
@@ -441,8 +413,7 @@ async def upload_collection_documents(
 
     token_data = decode_token(token)
     log_request(
-        datetime=datetime.datetime.utcnow(),
-        ip=request.client.host,
+        request=request,
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],
@@ -494,8 +465,7 @@ async def upload_collection_files(
 ):
     token_data = decode_token(token)
     log_request(
-        datetime=datetime.datetime.utcnow(),
-        ip=request.client.host,
+        request=request,
         api_version=api_version,
         vendor=token_data["vendor"],
         organization=token_data["organization"],
@@ -841,7 +811,7 @@ async def get_transcription(
 )
 async def get_reactions(request: Request, api_version: ApiVersion, token: str = Depends(oauth2_scheme)):
     token_data = decode_token(token)
-    log_request(datetime.datetime.utcnow(), request.client.host, api_version, token_data["vendor"], token_data["organization"], "get_reactions", {})
+    log_request(request, api_version, token_data["vendor"], token_data["organization"], "get_reactions", {})
     result = DB[CONFIG["mongo"]["requests_collection"]].find(
         {"vendor": token_data["vendor"], "organization": token_data["organization"]},
         {
@@ -890,7 +860,7 @@ async def upload_reaction(
     comment: str = Body(None, description="Comment to set."),
 ):
     token_data = decode_token(token)
-    log_request(datetime.datetime.utcnow(), request.client.host, api_version, token_data["vendor"], token_data["organization"], "upload_reaction", {"request_id": request_id, "rating": rating, "like_status": like_status, "answer_copied": answer_copied, "comment": comment})
+    log_request(request, api_version, token_data["vendor"], token_data["organization"], "upload_reaction", {"request_id": request_id, "rating": rating, "like_status": like_status, "answer_copied": answer_copied, "comment": comment})
     if not (bool(rating) or bool(like_status) or bool(comment) or (answer_copied is not None)):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
