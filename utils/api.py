@@ -54,8 +54,7 @@ def log_get_ranking(
         DB[CONFIG["mongo"]["requests_ranking_collection"]].insert_one(row).inserted_id
     )
     log_request(
-        datetime.datetime.utcnow(),
-        request.client.host,
+        request,
         api_version,
         vendor,
         organization,
@@ -101,8 +100,7 @@ def log_get_answer(
     }
     request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
     log_request(
-        datetime.datetime.utcnow(),
-        request.client.host,
+        request,
         api_version,
         vendor,
         organization,
