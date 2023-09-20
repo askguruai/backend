@@ -83,7 +83,10 @@ class AwsTranslateClient:
         # recursion
         if utf8len(text) < 10000:
             response = self.translate_client.translate_text(
-                Text=text, SourceLanguageCode=source_language, TargetLanguageCode=target_language, TerminologyNames=['SpecialSymbols']
+                Text=text,
+                SourceLanguageCode=source_language,
+                TargetLanguageCode=target_language,
+                TerminologyNames=["SpecialSymbols"],
             )
             out = {"translation": response["TranslatedText"], "source_language": response["SourceLanguageCode"]}
         else:
