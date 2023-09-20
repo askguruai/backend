@@ -106,7 +106,9 @@ async def get_livechat_token(api_version: ApiVersion, livechat_token: str = Body
     security_groups = tuple(
         group["id"]
         for group in responses[2][1]
-        if group["agent_priorities"] is not None and agent_identifier in group["agent_priorities"]
+        if "agent_priorities" in group
+        and group["agent_priorities"] is not None
+        and agent_identifier in group["agent_priorities"]
     )
 
     logger.info(f"Livechat user {agent_identifier} is in security groups {security_groups}")
