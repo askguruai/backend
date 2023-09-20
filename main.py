@@ -314,7 +314,7 @@ async def get_collections_answer(
     )
     if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
         return StreamingResponse(
-            stream_and_log(response, request_id),
+            stream_and_log(response, request_id, token_data["vendor"]),
             media_type="text/event-stream",
             headers={"X-Accel-Buffering": "no"},
         )
@@ -805,8 +805,9 @@ async def get_transcription(
 )
 async def get_reactions(request: Request, api_version: ApiVersion, token: str = Depends(oauth2_scheme)):
     token_data = decode_token(token)
-    result = DB[CONFIG["mongo"]["requests_collection"]].find(
-        {"vendor": token_data["vendor"], "organization": token_data["organization"]},
+    vendor = token_data["vendor"]
+    result = DB[f"{vendor}_answers"].find(
+        {"organization": token_data["organization"]},
         {
             "datetime": 1,
             "query": 1,
@@ -868,9 +869,10 @@ async def upload_reaction(
     if comment is not None:
         row_update["comment"] = comment
 
+    vendor = token_data["vendor"]
     try:
-        db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
-            {"_id": ObjectId(request_id), "vendor": token_data["vendor"], "organization": token_data["organization"]},
+        db_status = DB[f"{vendor}_answers"].find_one_and_update(
+            {"_id": ObjectId(request_id)},
             {"$set": row_update},
             return_document=ReturnDocument.AFTER,
         )
@@ -895,15 +897,15 @@ async def upload_event(
     request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
 ):
     token_data = decode_token(token)
+    vendor = token_data["vendor"]
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "vendor": token_data["vendor"],
         "organization": token_data["organization"],
         "type": client_event.type,
         "context": client_event.context,
     }
-    _ = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
+    _ = DB[f"{vendor}_events"].insert_one(row).inserted_id
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -961,46 +963,6 @@ async def get_answer_document(api_version: ApiVersion, document_request: Documen
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
     document_id = await pdf_upload_handler.process_file(file, api_version.value)
     return UploadDocumentResponse(document_id=document_id)
-
-
-######################################################
-#                    COMMON                          #
-######################################################
-
-
-@app.post(
-    "/{api_version}/set_reaction",
-    responses={
-        status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
-        status.HTTP_404_NOT_FOUND: {"model": HTTPExceptionResponse},
-    },
-    include_in_schema=False,
-)
-async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactionRequest):
-    row_update = {
-        "like_status": set_reaction_request.like_status,
-        "comment": set_reaction_request.comment,
-    }
-
-    try:
-        db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
-            {"_id": ObjectId(set_reaction_request.request_id)},
-            {"$set": row_update},
-            return_document=ReturnDocument.AFTER,
-        )
-        if not db_status:
-            logger.error(f"Can't find row with id {set_reaction_request.request_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Can't find row with id {set_reaction_request.request_id}",
-            )
-    except bson.errors.InvalidId as e:
-        logger.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-    return Response(status_code=status.HTTP_200_OK)
 
 
 ######################################################
