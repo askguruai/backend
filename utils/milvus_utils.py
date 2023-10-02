@@ -1,5 +1,6 @@
 import os
 from enum import Enum
+from multiprocessing import Manager
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -10,6 +11,9 @@ from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, Milvus
 from utils import CONFIG, full_collection_name, get_collection_name
 from utils.errors import DatabaseError
 from utils.schemas import MilvusSchema
+
+manager = Manager()
+lock = manager.Lock()
 
 # If Milvus was created for the first time, then the default
 # credentials are root/Milvus (https://milvus.io/docs/authenticate.md).
@@ -249,7 +253,8 @@ class CollectionsManager:
         return m_collection
 
     def get_or_create_collection(self, collection_name: str, schema: MilvusSchema = MilvusSchema.V1) -> Collection:
-        collection_state = utility.load_state(collection_name)._name_
-        if collection_state == "NotExist":
-            return self.__get_collection_w_schema(collection_name, schema)
-        return self[collection_name]
+        with lock:
+            collection_state = utility.load_state(collection_name)._name_
+            if collection_state == "NotExist":
+                return self.__get_collection_w_schema(collection_name, schema)
+            return self[collection_name]
