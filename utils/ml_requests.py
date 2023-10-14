@@ -2,14 +2,13 @@ import json
 from typing import List, Union
 
 import numpy as np
-import requests
 from aiohttp import FormData
 from fastapi import UploadFile, status
 from fastapi.encoders import jsonable_encoder
 from loguru import logger
 from tenacity import before_sleep_log, retry, stop_after_attempt, wait_exponential
 
-from utils import CLIENT_SESSION_WRAPPER, CONFIG
+from utils import CLIENT_SESSION_WRAPPER
 from utils.errors import CoreMLError
 
 

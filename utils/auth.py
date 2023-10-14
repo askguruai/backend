@@ -2,21 +2,13 @@ import asyncio
 import os
 from typing import List
 
-import requests
-from fastapi import Body, Depends, HTTPException, Path, Query, status
+from fastapi import Body, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from loguru import logger
-from pydantic import Field
 
 from utils import CLIENT_SESSION_WRAPPER
-from utils.schemas import (
-    ApiVersion,
-    AuthenticatedRequest,
-    LivechatLoginRequest,
-    VendorCollectionRequest,
-    VendorCollectionTokenRequest,
-)
+from utils.schemas import ApiVersion
 
 oauth2_scheme = HTTPBearer()
 

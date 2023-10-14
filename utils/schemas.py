@@ -1,11 +1,9 @@
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import List
 
 from fastapi import status
 from pydantic import BaseModel, Field
-
-from utils.errors import TokenMalformedError
 
 
 class ApiVersion(str, Enum):

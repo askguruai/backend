@@ -2,11 +2,9 @@ import datetime
 import io
 import json
 import os
-import time
 from typing import Any, Dict, List
 
 import bson
-import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import (
@@ -38,10 +36,10 @@ from handlers import (
     TextHandler,
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
-from utils import AWS_TRANSLATE_CLIENT, CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name, ml_requests
+from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name, ml_requests
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
-from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
+from utils.filter_rules import archive_filter_rule, create_filter_rule, get_filters, update_filter_rule
 from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
 from utils.misc import romanize_hindi
 from utils.schemas import (
@@ -69,7 +67,6 @@ from utils.schemas import (
     Log,
     Message,
     NotFoundResponse,
-    Role,
     SetReactionRequest,
     TextRequest,
     UploadDocumentResponse,
@@ -90,7 +87,7 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler, CLIENT_SESSION_WRAPPER
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
@@ -239,7 +236,7 @@ async def get_collections_answer(
             for i, msg in enumerate(chat_raw):
                 try:
                     chat_processed.append(Message(**msg))
-                except Exception as e:
+                except Exception:
                     msg = f"Message {msg} at index {i} does not satisfy `Message` model"
                     logger.error(msg)
                     raise HTTPException(
@@ -488,7 +485,7 @@ async def upload_collection_files(
     for i, meta in enumerate(raw_metadata):
         try:
             processed_metadata.append(DocumentMetadata(**meta))
-        except Exception as e:
+        except Exception:
             msg = f"Metadata {meta} at index {i} does not satisfy FileMetadata model"
             logger.error(msg)
             raise HTTPException(
@@ -779,7 +776,7 @@ async def get_transcription(
         defaul=False, description="Whether to romanize transcribed text e.g. hindi with eng alphabet"
     ),
 ):
-    token_data = decode_token(token)
+    decode_token(token)
     _, format = os.path.splitext(file.filename)
     if format not in [".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"]:
         raise HTTPException(

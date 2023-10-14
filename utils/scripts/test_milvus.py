@@ -8,7 +8,7 @@ sys.path.insert(1, os.getcwd())
 
 from loguru import logger
 
-from utils import CONFIG, MILVUS_DB
+from utils import MILVUS_DB
 
 COL_NAME, TOTAL, BATCH = "test_load", 20000, 500
 

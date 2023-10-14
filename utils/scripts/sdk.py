@@ -69,7 +69,6 @@ COLLECTIONS_MAPPING = {
 
 import json
 import re
-from pprint import pprint
 
 import pandas as pd
 import requests

@@ -1,5 +1,3 @@
-import json
-import os
 import os.path as osp
 from tempfile import TemporaryDirectory
 from typing import List, Tuple

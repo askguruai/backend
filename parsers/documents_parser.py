@@ -12,7 +12,6 @@ from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from cache import AsyncTTL
 from fastapi import HTTPException, status
-from langdetect import detect as language_detect
 from loguru import logger
 from starlette.datastructures import UploadFile as StarletteUploadFile
 

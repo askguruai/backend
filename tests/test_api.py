@@ -176,7 +176,7 @@ class TestAPI:
                 if k == "data":
                     data = json.loads(v.strip())
                     answer += data["answer"]
-                    request_id = data["request_id"]
+                    data["request_id"]
                     sources = data["sources"]
         answer = answer.lower()
         assert "eight" in answer or "8" in answer
@@ -206,7 +206,7 @@ class TestAPI:
                 if k == "data":
                     data = json.loads(v.strip())
                     answer += data["answer"]
-                    request_id = data["request_id"]
+                    data["request_id"]
                     sources = data["sources"]
         answer = answer.lower()
         assert "платформа" in answer
@@ -341,7 +341,7 @@ class TestAPI:
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/canned"
         response = requests.post(url, headers=manager.headers, json=canned_object)
         response.raise_for_status()
-        canned_id = response.json()["id"]
+        response.json()["id"]
 
         # asking canned
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"

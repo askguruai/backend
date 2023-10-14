@@ -1,6 +1,6 @@
 from typing import List
 
-from fastapi import File, HTTPException, UploadFile, status
+from fastapi import HTTPException, UploadFile, status
 from loguru import logger
 from pymilvus.exceptions import DataNotMatchException
 from starlette.datastructures import UploadFile as StarletteUploadFile
@@ -9,7 +9,7 @@ from tqdm import tqdm
 from parsers import DocumentsParser
 from utils import AWS_TRANSLATE_CLIENT, GRIDFS, MILVUS_DB, full_collection_name, hash_string, ml_requests
 from utils.errors import DatabaseError
-from utils.schemas import ApiVersion, Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
+from utils.schemas import Chat, CollectionDocumentsResponse, Doc, DocumentMetadata
 
 
 class DocumentsUploadHandler:

@@ -6,17 +6,14 @@ sys.path.insert(1, os.getcwd())
 
 import asyncio
 import glob
-import json
 from argparse import ArgumentParser
 from typing import List
 
 from aiohttp import ClientSession
 from loguru import logger
-from pymilvus import utility
 
 from parsers import DocxParser, PdfParser
 from utils import CLIENT_SESSION_WRAPPER, CONFIG, MILVUS_DB, hash_string, ml_requests
-from utils.tokenize_ import doc_to_chunks
 
 DOCS_N_LINKS = {
     "How to Add New Contact Number.docx": "https://docs.google.com/document/d/1srUhSp5CbafXIslVKnJFiZ6tUinsIgG7/",
@@ -38,7 +35,7 @@ DOCS_N_LINKS = {
 
 
 async def process_file(filepath: str, parser: DocxParser, collection, api_version):
-    filename = osp.split(filepath)[1]
+    osp.split(filepath)[1]
     # doc_link = DOCS_N_LINKS[filename]
     chunks, content, meta_info = parser.process_file(filepath)
     # summary = await ml_requests.get_summary(

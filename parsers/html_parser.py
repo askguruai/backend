@@ -1,13 +1,10 @@
 import abc
-import json
 import re
-from argparse import ArgumentParser
 from collections import deque
 from copy import deepcopy
 from typing import List, Tuple
 
 import htmltabletomd
-import requests
 from bs4 import BeautifulSoup
 from bs4.element import NavigableString, Tag
 

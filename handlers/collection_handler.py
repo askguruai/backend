@@ -1,28 +1,23 @@
-import time
 from collections import defaultdict
-from typing import List, Tuple
+from typing import List
 
 import numpy as np
 import tiktoken
 from fastapi import HTTPException, status
-from fastapi.responses import StreamingResponse
 from loguru import logger
 
-from utils import AWS_TRANSLATE_CLIENT, CONFIG, MILVUS_DB, full_collection_name, get_collection_name, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, MILVUS_DB, full_collection_name, ml_requests
 from utils.errors import DatabaseError, DocumentAccessRestricted, InvalidDocumentIdError
-from utils.misc import AsyncIterator, decode_security_code, int_list_encode
+from utils.misc import AsyncIterator, int_list_encode
 from utils.schemas import (
     ApiVersion,
-    CannedAnswer,
     Collection,
-    CollectionSolutionRequest,
     Document,
     GetCollectionAnswerResponse,
     GetCollectionRankingResponse,
     GetCollectionResponse,
     GetCollectionsResponse,
     Message,
-    MilvusSchema,
     Role,
     Source,
 )

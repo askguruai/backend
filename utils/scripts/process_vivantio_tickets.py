@@ -3,7 +3,6 @@ import sys
 
 sys.path.insert(1, os.getcwd())
 
-import hashlib
 import json
 import logging
 import pickle
@@ -13,7 +12,6 @@ from bson.binary import Binary
 from bson.objectid import ObjectId
 from tqdm import tqdm
 
-from parsers.html_parser import VivantioHTMLParser
 from utils import DB, hash_string
 from utils.errors import CoreMLError
 from utils.ml_requests import get_embeddings

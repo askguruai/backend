@@ -1,5 +1,4 @@
 import os
-from enum import Enum
 from multiprocessing import Manager
 from typing import Dict, List, Tuple
 
@@ -135,7 +134,7 @@ class CollectionsManager:
             collection_name = full_collection_name(vendor, organization, collection)
             try:
                 search_collections.append(self.get_collection(collection_name))
-            except DatabaseError as e:
+            except DatabaseError:
                 msg = f"Requested collection '{collection}' not found in vendor '{vendor}' and organization '{organization}'!"
                 logger.error(msg)
                 raise HTTPException(

@@ -1,14 +1,12 @@
 import os
-import os.path as osp
 import sys
 from collections import defaultdict
 
 sys.path.insert(1, os.getcwd())
 
-import pymilvus
 from pymilvus import Collection, utility
 
-from utils import CONFIG, MILVUS_DB, hash_string
+from utils import MILVUS_DB, hash_string
 from utils.milvus_utils import MilvusSchema
 
 OLD_DB_NAME = "livechat_77b02fc338f14068af94440b_chats"

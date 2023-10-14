@@ -1,7 +1,6 @@
 # https://pawamoy.github.io/posts/unify-logging-for-a-gunicorn-uvicorn-app/
 
 import logging
-import os
 import sys
 
 from gunicorn.app.base import BaseApplication

@@ -1,4 +1,3 @@
-import hashlib
 import logging
 import os.path as osp
 import pickle
@@ -9,7 +8,7 @@ from typing import List
 
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from fastapi import File, UploadFile
+from fastapi import UploadFile
 
 from parsers import DocumentParser
 from utils import CONFIG, DB, hash_string, ml_requests

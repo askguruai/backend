@@ -3,21 +3,15 @@ import sys
 
 sys.path.insert(1, os.getcwd())
 
-import asyncio
-import hashlib
 import json
 import logging
-import pickle
 from argparse import ArgumentParser
 
-from bson.binary import Binary
-from bson.objectid import ObjectId
 from pymilvus import Collection
 from tqdm import tqdm
 
 from parsers.html_parser import VivantioHTMLParser
-from utils import CONFIG, DB, MILVUS_DB, hash_string, ml_requests
-from utils.errors import CoreMLError
+from utils import MILVUS_DB, hash_string, ml_requests
 
 
 def process_single_file(document: dict, collection: Collection, parser: VivantioHTMLParser, api_version: str) -> bool:

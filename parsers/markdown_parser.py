@@ -2,7 +2,7 @@ import os.path as osp
 import re
 from copy import deepcopy
 from tempfile import TemporaryDirectory
-from typing import Any, List, Tuple, Union
+from typing import List, Tuple, Union
 
 import marko
 from marko.block import BlankLine, CodeBlock, Document, FencedCode, Heading, HTMLBlock
