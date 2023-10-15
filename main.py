@@ -2,9 +2,11 @@ import datetime
 import io
 import json
 import os
+import time
 from typing import Any, Dict, List
 
 import bson
+import uvicorn
 from aiohttp import ClientSession
 from bson.objectid import ObjectId
 from fastapi import (
@@ -36,10 +38,10 @@ from handlers import (
     TextHandler,
 )
 from parsers import DocumentParser, DocumentsParser, LinkParser, TextParser
-from utils import CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name, ml_requests
+from utils import AWS_TRANSLATE_CLIENT, CLIENT_SESSION_WRAPPER, CONFIG, DB, GRIDFS, full_collection_name, ml_requests
 from utils.api import catch_errors, log_get_answer, log_get_ranking, stream_and_log
 from utils.auth import decode_token, get_livechat_token, get_organization_token, oauth2_scheme
-from utils.filter_rules import archive_filter_rule, create_filter_rule, get_filters, update_filter_rule
+from utils.filter_rules import archive_filter_rule, check_filters, create_filter_rule, get_filters, update_filter_rule
 from utils.gunicorn_logging import RequestLoggerMiddleware, run_gunicorn_loguru
 from utils.misc import romanize_hindi
 from utils.schemas import (
@@ -67,6 +69,7 @@ from utils.schemas import (
     Log,
     Message,
     NotFoundResponse,
+    Role,
     SetReactionRequest,
     TextRequest,
     UploadDocumentResponse,
@@ -87,7 +90,7 @@ app.add_middleware(RequestLoggerMiddleware)
 
 @app.on_event("startup")
 async def init_handlers():
-    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler
+    global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler, CLIENT_SESSION_WRAPPER
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
         f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
     )
@@ -236,7 +239,7 @@ async def get_collections_answer(
             for i, msg in enumerate(chat_raw):
                 try:
                     chat_processed.append(Message(**msg))
-                except Exception:
+                except Exception as e:
                     msg = f"Message {msg} at index {i} does not satisfy `Message` model"
                     logger.error(msg)
                     raise HTTPException(
@@ -311,7 +314,7 @@ async def get_collections_answer(
     )
     if stream and not isinstance(response, GetCollectionAnswerResponse):  # checking if it actually is a generator
         return StreamingResponse(
-            stream_and_log(response, request_id),
+            stream_and_log(response, request_id, token_data["vendor"]),
             media_type="text/event-stream",
             headers={"X-Accel-Buffering": "no"},
         )
@@ -485,7 +488,7 @@ async def upload_collection_files(
     for i, meta in enumerate(raw_metadata):
         try:
             processed_metadata.append(DocumentMetadata(**meta))
-        except Exception:
+        except Exception as e:
             msg = f"Metadata {meta} at index {i} does not satisfy FileMetadata model"
             logger.error(msg)
             raise HTTPException(
@@ -776,7 +779,7 @@ async def get_transcription(
         defaul=False, description="Whether to romanize transcribed text e.g. hindi with eng alphabet"
     ),
 ):
-    decode_token(token)
+    token_data = decode_token(token)
     _, format = os.path.splitext(file.filename)
     if format not in [".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"]:
         raise HTTPException(
@@ -802,8 +805,9 @@ async def get_transcription(
 )
 async def get_reactions(request: Request, api_version: ApiVersion, token: str = Depends(oauth2_scheme)):
     token_data = decode_token(token)
-    result = DB[CONFIG["mongo"]["requests_collection"]].find(
-        {"vendor": token_data["vendor"], "organization": token_data["organization"]},
+    vendor = token_data["vendor"]
+    result = DB[f"{vendor}_answers"].find(
+        {"organization": token_data["organization"]},
         {
             "datetime": 1,
             "query": 1,
@@ -865,9 +869,10 @@ async def upload_reaction(
     if comment is not None:
         row_update["comment"] = comment
 
+    vendor = token_data["vendor"]
     try:
-        db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
-            {"_id": ObjectId(request_id), "vendor": token_data["vendor"], "organization": token_data["organization"]},
+        db_status = DB[f"{vendor}_answers"].find_one_and_update(
+            {"_id": ObjectId(request_id)},
             {"$set": row_update},
             return_document=ReturnDocument.AFTER,
         )
@@ -892,15 +897,15 @@ async def upload_event(
     request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
 ):
     token_data = decode_token(token)
+    vendor = token_data["vendor"]
     row = {
         "ip": request.client.host,
         "datetime": datetime.datetime.utcnow(),
-        "vendor": token_data["vendor"],
         "organization": token_data["organization"],
         "type": client_event.type,
         "context": client_event.context,
     }
-    _ = DB[CONFIG["mongo"]["client_event_log_collection"]].insert_one(row).inserted_id
+    _ = DB[f"{vendor}_events"].insert_one(row).inserted_id
     return Response(status_code=status.HTTP_200_OK)
 
 
@@ -958,46 +963,6 @@ async def get_answer_document(api_version: ApiVersion, document_request: Documen
 async def upload_pdf(api_version: ApiVersion, file: UploadFile = File(...)):
     document_id = await pdf_upload_handler.process_file(file, api_version.value)
     return UploadDocumentResponse(document_id=document_id)
-
-
-######################################################
-#                    COMMON                          #
-######################################################
-
-
-@app.post(
-    "/{api_version}/set_reaction",
-    responses={
-        status.HTTP_400_BAD_REQUEST: {"model": HTTPExceptionResponse},
-        status.HTTP_404_NOT_FOUND: {"model": HTTPExceptionResponse},
-    },
-    include_in_schema=False,
-)
-async def set_reaction(api_version: ApiVersion, set_reaction_request: SetReactionRequest):
-    row_update = {
-        "like_status": set_reaction_request.like_status,
-        "comment": set_reaction_request.comment,
-    }
-
-    try:
-        db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
-            {"_id": ObjectId(set_reaction_request.request_id)},
-            {"$set": row_update},
-            return_document=ReturnDocument.AFTER,
-        )
-        if not db_status:
-            logger.error(f"Can't find row with id {set_reaction_request.request_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Can't find row with id {set_reaction_request.request_id}",
-            )
-    except bson.errors.InvalidId as e:
-        logger.error(e)
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
-        )
-    return Response(status_code=status.HTTP_200_OK)
 
 
 ######################################################
