@@ -12,7 +12,7 @@ from utils import CONFIG, DB
 from utils.schemas import Message
 
 
-async def stream_and_log(generator, request_id):
+async def stream_and_log(generator, request_id: str, vendor: str):
     answer, sources = "", []
     async for response in generator:
         answer += response.answer
@@ -20,7 +20,7 @@ async def stream_and_log(generator, request_id):
         response.request_id = request_id
         yield f"event: message\ndata: {response.json()}\n\n"
     logger.info(f"answer: {answer}")
-    db_status = DB[CONFIG["mongo"]["requests_collection"]].find_one_and_update(
+    db_status = DB[f'{vendor}.{CONFIG["mongo"]["requests_collection"]}'].find_one_and_update(
         {"_id": ObjectId(request_id)},
         {"$set": {"answer": answer, "document_id": [source.id for source in sources]}},
         return_document=ReturnDocument.AFTER,
@@ -32,8 +32,8 @@ def log_get_ranking(
     query: str,
     request: Request,
     api_version: str,
-    vendor: str = None,
-    organization: str = None,
+    vendor: str,
+    organization: str,
     collections: List[str] = None,
     user: str = None,
 ) -> str:
@@ -45,12 +45,11 @@ def log_get_ranking(
         "document_id": document_ids,
         "query": query,
         "api_version": api_version,
-        "vendor": vendor,
         "organization": organization,
         "collections": collections,
         "user": user,
     }
-    request_id = DB[CONFIG["mongo"]["requests_ranking_collection"]].insert_one(row).inserted_id
+    request_id = DB[f'{vendor}.{CONFIG["mongo"]["requests_ranking_collection"]}'].insert_one(row).inserted_id
     logger.info(
         f"RANKING: {vendor}:{organization} over collections: {collections}, query: {query}, api_version: {api_version}, docs: {document_ids}"
     )
@@ -64,8 +63,8 @@ def log_get_answer(
     query: str,
     request: Request,
     api_version: str,
-    vendor: str = None,
-    organization: str = None,
+    vendor: str,
+    organization: str,
     collections: List[str] = None,
     user: str = None,
     stream: bool = None,
@@ -81,14 +80,13 @@ def log_get_answer(
         "model_context": context,
         "answer": answer,
         "api_version": api_version,
-        "vendor": vendor,
         "organization": organization,
         "collections": collections,
         "user": user,
         "stream": stream,
         "chat": [msg.json() for msg in chat] if chat else None,
     }
-    request_id = DB[CONFIG["mongo"]["requests_collection"]].insert_one(row).inserted_id
+    request_id = DB[f'{vendor}.{CONFIG["mongo"]["requests_collection"]}'].insert_one(row).inserted_id
     logger.info(
         f"vendor: {vendor}, organization: {organization}, collections: {collections}, query: {query}, api_version: {api_version}"
     )
