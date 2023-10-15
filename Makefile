@@ -8,7 +8,7 @@ install:
 	pip install -r requirements.txt
 
 install-format:
-	pip install black isort
+	pip install black isort autoflake
 
 install-test:
 	pip install pytest requests aiohttp
