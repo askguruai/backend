@@ -67,7 +67,6 @@ from utils.schemas import (
     Log,
     Message,
     NotFoundResponse,
-    SetReactionRequest,
     TextRequest,
     UploadDocumentResponse,
 )
