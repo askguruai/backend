@@ -20,5 +20,5 @@ jobs:
         make install-format
     - name: Check formatting
       run: |
-        make format
+        make format-fix
         git diff --exit-code
