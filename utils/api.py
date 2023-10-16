@@ -84,7 +84,7 @@ def log_get_answer(
         "collections": collections,
         "user": user,
         "stream": stream,
-        "chat": [msg.json() for msg in chat] if chat else None,
+        "chat": [msg.dict() for msg in chat] if chat else None,
     }
     request_id = DB[f'{vendor}.{CONFIG["mongo"]["requests_collection"]}'].insert_one(row).inserted_id
     logger.info(
