@@ -53,7 +53,8 @@ def create_user(
     privileges = [
         {
             "resource": {"db": DATABASE, "collection": collection},
-            "actions": ["find", "update", "insert", "remove"],
+            "actions": ["find"],
+            # "actions": ["find", "update", "insert", "remove"],
         }
         for collection in collections
     ]
