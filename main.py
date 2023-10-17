@@ -298,7 +298,7 @@ async def get_collections_answer(
         answer=response.answer if not stream else "",
         context=context,
         document_ids=[source.id for source in response.sources] if not stream else [],
-        query=query,
+        query=query if query else chat[-1].content,
         request=request,
         api_version=api_version,
         vendor=token_data["vendor"],
