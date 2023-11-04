@@ -27,7 +27,10 @@ def build_query_url(
         str, typer.Option(help="First message to be shown in dialogue. Use **markdown** here.")
     ] = "Hi! I'm AskGuru AI Assistant. Nice to meet you! 👋 Ask me anything... ",
     add_unread_dot: Annotated[bool, typer.Option(help="If to add decorative unread dot on a popup")] = False,
-    base_url: str = "https://data.askguru.ai/i",
+    base_url: str = "https://chat-popup.askguru.ai/serve.js",
+    bottom_indent: int = 24,
+    right_indent: int = 24,
+    z_index: int = 10,
 ):
     if not base_url.endswith("?"):
         base_url += "?"
@@ -39,6 +42,9 @@ def build_query_url(
         "popupMessage": popup_message,
         "welcomeMessage": welcome_message,
         "addUnreadDot": add_unread_dot,
+        "bottomIndent": bottom_indent,
+        "rightIndent": right_indent,
+        "zIndex": z_index,
     }
 
     if color:
