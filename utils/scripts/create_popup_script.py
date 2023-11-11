@@ -30,7 +30,8 @@ def build_query_url(
     base_url: str = "https://chat-popup.askguru.ai/serve.js",
     bottom_indent: int = 24,
     right_indent: int = 24,
-    z_index: int = 10,
+    z_index: int = 99999,
+    button_size: int = 64,
 ):
     if not base_url.endswith("?"):
         base_url += "?"
@@ -45,6 +46,7 @@ def build_query_url(
         "bottomIndent": bottom_indent,
         "rightIndent": right_indent,
         "zIndex": z_index,
+        "buttonSize": button_size,
     }
 
     if color:
