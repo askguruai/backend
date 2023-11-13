@@ -10,7 +10,6 @@ import html2text
 import tiktoken
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
-from cache import AsyncTTL
 from fastapi import HTTPException, status
 from loguru import logger
 from starlette.datastructures import UploadFile as StarletteUploadFile
@@ -22,6 +21,8 @@ from utils import AWS_TRANSLATE_CLIENT, GRIDFS, full_collection_name
 from utils.misc import int_list_encode
 from utils.schemas import Chat, Doc, DocumentMetadata
 from utils.tokenize_ import doc_to_chunks
+
+# from cache import AsyncTTL
 
 DOCX_PARSER = DocxParser(1024)
 PDF_PARSER = PdfParser(1024)
@@ -36,7 +37,7 @@ class DocumentsParser:
         self.converter.ignore_images = True
         self.sitemap_pattern = r"sitemap.*\.xml"
 
-    @AsyncTTL(time_to_live=60, maxsize=4096)
+    # @AsyncTTL(time_to_live=60, maxsize=4096)
     async def get_page_content(self, session: ClientSession, link: str, allow_redirects: bool = True) -> str:
         headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36"
@@ -44,7 +45,7 @@ class DocumentsParser:
         link_clickhelp_adjusted = link.replace("articles/#!", "article/")
         try:
             async with session.get(
-                link_clickhelp_adjusted, headers=headers, allow_redirects=allow_redirects
+                link_clickhelp_adjusted, headers=headers, allow_redirects=allow_redirects, timeout=600
             ) as response:
                 page_content = await response.text()
         except Exception as e:
