@@ -192,7 +192,7 @@ class DocumentsParser:
                 processed_links = await asyncio.gather(*tasks_process_link)
                 extracted_urls = await asyncio.gather(*tasks_extract_urls)
 
-                docs.extend(processed_links)
+                docs.extend([(doc, medatadata, content) for (doc, medatadata, content) in processed_links if doc])
                 queue.extend([url for extracted_urls_from_one in extracted_urls for url in extracted_urls_from_one])
                 depth += 1
 
