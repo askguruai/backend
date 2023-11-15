@@ -126,7 +126,7 @@ class DocumentsParser:
         #     logger.error(f"Empty content on {link}")
         #     return None
 
-        return Doc(content=content), DocumentMetadata(id=link, title=title, url=link), page_content
+        return Doc(content=content), DocumentMetadata(id=link, title=title, url=link, project_to_en=False), page_content
 
     async def traverse_page(
         self, root_link: str, max_depth: int = 50, max_total_docs: int = 500
