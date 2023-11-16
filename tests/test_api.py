@@ -108,9 +108,18 @@ class TestAPI:
         manager.test_chunks_inserted += int(response.json()["n_chunks"])
 
     def test_upload_links(self, manager):
-        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes/links"
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/askguru/links"
         json = {
-            "links": ["https://www.askguru.ai/", "https://yuma.ai/sitemap.xml"],
+            "links": ["https://www.askguru.ai/"],
+        }
+        response = requests.post(url, headers=manager.headers, json=json)
+        response.raise_for_status()
+        assert int(response.json()["n_chunks"]) > 0
+        manager.test_chunks_inserted += int(response.json()["n_chunks"])
+
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/yuma/links"
+        json = {
+            "links": ["https://yuma.ai/sitemap.xml"],
         }
         response = requests.post(url, headers=manager.headers, json=json)
         response.raise_for_status()
@@ -121,8 +130,11 @@ class TestAPI:
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections"
         response = requests.get(url, headers=manager.headers)
         response.raise_for_status()
-        assert response.json()["collections"][0]["name"] == "recipes"
-        assert response.json()["collections"][0]["n_chunks"] == manager.test_chunks_inserted
+        assert "recipes" in [collection["name"] for collection in response.json()["collections"]]
+        assert (
+            sum([collection["n_chunks"] for collection in response.json()["collections"]])
+            == manager.test_chunks_inserted
+        )
 
     ################################################################
     #                       ANSWERING                              #
@@ -243,6 +255,7 @@ class TestAPI:
     def test_get_answer_chat(self, manager):
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/answer"
         params = {
+            "collections": ["askguru"],
             "chat": json.dumps(
                 [
                     {"role": "user", "content": "whats the pricing for askguru"},
@@ -369,7 +382,19 @@ class TestAPI:
         url = f"{self.BASE_URL}/{self.API_VERSION}/collections/recipes"
         response = requests.delete(url, headers=manager.headers)
         response.raise_for_status()
-        assert int(response.json()["n_chunks"]) == manager.test_chunks_inserted
+        recipes_chunks = int(response.json()["n_chunks"])
+
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/askguru"
+        response = requests.delete(url, headers=manager.headers)
+        response.raise_for_status()
+        askguru_chunks = int(response.json()["n_chunks"])
+
+        url = f"{self.BASE_URL}/{self.API_VERSION}/collections/yuma"
+        response = requests.delete(url, headers=manager.headers)
+        response.raise_for_status()
+        yuma_chunks = int(response.json()["n_chunks"])
+
+        assert recipes_chunks + askguru_chunks + yuma_chunks == manager.test_chunks_inserted
 
     async def __delete_async_request(self, session: ClientSession, url: str, params: dict = {}, headers: dict = {}):
         async with session.delete(url, headers=headers, params=params) as response:
