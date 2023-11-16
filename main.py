@@ -125,11 +125,7 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
-@app.get(
-    "/{api_version}/info",
-    response_model=Dict[str, Any],
-    responses=CollectionResponses,
-)
+@app.get("/{api_version}/info", response_model=Dict[str, Any], responses=CollectionResponses, tags=["auth"])
 @catch_errors
 async def get_info(
     request: Request,
@@ -140,13 +136,23 @@ async def get_info(
     return token_data
 
 
-@app.post("/{api_version}/token", responses=CollectionResponses)(get_organization_token)
-@app.post("/{api_version}/token_livechat", responses=CollectionResponses, include_in_schema=False)(get_livechat_token)
-@app.post("/{api_version}/collections/token", responses=CollectionResponses, include_in_schema=False, deprecated=True)(
-    get_organization_token
+@app.post("/{api_version}/token", responses=CollectionResponses, tags=["auth"])(get_organization_token)
+@app.post("/{api_version}/token_livechat", responses=CollectionResponses, tags=["auth"], include_in_schema=False)(
+    get_livechat_token
 )
 @app.post(
-    "/{api_version}/collections/token_livechat", responses=CollectionResponses, include_in_schema=False, deprecated=True
+    "/{api_version}/collections/token",
+    responses=CollectionResponses,
+    tags=["auth"],
+    include_in_schema=False,
+    deprecated=True,
+)(get_organization_token)
+@app.post(
+    "/{api_version}/collections/token_livechat",
+    responses=CollectionResponses,
+    tags=["auth"],
+    include_in_schema=False,
+    deprecated=True,
 )(get_livechat_token)
 
 
@@ -156,29 +162,10 @@ async def get_info(
 
 
 @app.get(
-    "/{api_version}/collections",
-    response_model=GetCollectionsResponse,
-    responses=CollectionResponses,
-)
-@catch_errors
-async def get_collections(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-):
-    token_data = decode_token(token)
-    response = collection_handler.get_collections(
-        vendor=token_data["vendor"],
-        organization=token_data["organization"],
-        api_version=api_version,
-    )
-    return response
-
-
-@app.get(
     "/{api_version}/collections/answer",
     response_model=GetCollectionAnswerResponse,
     responses=CollectionResponses,
+    tags=["answers"],
 )
 @catch_errors
 async def get_collections_answer(
@@ -323,6 +310,7 @@ async def get_collections_answer(
     "/{api_version}/collections/ranking",
     response_model=GetCollectionRankingResponse,
     responses=CollectionResponses,
+    tags=["answers"],
 )
 @catch_errors
 async def get_collections_ranking(
@@ -383,9 +371,31 @@ async def get_collections_ranking(
 
 
 @app.get(
+    "/{api_version}/collections",
+    response_model=GetCollectionsResponse,
+    responses=CollectionResponses,
+    tags=["collections"],
+)
+@catch_errors
+async def get_collections(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+):
+    token_data = decode_token(token)
+    response = collection_handler.get_collections(
+        vendor=token_data["vendor"],
+        organization=token_data["organization"],
+        api_version=api_version,
+    )
+    return response
+
+
+@app.get(
     "/{api_version}/collections/{collection}",
     response_model=GetCollectionResponse,
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+    tags=["collections"],
 )
 @catch_errors
 async def get_collection(
@@ -408,6 +418,7 @@ async def get_collection(
     "/{api_version}/collections/{collection}/docs",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
+    tags=["collections"],
 )
 @catch_errors
 async def upload_collection_documents(
@@ -454,6 +465,7 @@ async def upload_collection_documents(
     "/{api_version}/collections/{collection}/files",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
+    tags=["collections"],
 )
 @catch_errors
 async def upload_collection_files(
@@ -505,6 +517,7 @@ async def upload_collection_files(
     "/{api_version}/collections/{collection}/links",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
+    tags=["collections"],
 )
 @catch_errors
 async def upload_collection_links(
@@ -531,6 +544,7 @@ async def upload_collection_links(
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses,
     include_in_schema=True,
+    tags=["collections"],
 )
 @catch_errors
 async def upload_collection_chats(
@@ -563,6 +577,7 @@ async def upload_collection_chats(
     "/{api_version}/collections/{collection}/ids",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+    tags=["collections"],
 )
 @catch_errors
 async def delete_collection_documents(
@@ -586,6 +601,7 @@ async def delete_collection_documents(
     "/{api_version}/collections/{collection}",
     response_model=CollectionDocumentsResponse,
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+    tags=["collections"],
 )
 @catch_errors
 async def delete_collection(
@@ -608,7 +624,7 @@ async def delete_collection(
 ######################################################
 
 
-@app.post("/{api_version}/collections/{collection}/canned", response_model=CannedAnswer)
+@app.post("/{api_version}/collections/{collection}/canned", response_model=CannedAnswer, tags=["canned"])
 @catch_errors
 async def add_canned_answer(
     request: Request,
@@ -640,7 +656,7 @@ async def add_canned_answer(
     )
 
 
-@app.get("/{api_version}/collections/{collection}/canned/{canned_id}", response_model=CannedAnswer)
+@app.get("/{api_version}/collections/{collection}/canned/{canned_id}", response_model=CannedAnswer, tags=["canned"])
 @catch_errors
 async def get_canned_by_id(
     request: Request,
@@ -659,7 +675,7 @@ async def get_canned_by_id(
     )
 
 
-@app.delete("/{api_version}/collections/{collection}/canned/{canned_id}")
+@app.delete("/{api_version}/collections/{collection}/canned/{canned_id}", tags=["canned"])
 @catch_errors
 async def delete_canned_by_id(
     request: Request,
@@ -678,7 +694,7 @@ async def delete_canned_by_id(
     )
 
 
-@app.patch("/{api_version}/collections/{collection}/canned/{canned_id}")
+@app.patch("/{api_version}/collections/{collection}/canned/{canned_id}", tags=["canned"])
 @catch_errors
 async def update_canned_by_id(
     request: Request,
@@ -712,7 +728,7 @@ async def update_canned_by_id(
     )
 
 
-@app.get("/{api_version}/collections/{collection}/canned", response_model=CannedAnswersCollection)
+@app.get("/{api_version}/collections/{collection}/canned", response_model=CannedAnswersCollection, tags=["canned"])
 @catch_errors
 async def get_collection_canned(
     request: Request,
@@ -738,6 +754,7 @@ async def get_collection_canned(
     "/{api_version}/collections/{collection}/{doc_id}",
     response_class=Response,
     responses=CollectionResponses | {status.HTTP_404_NOT_FOUND: {"model": NotFoundResponse}},
+    tags=["collections"],
 )
 @catch_errors
 async def get_collection_document(
@@ -760,36 +777,6 @@ async def get_collection_document(
 
 
 ######################################################
-#                  AUDIO                             #
-######################################################
-
-
-@app.post("/{api_version}/transcribe", response_model=GetTranscriptionResponse, responses=CollectionResponses)
-@catch_errors
-async def get_transcription(
-    request: Request,
-    api_version: ApiVersion,
-    token: str = Depends(oauth2_scheme),
-    file: UploadFile = File(...),
-    romanize: bool = Form(
-        defaul=False, description="Whether to romanize transcribed text e.g. hindi with eng alphabet"
-    ),
-):
-    decode_token(token)
-    _, format = os.path.splitext(file.filename)
-    if format not in [".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"]:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Audio file supported formats are mp3, mp4, mpeg, mpga, m4a, wav and webm. Provided is {format}",
-        )
-    # TODO: maybe save source of audio to GridFS
-    text = await ml_requests.get_transcript_from_file(file=file, api_version=api_version.value)
-    if romanize:
-        text = romanize_hindi(text)
-    return GetTranscriptionResponse(text=text)
-
-
-######################################################
 #                    FEEDBACK                        #
 ######################################################
 
@@ -798,6 +785,7 @@ async def get_transcription(
     "/{api_version}/reactions",
     responses=CollectionResponses,
     response_model=GetReactionsResponse,
+    tags=["reactions"],
 )
 async def get_reactions(request: Request, api_version: ApiVersion, token: str = Depends(oauth2_scheme)):
     token_data = decode_token(token)
@@ -838,6 +826,7 @@ async def get_reactions(request: Request, api_version: ApiVersion, token: str = 
 @app.post(
     "/{api_version}/reactions",
     responses=CollectionResponses,
+    tags=["reactions"],
 )
 async def upload_reaction(
     request: Request,
@@ -887,7 +876,11 @@ async def upload_reaction(
     return Response(status_code=status.HTTP_200_OK)
 
 
-@app.post("/{api_version}/events", responses=CollectionResponses)
+@app.post(
+    "/{api_version}/events",
+    responses=CollectionResponses,
+    tags=["reactions"],
+)
 @catch_errors
 async def upload_event(
     request: Request, api_version: ApiVersion, client_event: ClinetLogEvent, token: str = Depends(oauth2_scheme)
@@ -904,6 +897,41 @@ async def upload_event(
     }
     _ = DB[f'{vendor}.{CONFIG["mongo"]["client_event_log_collection"]}'].insert_one(row).inserted_id
     return Response(status_code=status.HTTP_200_OK)
+
+
+######################################################
+#                  AUDIO                             #
+######################################################
+
+
+@app.post(
+    "/{api_version}/transcribe",
+    response_model=GetTranscriptionResponse,
+    responses=CollectionResponses,
+    tags=["misc"],
+)
+@catch_errors
+async def get_transcription(
+    request: Request,
+    api_version: ApiVersion,
+    token: str = Depends(oauth2_scheme),
+    file: UploadFile = File(...),
+    romanize: bool = Form(
+        defaul=False, description="Whether to romanize transcribed text e.g. hindi with eng alphabet"
+    ),
+):
+    decode_token(token)
+    _, format = os.path.splitext(file.filename)
+    if format not in [".mp3", ".mp4", ".mpeg", ".mpga", ".m4a", ".wav", ".webm"]:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Audio file supported formats are mp3, mp4, mpeg, mpga, m4a, wav and webm. Provided is {format}",
+        )
+    # TODO: maybe save source of audio to GridFS
+    text = await ml_requests.get_transcript_from_file(file=file, api_version=api_version.value)
+    if romanize:
+        text = romanize_hindi(text)
+    return GetTranscriptionResponse(text=text)
 
 
 ######################################################
