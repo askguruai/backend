@@ -88,7 +88,7 @@ app.add_middleware(RequestLoggerMiddleware)
 async def init_handlers():
     global text_handler, link_handler, document_handler, pdf_upload_handler, collection_handler, documents_upload_handler, canned_handler
     CLIENT_SESSION_WRAPPER.coreml_session = ClientSession(
-        f"http://{CONFIG['coreml']['host']}:{CONFIG['coreml']['port']}"
+        f"http://{os.environ['COREML_HOST']}:{CONFIG['coreml']['port']}"
     )
     CLIENT_SESSION_WRAPPER.general_session = ClientSession()
     text_handler = TextHandler(
